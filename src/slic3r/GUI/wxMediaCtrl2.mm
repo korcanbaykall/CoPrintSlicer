@@ -1,6 +1,6 @@
 //
 //  wxMediaCtrl2.m
-//  OrcaSlicer
+//  CoPrintSlicer
 //
 //  Created by cmguo on 2021/12/7.
 //

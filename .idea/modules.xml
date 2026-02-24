@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/OrcaSlicer.iml" filepath="$PROJECT_DIR$/.idea/OrcaSlicer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/CoPrintSlicer.iml" filepath="$PROJECT_DIR$/.idea/CoPrintSlicer.iml" />
     </modules>
   </component>
 </project>

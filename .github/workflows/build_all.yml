@@ -52,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
     # Don't run scheduled builds on forks:
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'CoPrintSlicer/CoPrintSlicer') }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       os: ubuntu-24.04
@@ -67,7 +67,7 @@ jobs:
           - os: ${{ vars.SELF_HOSTED && 'orca-macos-arm64' || 'macos-14' }}
             arch: arm64
     # Don't run scheduled builds on forks:
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'CoPrintSlicer/CoPrintSlicer') }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       os: ${{ matrix.os }}
@@ -133,7 +133,7 @@ jobs:
           - arch: aarch64
             runner: ubuntu-24.04-arm
     # Don't run scheduled builds on forks:
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'CoPrintSlicer/CoPrintSlicer') }}
     runs-on: ${{ matrix.variant.runner }}
     env:
       date:
@@ -161,8 +161,8 @@ jobs:
       shell: bash
     - uses: flatpak/flatpak-github-actions/flatpak-builder@master
       with:
-        bundle: OrcaSlicer-Linux-flatpak_${{ env.ver }}_${{ matrix.variant.arch }}.flatpak
-        manifest-path: scripts/flatpak/io.github.softfever.OrcaSlicer.yml
+        bundle: CoPrintSlicer-Linux-flatpak_${{ env.ver }}_${{ matrix.variant.arch }}.flatpak
+        manifest-path: scripts/flatpak/io.github.softfever.CoPrintSlicer.yml
         cache: true
         cache-key: flatpak-builder-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
         arch: ${{ matrix.variant.arch }}
@@ -170,15 +170,15 @@ jobs:
     - name: Upload artifacts Flatpak
       uses: actions/upload-artifact@v6
       with:
-        name: OrcaSlicer-Linux-flatpak_${{ env.ver }}_${{ matrix.variant.arch }}.flatpak
-        path: '/__w/OrcaSlicer/OrcaSlicer/OrcaSlicer-Linux-flatpak_${{ env.ver }}_${{ matrix.variant.arch }}.flatpak'
+        name: CoPrintSlicer-Linux-flatpak_${{ env.ver }}_${{ matrix.variant.arch }}.flatpak
+        path: '/__w/CoPrintSlicer/CoPrintSlicer/CoPrintSlicer-Linux-flatpak_${{ env.ver }}_${{ matrix.variant.arch }}.flatpak'
     - name: Deploy Flatpak to nightly release
-      if: github.repository == 'OrcaSlicer/OrcaSlicer' && github.ref == 'refs/heads/main'
+      if: github.repository == 'CoPrintSlicer/CoPrintSlicer' && github.ref == 'refs/heads/main'
       uses: WebFreak001/deploy-nightly@v3.2.0
       with:
-        upload_url: https://uploads.github.com/repos/OrcaSlicer/OrcaSlicer/releases/137995723/assets{?name,label}
+        upload_url: https://uploads.github.com/repos/CoPrintSlicer/CoPrintSlicer/releases/137995723/assets{?name,label}
         release_id: 137995723
-        asset_path: /__w/OrcaSlicer/OrcaSlicer/OrcaSlicer-Linux-flatpak_${{ env.ver }}_${{ matrix.variant.arch }}.flatpak
-        asset_name: OrcaSlicer-Linux-flatpak_nightly_${{ matrix.variant.arch }}.flatpak
+        asset_path: /__w/CoPrintSlicer/CoPrintSlicer/CoPrintSlicer-Linux-flatpak_${{ env.ver }}_${{ matrix.variant.arch }}.flatpak
+        asset_name: CoPrintSlicer-Linux-flatpak_nightly_${{ matrix.variant.arch }}.flatpak
         asset_content_type: application/octet-stream
         max_releases: 1 # optional, if there are more releases than this matching the asset_name, the oldest ones are going to be deleted

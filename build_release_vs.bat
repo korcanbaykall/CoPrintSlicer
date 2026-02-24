@@ -1,4 +1,4 @@
-@REM OrcaSlicer build script for Windows with VS auto-detect
+@REM CoPrintSlicer build script for Windows with VS auto-detect
 @echo off
 set WP=%CD%
 
@@ -70,9 +70,9 @@ if "%1"=="pack" (
     setlocal ENABLEDELAYEDEXPANSION 
     cd %WP%/deps/build
     for /f "tokens=2-4 delims=/ " %%a in ('date /t') do set build_date=%%c%%b%%a
-    echo packing deps: OrcaSlicer_dep_win64_!build_date!_vs!VS_VERSION!.zip
+    echo packing deps: CoPrintSlicer_dep_win64_!build_date!_vs!VS_VERSION!.zip
 
-    %WP%/tools/7z.exe a OrcaSlicer_dep_win64_!build_date!_vs!VS_VERSION!.zip OrcaSlicer_dep
+    %WP%/tools/7z.exe a CoPrintSlicer_dep_win64_!build_date!_vs!VS_VERSION!.zip CoPrintSlicer_dep
     exit /b 0
 )
 
@@ -123,7 +123,7 @@ if "%USE_NINJA%"=="1" (
 if "%1"=="deps" exit /b 0
 
 :slicer
-echo "building Orca Slicer..."
+echo "building CoPrintSlicer..."
 cd %WP%
 mkdir %build_dir%
 cd %build_dir%
