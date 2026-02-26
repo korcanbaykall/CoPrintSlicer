@@ -305,6 +305,7 @@ public:
         m_constant_text.init(Label::Body_16);
 
 		// ORCA scale all fonts with monitor scale
+        scale_font(m_constant_text.title_font,		m_scale * 2.5f);
         scale_font(m_constant_text.version_font,	m_scale * 2);
         scale_font(m_constant_text.based_on_font,	m_scale * 1.5f);
         scale_font(m_constant_text.credits_font,	m_scale * 2);
@@ -359,6 +360,18 @@ public:
         BitmapCache bmp_cache;
         wxBitmap logo_bmp = *bmp_cache.load_svg(is_dark ? "splash_logo_dark" : "splash_logo", width, height);  // use with full width & height
         memDc.DrawBitmap(logo_bmp, 0, 0, true);
+
+        // App title
+        if (!m_constant_text.title.empty()) {
+            memDc.SetFont(m_constant_text.title_font);
+            memDc.SetTextForeground(wxColour(0x00, 0x97, 0x89));
+            wxSize title_ext = memDc.GetTextExtent(m_constant_text.title);
+            wxRect title_rect(
+                wxPoint(0, int(height * 0.52)),
+                wxPoint(width, int(height * 0.52) + title_ext.GetHeight())
+            );
+            memDc.DrawLabel(m_constant_text.title, title_rect, wxALIGN_CENTER);
+        }
 
         // Version
         memDc.SetFont(m_constant_text.version_font);
@@ -466,7 +479,7 @@ private:
         void init(wxFont init_font)
         {
             // title
-            //title = wxGetApp().is_editor() ? SLIC3R_APP_FULL_NAME : GCODEVIEWER_APP_NAME;
+            title = wxGetApp().is_editor() ? SLIC3R_APP_FULL_NAME : GCODEVIEWER_APP_NAME;
 
             // dynamically get the version to display
             version = GUI_App::format_display_version();
@@ -474,7 +487,7 @@ private:
             // credits infornation
             credits = "";
 
-            //title_font    = Label::Head_16;
+            title_font    = Label::Head_20;
             version_font  = Label::Body_13;
             based_on_font = Label::Body_8;
             credits_font  = Label::Body_8;
