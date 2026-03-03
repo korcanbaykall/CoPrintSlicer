@@ -92,7 +92,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
                wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".svg")));
     };
 
-    auto *make_axis_btn = [this, right_container, icon_exists](const wxString &fallback_text, const std::string &primary_icon, const std::string &secondary_icon, int w, int h) {
+    auto make_axis_btn = [this, right_container, icon_exists](const wxString &fallback_text, const std::string &primary_icon, const std::string &secondary_icon, int w, int h) {
         auto *btn = new wxButton(right_container, wxID_ANY, "", wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
         btn->SetBackgroundColour(wxColour(210, 210, 210));
         btn->SetForegroundColour(wxColour(40, 40, 40));
