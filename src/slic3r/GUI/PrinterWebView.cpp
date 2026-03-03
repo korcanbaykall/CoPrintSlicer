@@ -92,8 +92,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
                wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".svg")));
     };
 
-    auto make_axis_cell = [this, right_container, icon_exists](const wxString &fallback_text, const std::string &primary_icon, const std::string &secondary_icon, int w, int h) {
-        auto *cell = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
+    auto make_axis_cell = [this, icon_exists](wxWindow *parent, const wxString &fallback_text, const std::string &primary_icon, const std::string &secondary_icon, int w, int h) {
+        auto *cell = new wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
         cell->SetBackgroundColour(wxColour(28, 30, 34));
 
         auto *cell_sizer = new wxBoxSizer(wxVERTICAL);
@@ -118,17 +118,30 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         return cell;
     };
 
-    auto *xy_grid = new wxGridSizer(3, 3, FromDIP(10), FromDIP(10));
-    xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_cell("Y+", "vector_11", "", 118, 78), 0, wxALIGN_CENTER);
-    xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_cell("X-", "vector_10", "", 92, 130), 0, wxALIGN_CENTER);
-    xy_grid->Add(make_btn("\u2302", 92, 92, true), 0, wxALIGN_CENTER);
-    xy_grid->Add(make_axis_cell("X+", "12", "vector_12", 92, 130), 0, wxALIGN_CENTER);
-    xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_cell("Y-", "13", "vector_13", 118, 78), 0, wxALIGN_CENTER);
-    xy_grid->AddSpacer(FromDIP(10));
-    content_row->Add(xy_grid, 0, wxRIGHT, FromDIP(16));
+    const int xy_square = FromDIP(261);
+    const int xy_cell = FromDIP(90);
+    const int xy_mid = (xy_square - xy_cell) / 2;
+    const int xy_edge = xy_square - xy_cell;
+
+    auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
+    xy_area->SetMinSize(wxSize(xy_square, xy_square));
+    xy_area->SetMaxSize(wxSize(xy_square, xy_square));
+    xy_area->SetBackgroundColour(wxColour(28, 30, 34));
+
+    auto *top_cell = make_axis_cell(xy_area, "Y+", "vector_11", "", 90, 90);
+    top_cell->SetPosition(wxPoint(xy_mid, 0));
+    auto *left_cell = make_axis_cell(xy_area, "X-", "vector_10", "", 90, 90);
+    left_cell->SetPosition(wxPoint(0, xy_mid));
+    auto *right_cell = make_axis_cell(xy_area, "X+", "12", "vector_12", 90, 90);
+    right_cell->SetPosition(wxPoint(xy_edge, xy_mid));
+    auto *bottom_cell = make_axis_cell(xy_area, "Y-", "13", "vector_13", 90, 90);
+    bottom_cell->SetPosition(wxPoint(xy_mid, xy_edge));
+
+    auto *center_btn = make_btn("\u2302", 90, 90, true);
+    center_btn->Reparent(xy_area);
+    center_btn->SetSize(wxRect(wxPoint(xy_mid, xy_mid), wxSize(xy_cell, xy_cell)));
+
+    content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
     z_col->Add(make_btn("Z+", 92, 78, true), 0, wxBOTTOM, FromDIP(10));
