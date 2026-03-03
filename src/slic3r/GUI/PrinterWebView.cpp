@@ -23,41 +23,73 @@ namespace GUI {
 PrinterWebView::PrinterWebView(wxWindow *parent)
         : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize)
  {
+    SetBackgroundColour(wxColour(28, 30, 34));
 
-    wxBoxSizer* topsizer = new wxBoxSizer(wxVERTICAL);
+    auto *main_sizer = new wxBoxSizer(wxHORIZONTAL);
+    auto *left_empty = new wxPanel(this, wxID_ANY);
+    left_empty->SetBackgroundColour(wxColour(28, 30, 34));
 
-      // Create the webview
-    m_browser = WebView::CreateWebView(this, "");
-    if (m_browser == nullptr) {
-        wxLogError("Could not init m_browser");
-        return;
-    }
+    auto *right_container = new wxPanel(this, wxID_ANY);
+    right_container->SetBackgroundColour(wxColour(28, 30, 34));
+    auto *right_sizer = new wxBoxSizer(wxVERTICAL);
 
-    m_browser->Bind(wxEVT_WEBVIEW_ERROR, &PrinterWebView::OnError, this);
-    m_browser->Bind(wxEVT_WEBVIEW_LOADED, &PrinterWebView::OnLoaded, this);
+    auto *title = new wxStaticText(right_container, wxID_ANY, _L("Select a movement step to control your axes."));
+    title->SetForegroundColour(wxColour(220, 220, 220));
+    title->SetFont(Label::Head_14);
+    right_sizer->Add(title, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
 
-    SetSizer(topsizer);
+    auto make_btn = [right_container](const wxString &txt, int w, int h, bool active = false) {
+        auto *btn = new wxButton(right_container, wxID_ANY, txt, wxDefaultPosition, wxSize(FromDIP(w), FromDIP(h)));
+        btn->SetBackgroundColour(active ? wxColour(210, 210, 210) : wxColour(61, 64, 68));
+        btn->SetForegroundColour(active ? wxColour(40, 40, 40) : wxColour(215, 215, 215));
+        btn->SetWindowStyleFlag(wxBORDER_NONE);
+        return btn;
+    };
 
-    topsizer->Add(m_browser, wxSizerFlags().Expand().Proportion(1));
+    auto *step_row = new wxBoxSizer(wxHORIZONTAL);
+    step_row->Add(make_btn("1mm", 92, 48, true), 0, wxRIGHT, FromDIP(8));
+    step_row->Add(make_btn("5mm", 92, 48), 0, wxRIGHT, FromDIP(8));
+    step_row->Add(make_btn("10mm", 92, 48), 0);
+    right_sizer->Add(step_row, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, FromDIP(12));
 
-    update_mode();
+    auto *content_row = new wxBoxSizer(wxHORIZONTAL);
 
-    // Log backend information
-    /* m_browser->GetUserAgent() may lead crash
-    if (wxGetApp().get_mode() == comDevelop) {
-        wxLogMessage(wxWebView::GetBackendVersionInfo().ToString());
-        wxLogMessage("Backend: %s Version: %s", m_browser->GetClassInfo()->GetClassName(),
-            wxWebView::GetBackendVersionInfo().ToString());
-        wxLogMessage("User Agent: %s", m_browser->GetUserAgent());
-    }
-    */
+    auto *tool_col = new wxBoxSizer(wxVERTICAL);
+    tool_col->Add(make_btn("T1", 92, 58, true), 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(make_btn("T2", 92, 58), 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(make_btn("T3", 92, 58), 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(make_btn("T4", 92, 58), 0);
+    content_row->Add(tool_col, 0, wxRIGHT, FromDIP(16));
 
-    //Zoom
+    auto *xy_grid = new wxGridSizer(3, 3, FromDIP(10), FromDIP(10));
+    xy_grid->AddSpacer(FromDIP(10));
+    xy_grid->Add(make_btn("Y+", 118, 78, true), 0, wxALIGN_CENTER);
+    xy_grid->AddSpacer(FromDIP(10));
+    xy_grid->Add(make_btn("X-", 92, 130, true), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_btn("\u2302", 92, 92, true), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_btn("X+", 92, 130, true), 0, wxALIGN_CENTER);
+    xy_grid->AddSpacer(FromDIP(10));
+    xy_grid->Add(make_btn("Y-", 118, 78, true), 0, wxALIGN_CENTER);
+    xy_grid->AddSpacer(FromDIP(10));
+    content_row->Add(xy_grid, 0, wxRIGHT, FromDIP(16));
+
+    auto *z_col = new wxBoxSizer(wxVERTICAL);
+    z_col->Add(make_btn("Z+", 92, 78, true), 0, wxBOTTOM, FromDIP(10));
+    z_col->Add(make_btn("\u2302", 92, 78, true), 0, wxBOTTOM, FromDIP(10));
+    z_col->Add(make_btn("Z-", 92, 78, true), 0);
+    content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
+
+    right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
+    right_sizer->AddStretchSpacer(1);
+    right_container->SetSizer(right_sizer);
+
+    main_sizer->Add(left_empty, 1, wxEXPAND);
+    main_sizer->Add(right_container, 0, wxEXPAND | wxALL, FromDIP(10));
+    SetSizer(main_sizer);
+
+    m_browser = nullptr;
     m_zoomFactor = 100;
-
-    //Connect the idle events
     Bind(wxEVT_CLOSE_WINDOW, &PrinterWebView::OnClose, this);
-
  }
 
 PrinterWebView::~PrinterWebView()
@@ -71,40 +103,24 @@ PrinterWebView::~PrinterWebView()
 
 void PrinterWebView::load_url(wxString& url, wxString apikey)
 {
-//    this->Show();
-//    this->Raise();
-    if (m_browser == nullptr)
-        return;
+    (void) url;
     m_apikey = apikey;
-    m_apikey_sent = false;
-
-    if (this->IsShown()) {
-        m_url_deferred.clear();
-        m_browser->LoadURL(url);
-    } else {
-        m_url_deferred = url;
-    }
-    //m_browser->SetFocus();
-    UpdateState();
+    return;
 }
 
 bool PrinterWebView::Show(bool show)
 {
-    if (show && !m_url_deferred.empty()) {
-        m_browser->LoadURL(m_url_deferred);
-        m_url_deferred.clear();
-    }
     return wxPanel::Show(show);
 }
 
 void PrinterWebView::reload()
 {
-    m_browser->Reload();
+    return;
 }
 
 void PrinterWebView::update_mode()
 {
-    m_browser->EnableAccessToDevTools(wxGetApp().app_config->get_bool("developer_mode"));
+    return;
 }
 
 /**
@@ -123,7 +139,7 @@ void PrinterWebView::OnClose(wxCloseEvent& evt)
 
 void PrinterWebView::SendAPIKey()
 {
-    if (m_apikey_sent || m_apikey.IsEmpty())
+    if (m_browser == nullptr || m_apikey_sent || m_apikey.IsEmpty())
         return;
     m_apikey_sent   = true;
     wxString script = wxString::Format(R"(
