@@ -6,8 +6,10 @@
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
+#include "libslic3r/Utils.hpp"
 #include "libslic3r_version.h"
 
+#include <wx/filename.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
 #include <wx/toolbar.h>
@@ -85,15 +87,39 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     tool_col->Add(make_tool_btn(right_container, "T4"), 0);
     content_row->Add(tool_col, 0, wxRIGHT, FromDIP(16));
 
+    auto icon_exists = [](const std::string &icon_name) {
+        return wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".png"))) ||
+               wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".svg")));
+    };
+
+    auto *make_axis_btn = [this, right_container, icon_exists](const wxString &fallback_text, const std::string &primary_icon, const std::string &secondary_icon, int w, int h) {
+        auto *btn = new wxButton(right_container, wxID_ANY, "", wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
+        btn->SetBackgroundColour(wxColour(210, 210, 210));
+        btn->SetForegroundColour(wxColour(40, 40, 40));
+        btn->SetWindowStyleFlag(wxBORDER_NONE);
+
+        std::string icon_key;
+        if (icon_exists(primary_icon))
+            icon_key = primary_icon;
+        else if (!secondary_icon.empty() && icon_exists(secondary_icon))
+            icon_key = secondary_icon;
+
+        if (!icon_key.empty())
+            btn->SetBitmap(create_scaled_bitmap(icon_key, this, 26));
+        else
+            btn->SetLabel(fallback_text);
+        return btn;
+    };
+
     auto *xy_grid = new wxGridSizer(3, 3, FromDIP(10), FromDIP(10));
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_btn("Y+", 118, 78, true), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_btn("Y+", "vector_10", "", 118, 78), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_btn("X-", 92, 130, true), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_btn("X-", "vector_11", "", 92, 130), 0, wxALIGN_CENTER);
     xy_grid->Add(make_btn("\u2302", 92, 92, true), 0, wxALIGN_CENTER);
-    xy_grid->Add(make_btn("X+", 92, 130, true), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_btn("X+", "12", "vector_12", 92, 130), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_btn("Y-", 118, 78, true), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_btn("Y-", "13", "vector_13", 118, 78), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
     content_row->Add(xy_grid, 0, wxRIGHT, FromDIP(16));
 
