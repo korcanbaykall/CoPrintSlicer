@@ -6,10 +6,8 @@
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
-#include "libslic3r/Utils.hpp"
 #include "libslic3r_version.h"
 
-#include <wx/filename.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
 #include <wx/toolbar.h>
@@ -87,62 +85,46 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     tool_col->Add(make_tool_btn(right_container, "T4"), 0);
     content_row->Add(tool_col, 0, wxRIGHT, FromDIP(16));
 
-    auto icon_exists = [](const std::string &icon_name) {
-        return wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".png"))) ||
-               wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".svg")));
-    };
-
-    auto resolve_icon = [icon_exists](const std::string &primary_icon, const std::string &secondary_icon) {
-        if (icon_exists(primary_icon))
-            return primary_icon;
-        if (!secondary_icon.empty() && icon_exists(secondary_icon))
-            return secondary_icon;
-        return std::string();
-    };
-
     const int xy_square = FromDIP(261);
     const int center_size = FromDIP(90);
     const int center_pos = (xy_square - center_size) / 2;
     const int gap = FromDIP(8);
 
-    const int top_w = FromDIP(170);
-    const int top_h = FromDIP(56);
-    const int side_w = FromDIP(56);
-    const int side_h = FromDIP(170);
-    const int top_bottom_shift_x = FromDIP(8);
+    const int top_w = FromDIP(180);
+    const int top_h = FromDIP(70);
+    const int side_w = FromDIP(70);
+    const int side_h = FromDIP(180);
 
     auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
     xy_area->SetMinSize(wxSize(xy_square, xy_square));
     xy_area->SetMaxSize(wxSize(xy_square, xy_square));
     xy_area->SetBackgroundColour(wxColour(28, 30, 34));
 
-    auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h) {
-        if (icon_key.empty())
-            return;
-        auto *holder = new wxPanel(parent, wxID_ANY, wxPoint(x, y), wxSize(box_w, box_h));
-        holder->SetBackgroundColour(wxColour(28, 30, 34));
-
-        auto *sizer = new wxBoxSizer(wxVERTICAL);
-        sizer->AddStretchSpacer(1);
-        const int icon_px = this->ToDIP(wxSize(0, box_h)).GetHeight();
-        auto bmp = create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1);
-        auto *icon = new wxStaticBitmap(holder, wxID_ANY, bmp);
-        sizer->Add(icon, 0, wxALIGN_CENTER);
-        sizer->AddStretchSpacer(1);
-        holder->SetSizer(sizer);
+    auto make_axis_label_btn = [this](wxWindow *parent, const wxString &label, int w, int h) {
+        auto *btn = new Button(parent, label);
+        btn->SetMinSize(wxSize(w, h));
+        btn->SetMaxSize(wxSize(w, h));
+        btn->SetCornerRadius(this->FromDIP(20));
+        btn->SetBorderWidth(0);
+        btn->SetBackgroundColorNormal(wxColour(210, 210, 210));
+        btn->SetTextColorNormal(wxColour(60, 60, 65));
+        btn->SetFont(Label::Head_20);
+        return btn;
     };
 
-    add_axis_icon(xy_area, resolve_icon("vector_11", ""), (xy_square - top_w) / 2 + top_bottom_shift_x, center_pos - gap - top_h, top_w, top_h);
-    add_axis_icon(xy_area, resolve_icon("vector_10", "vector_10.svg"), center_pos - gap - side_w, (xy_square - side_h) / 2, side_w, side_h);
-    add_axis_icon(xy_area, resolve_icon("12", "vector_12"), center_pos + center_size + gap, (xy_square - side_h) / 2, side_w, side_h);
-    add_axis_icon(xy_area, resolve_icon("13", "vector_13"), (xy_square - top_w) / 2 + top_bottom_shift_x, center_pos + center_size + gap, top_w, top_h);
+    auto *top_btn = make_axis_label_btn(xy_area, "Y+", top_w, top_h);
+    top_btn->SetPosition(wxPoint((xy_square - top_w) / 2, center_pos - gap - top_h));
+    auto *left_btn = make_axis_label_btn(xy_area, "X-", side_w, side_h);
+    left_btn->SetPosition(wxPoint(center_pos - gap - side_w, (xy_square - side_h) / 2));
+    auto *right_btn = make_axis_label_btn(xy_area, "X+", side_w, side_h);
+    right_btn->SetPosition(wxPoint(center_pos + center_size + gap, (xy_square - side_h) / 2));
+    auto *bottom_btn = make_axis_label_btn(xy_area, "Y-", top_w, top_h);
+    bottom_btn->SetPosition(wxPoint((xy_square - top_w) / 2, center_pos + center_size + gap));
 
     auto *center_btn = make_btn("", 90, 90, true);
     center_btn->Reparent(xy_area);
     center_btn->SetSize(wxRect(wxPoint(center_pos, center_pos), wxSize(center_size, center_size)));
-    std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
-    if (!center_icon.empty())
-        center_btn->SetBitmap(create_scaled_bitmap(center_icon, this, 38));
+    center_btn->SetBitmap(create_scaled_bitmap("monitor_axis_home_icon", this, 38));
 
     content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
