@@ -105,7 +105,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int center_pos = (xy_square - center_size) / 2;
     const int gap = FromDIP(8);
 
-    const int top_w = FromDIP(170);
+    const int top_w = FromDIP(190);
     const int top_h = FromDIP(56);
     const int side_w = FromDIP(56);
     const int side_h = FromDIP(170);
