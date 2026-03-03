@@ -120,13 +120,13 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *xy_grid = new wxGridSizer(3, 3, FromDIP(10), FromDIP(10));
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_cell("Y+", "13", "vector_13", 118, 78), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_cell("Y+", "vector_11", "", 118, 78), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_cell("X-", "12", "vector_12", 92, 130), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_cell("X-", "vector_10", "", 92, 130), 0, wxALIGN_CENTER);
     xy_grid->Add(make_btn("\u2302", 92, 92, true), 0, wxALIGN_CENTER);
-    xy_grid->Add(make_axis_cell("X+", "vector_10", "", 92, 130), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_cell("X+", "12", "vector_12", 92, 130), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_cell("Y-", "vector_11", "", 118, 78), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_cell("Y-", "13", "vector_13", 118, 78), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
     content_row->Add(xy_grid, 0, wxRIGHT, FromDIP(16));
 
