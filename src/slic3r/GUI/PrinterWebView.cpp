@@ -38,8 +38,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     title->SetFont(Label::Head_14);
     right_sizer->Add(title, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
 
-    auto make_btn = [right_container](const wxString &txt, int w, int h, bool active = false) {
-        auto *btn = new wxButton(right_container, wxID_ANY, txt, wxDefaultPosition, wxSize(FromDIP(w), FromDIP(h)));
+    auto make_btn = [this, right_container](const wxString &txt, int w, int h, bool active = false) {
+        auto *btn = new wxButton(right_container, wxID_ANY, txt, wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
         btn->SetBackgroundColour(active ? wxColour(210, 210, 210) : wxColour(61, 64, 68));
         btn->SetForegroundColour(active ? wxColour(40, 40, 40) : wxColour(215, 215, 215));
         btn->SetWindowStyleFlag(wxBORDER_NONE);
