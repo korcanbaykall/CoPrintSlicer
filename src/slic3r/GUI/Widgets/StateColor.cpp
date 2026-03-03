@@ -7,6 +7,7 @@ static bool operator<(wxColour const &l, wxColour const &r) { return l.GetRGBA()
 
 static std::map<wxColour, wxColour> gDarkColors{
     {"#009688", "#00675b"}, // rgb(0, 150, 136)    ORCA color
+    {"#E6A800", "#B8860B"}, // device screen yellow (light -> dark)
     {"#1F8EEA", "#2778D2"}, // rgb(31, 142, 234)   ???
     {"#FF6F00", "#D15B00"}, // rgb(255, 111, 0)    Secondary color
     {"#D01B1B", "#BB2A3A"}, // rgb(208, 27, 27)    ???

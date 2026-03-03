@@ -347,6 +347,19 @@ wxBitmap* BitmapCache::load_svg(const std::string &bitmap_name, unsigned target_
     if (strstr(bitmap_name.c_str(), "toggle_on") != NULL && dark_mode) // ORCA only replace color of toggle button
         replaces["#009688"] = "#00675b";
 
+    // Device/monitor screen: use yellow instead of green for monitor_* assets
+    if (strstr(bitmap_name.c_str(), "monitor_") != NULL) {
+        if (dark_mode) {
+            replaces["\"#009688\""] = "\"#B8860B\"";
+            replaces["\"#00675b\""] = "\"#B8860B\"";
+            replaces["#009688"] = "#B8860B";
+            replaces["#00675b"] = "#B8860B";
+        } else {
+            replaces["\"#009688\""] = "\"#E6A800\"";
+            replaces["#009688"] = "#E6A800";
+        }
+    }
+
     if (!new_color.empty())
         replaces["\"#009688\""] = "\"" + new_color + "\"";
 
