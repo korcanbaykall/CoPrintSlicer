@@ -92,34 +92,41 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
                wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".svg")));
     };
 
-    auto make_axis_btn = [this, right_container, icon_exists](const wxString &fallback_text, const std::string &primary_icon, const std::string &secondary_icon, int w, int h) {
-        auto *btn = new wxButton(right_container, wxID_ANY, "", wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
-        btn->SetBackgroundColour(wxColour(210, 210, 210));
-        btn->SetForegroundColour(wxColour(40, 40, 40));
-        btn->SetWindowStyleFlag(wxBORDER_NONE);
+    auto make_axis_cell = [this, right_container, icon_exists](const wxString &fallback_text, const std::string &primary_icon, const std::string &secondary_icon, int w, int h) {
+        auto *cell = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
+        cell->SetBackgroundColour(wxColour(28, 30, 34));
 
+        auto *cell_sizer = new wxBoxSizer(wxVERTICAL);
+        cell_sizer->AddStretchSpacer(1);
         std::string icon_key;
         if (icon_exists(primary_icon))
             icon_key = primary_icon;
         else if (!secondary_icon.empty() && icon_exists(secondary_icon))
             icon_key = secondary_icon;
 
-        if (!icon_key.empty())
-            btn->SetBitmap(create_scaled_bitmap(icon_key, this, 26));
-        else
-            btn->SetLabel(fallback_text);
-        return btn;
+        if (!icon_key.empty()) {
+            auto bmp = create_scaled_bitmap(icon_key, this, 30);
+            auto *icon = new wxStaticBitmap(cell, wxID_ANY, bmp);
+            cell_sizer->Add(icon, 0, wxALIGN_CENTER);
+        } else {
+            auto *txt = new wxStaticText(cell, wxID_ANY, fallback_text);
+            txt->SetForegroundColour(wxColour(210, 210, 210));
+            cell_sizer->Add(txt, 0, wxALIGN_CENTER);
+        }
+        cell_sizer->AddStretchSpacer(1);
+        cell->SetSizer(cell_sizer);
+        return cell;
     };
 
     auto *xy_grid = new wxGridSizer(3, 3, FromDIP(10), FromDIP(10));
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_btn("Y+", "vector_10", "", 118, 78), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_cell("Y+", "13", "vector_13", 118, 78), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_btn("X-", "vector_11", "", 92, 130), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_cell("X-", "12", "vector_12", 92, 130), 0, wxALIGN_CENTER);
     xy_grid->Add(make_btn("\u2302", 92, 92, true), 0, wxALIGN_CENTER);
-    xy_grid->Add(make_axis_btn("X+", "12", "vector_12", 92, 130), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_cell("X+", "vector_10", "", 92, 130), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
-    xy_grid->Add(make_axis_btn("Y-", "13", "vector_13", 118, 78), 0, wxALIGN_CENTER);
+    xy_grid->Add(make_axis_cell("Y-", "vector_11", "", 118, 78), 0, wxALIGN_CENTER);
     xy_grid->AddSpacer(FromDIP(10));
     content_row->Add(xy_grid, 0, wxRIGHT, FromDIP(16));
 
