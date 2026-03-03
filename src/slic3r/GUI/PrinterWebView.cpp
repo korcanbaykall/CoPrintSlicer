@@ -33,11 +33,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
     auto *right_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto *title = new wxStaticText(right_container, wxID_ANY, _L("Select a movement step to control your axes."));
-    title->SetForegroundColour(wxColour(220, 220, 220));
-    title->SetFont(Label::Head_14);
-    right_sizer->Add(title, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
-
     auto make_btn = [this, right_container](const wxString &txt, int w, int h, bool active = false) {
         auto *btn = new wxButton(right_container, wxID_ANY, txt, wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
         btn->SetBackgroundColour(active ? wxColour(210, 210, 210) : wxColour(61, 64, 68));
