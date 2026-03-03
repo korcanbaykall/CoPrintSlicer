@@ -68,11 +68,21 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *content_row = new wxBoxSizer(wxHORIZONTAL);
 
+    auto make_tool_btn = [this](wxWindow *parent, const wxString &txt, bool active = false) {
+        auto *btn = new Button(parent, txt);
+        btn->SetMinSize(wxSize(this->FromDIP(92), this->FromDIP(58)));
+        btn->SetCornerRadius(this->FromDIP(10));
+        btn->SetBorderWidth(0);
+        btn->SetBackgroundColorNormal(active ? wxColour(210, 210, 210) : wxColour(61, 64, 68));
+        btn->SetTextColorNormal(active ? wxColour(40, 40, 40) : wxColour(215, 215, 215));
+        return btn;
+    };
+
     auto *tool_col = new wxBoxSizer(wxVERTICAL);
-    tool_col->Add(make_btn("T1", 92, 58, true), 0, wxBOTTOM, FromDIP(10));
-    tool_col->Add(make_btn("T2", 92, 58), 0, wxBOTTOM, FromDIP(10));
-    tool_col->Add(make_btn("T3", 92, 58), 0, wxBOTTOM, FromDIP(10));
-    tool_col->Add(make_btn("T4", 92, 58), 0);
+    tool_col->Add(make_tool_btn(right_container, "T1", true), 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(make_tool_btn(right_container, "T2"), 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(make_tool_btn(right_container, "T3"), 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(make_tool_btn(right_container, "T4"), 0);
     content_row->Add(tool_col, 0, wxRIGHT, FromDIP(16));
 
     auto *xy_grid = new wxGridSizer(3, 3, FromDIP(10), FromDIP(10));
