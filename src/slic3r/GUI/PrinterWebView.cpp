@@ -5,6 +5,7 @@
 #include "slic3r/GUI/wxExtensions.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
+#include "slic3r/GUI/Widgets/Button.hpp"
 #include "libslic3r_version.h"
 
 #include <wx/sizer.h>
@@ -41,11 +42,29 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         return btn;
     };
 
+    auto make_step_btn = [this](wxWindow *parent, const wxString &txt, bool active = false) {
+        auto *btn = new Button(parent, txt);
+        btn->SetMinSize(wxSize(this->FromDIP(92), this->FromDIP(48)));
+        btn->SetCornerRadius(this->FromDIP(8));
+        btn->SetBorderWidth(0);
+        btn->SetBackgroundColorNormal(active ? wxColour(210, 210, 210) : wxColour(61, 64, 68));
+        btn->SetTextColorNormal(active ? wxColour(40, 40, 40) : wxColour(215, 215, 215));
+        return btn;
+    };
+
+    auto *step_bg = new StaticBox(right_container, wxID_ANY);
+    step_bg->SetCornerRadius(FromDIP(8));
+    step_bg->SetBorderWidth(0);
+    step_bg->SetBackgroundColorNormal(wxColour(35, 38, 43));
+
     auto *step_row = new wxBoxSizer(wxHORIZONTAL);
-    step_row->Add(make_btn("1mm", 92, 48, true), 0, wxRIGHT, FromDIP(8));
-    step_row->Add(make_btn("5mm", 92, 48), 0, wxRIGHT, FromDIP(8));
-    step_row->Add(make_btn("10mm", 92, 48), 0);
-    right_sizer->Add(step_row, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, FromDIP(12));
+    step_row->Add(make_step_btn(step_bg, "1mm", true), 0, wxRIGHT, FromDIP(8));
+    step_row->Add(make_step_btn(step_bg, "5mm"), 0, wxRIGHT, FromDIP(8));
+    step_row->Add(make_step_btn(step_bg, "10mm"), 0);
+    auto *step_bg_sizer = new wxBoxSizer(wxVERTICAL);
+    step_bg_sizer->Add(step_row, 0, wxALL, FromDIP(8));
+    step_bg->SetSizer(step_bg_sizer);
+    right_sizer->Add(step_bg, 0, wxTOP | wxLEFT | wxRIGHT | wxALIGN_CENTER_HORIZONTAL, FromDIP(12));
 
     auto *content_row = new wxBoxSizer(wxHORIZONTAL);
 
