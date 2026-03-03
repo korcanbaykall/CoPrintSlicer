@@ -119,12 +119,19 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h) {
         if (icon_key.empty())
             return;
-        auto *holder = new wxPanel(parent, wxID_ANY, wxPoint(x, y), wxSize(box_w, box_h));
+        const int pad = this->FromDIP(8);
+        int holder_w = box_w - pad * 2;
+        int holder_h = box_h - pad * 2;
+        if (holder_w < this->FromDIP(1)) holder_w = this->FromDIP(1);
+        if (holder_h < this->FromDIP(1)) holder_h = this->FromDIP(1);
+
+        auto *holder = new wxPanel(parent, wxID_ANY, wxPoint(x + pad, y + pad), wxSize(holder_w, holder_h));
         holder->SetBackgroundColour(wxColour(28, 30, 34));
 
         auto *sizer = new wxBoxSizer(wxVERTICAL);
         sizer->AddStretchSpacer(1);
-        const int icon_px = this->ToDIP(wxSize(0, box_h)).GetHeight();
+        const int icon_target = holder_w < holder_h ? holder_w : holder_h;
+        const int icon_px = this->ToDIP(wxSize(0, icon_target)).GetHeight();
         auto bmp = create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1);
         auto *icon = new wxStaticBitmap(holder, wxID_ANY, bmp);
         sizer->Add(icon, 0, wxALIGN_CENTER);
