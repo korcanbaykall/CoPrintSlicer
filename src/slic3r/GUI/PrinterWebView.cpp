@@ -92,54 +92,56 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
                wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".svg")));
     };
 
-    auto make_axis_cell = [this, icon_exists](wxWindow *parent, const wxString &fallback_text, const std::string &primary_icon, const std::string &secondary_icon, int w, int h) {
-        auto *cell = new wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(this->FromDIP(w), this->FromDIP(h)));
-        cell->SetBackgroundColour(wxColour(28, 30, 34));
-
-        auto *cell_sizer = new wxBoxSizer(wxVERTICAL);
-        cell_sizer->AddStretchSpacer(1);
-        std::string icon_key;
+    auto resolve_icon = [icon_exists](const std::string &primary_icon, const std::string &secondary_icon) {
         if (icon_exists(primary_icon))
-            icon_key = primary_icon;
-        else if (!secondary_icon.empty() && icon_exists(secondary_icon))
-            icon_key = secondary_icon;
-
-        if (!icon_key.empty()) {
-            auto bmp = create_scaled_bitmap(icon_key, this, 30);
-            auto *icon = new wxStaticBitmap(cell, wxID_ANY, bmp);
-            cell_sizer->Add(icon, 0, wxALIGN_CENTER);
-        } else {
-            auto *txt = new wxStaticText(cell, wxID_ANY, fallback_text);
-            txt->SetForegroundColour(wxColour(210, 210, 210));
-            cell_sizer->Add(txt, 0, wxALIGN_CENTER);
-        }
-        cell_sizer->AddStretchSpacer(1);
-        cell->SetSizer(cell_sizer);
-        return cell;
+            return primary_icon;
+        if (!secondary_icon.empty() && icon_exists(secondary_icon))
+            return secondary_icon;
+        return std::string();
     };
 
     const int xy_square = FromDIP(261);
-    const int xy_cell = FromDIP(90);
-    const int xy_mid = (xy_square - xy_cell) / 2;
-    const int xy_edge = xy_square - xy_cell;
+    const int center_size = FromDIP(90);
+    const int center_pos = (xy_square - center_size) / 2;
+    const int gap = FromDIP(8);
+
+    const int top_w = FromDIP(170);
+    const int top_h = FromDIP(56);
+    const int side_w = FromDIP(56);
+    const int side_h = FromDIP(170);
 
     auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
     xy_area->SetMinSize(wxSize(xy_square, xy_square));
     xy_area->SetMaxSize(wxSize(xy_square, xy_square));
     xy_area->SetBackgroundColour(wxColour(28, 30, 34));
 
-    auto *top_cell = make_axis_cell(xy_area, "Y+", "vector_11", "", 90, 90);
-    top_cell->SetPosition(wxPoint(xy_mid, 0));
-    auto *left_cell = make_axis_cell(xy_area, "X-", "vector_10", "", 90, 90);
-    left_cell->SetPosition(wxPoint(0, xy_mid));
-    auto *right_cell = make_axis_cell(xy_area, "X+", "12", "vector_12", 90, 90);
-    right_cell->SetPosition(wxPoint(xy_edge, xy_mid));
-    auto *bottom_cell = make_axis_cell(xy_area, "Y-", "13", "vector_13", 90, 90);
-    bottom_cell->SetPosition(wxPoint(xy_mid, xy_edge));
+    auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h) {
+        if (icon_key.empty())
+            return;
+        auto *holder = new wxPanel(parent, wxID_ANY, wxPoint(x, y), wxSize(box_w, box_h));
+        holder->SetBackgroundColour(wxColour(28, 30, 34));
 
-    auto *center_btn = make_btn("\u2302", 90, 90, true);
+        auto *sizer = new wxBoxSizer(wxVERTICAL);
+        sizer->AddStretchSpacer(1);
+        const int icon_px = this->ToDIP(wxSize(0, box_h)).GetHeight();
+        auto bmp = create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1);
+        auto *icon = new wxStaticBitmap(holder, wxID_ANY, bmp);
+        sizer->Add(icon, 0, wxALIGN_CENTER);
+        sizer->AddStretchSpacer(1);
+        holder->SetSizer(sizer);
+    };
+
+    add_axis_icon(xy_area, resolve_icon("vector_11", ""), (xy_square - top_w) / 2, center_pos - gap - top_h, top_w, top_h);
+    add_axis_icon(xy_area, resolve_icon("vector_10", "vector_10.svg"), center_pos - gap - side_w, (xy_square - side_h) / 2, side_w, side_h);
+    add_axis_icon(xy_area, resolve_icon("12", "vector_12"), center_pos + center_size + gap, (xy_square - side_h) / 2, side_w, side_h);
+    add_axis_icon(xy_area, resolve_icon("13", "vector_13"), (xy_square - top_w) / 2, center_pos + center_size + gap, top_w, top_h);
+
+    auto *center_btn = make_btn("", 90, 90, true);
     center_btn->Reparent(xy_area);
-    center_btn->SetSize(wxRect(wxPoint(xy_mid, xy_mid), wxSize(xy_cell, xy_cell)));
+    center_btn->SetSize(wxRect(wxPoint(center_pos, center_pos), wxSize(center_size, center_size)));
+    std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
+    if (!center_icon.empty())
+        center_btn->SetBitmap(create_scaled_bitmap(center_icon, this, 38));
 
     content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
