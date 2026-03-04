@@ -14,6 +14,7 @@
 #include <wx/string.h>
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
+#include <wx/dcmemory.h>
 
 #include <slic3r/GUI/Widgets/WebView.hpp>
 #include <wx/webview.h>
@@ -181,9 +182,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     };
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
-    z_col->Add(make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true), 0, wxLEFT | wxBOTTOM, FromDIP(10));
+    auto *top_btn = make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true);
+    top_btn->SetLabel("Z+");
+    top_btn->SetForegroundColour(wxColour(59, 58, 58));
+    z_col->Add(top_btn, 0, wxLEFT | wxBOTTOM, FromDIP(10));
 
-    auto *center_home_box = new Button(right_container, "");
+    auto *center_home_box = new StaticBox(right_container, wxID_ANY);
     center_home_box->SetMinSize(wxSize(FromDIP(80), FromDIP(75)));
     center_home_box->SetMaxSize(wxSize(FromDIP(80), FromDIP(75)));
     center_home_box->SetCornerRadius(FromDIP(15));
@@ -195,8 +199,19 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const std::string home_png_path = Slic3r::var("home.png");
     if (wxFileName::FileExists(from_u8(home_png_path))) {
         wxImage img(from_u8(home_png_path), wxBITMAP_TYPE_PNG);
-        if (img.IsOk())
-            home_bmp = wxBitmap(img.Scale(FromDIP(45), FromDIP(40), wxIMAGE_QUALITY_HIGH));
+        if (img.IsOk()) {
+            wxImage scaled = img.Scale(FromDIP(45), FromDIP(40), wxIMAGE_QUALITY_HIGH);
+            wxBitmap composed(FromDIP(45), FromDIP(40));
+            {
+                wxMemoryDC dc;
+                dc.SelectObject(composed);
+                dc.SetBackground(wxBrush(wxColour(255, 255, 255)));
+                dc.Clear();
+                dc.DrawBitmap(wxBitmap(scaled), 0, 0, true);
+                dc.SelectObject(wxNullBitmap);
+            }
+            home_bmp = composed;
+        }
     }
 
     if (home_bmp.IsOk()) {
@@ -210,7 +225,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     }
 
     z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(15));
-    z_col->Add(make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true), 0, wxLEFT, FromDIP(10));
+    auto *bottom_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true);
+    bottom_btn->SetLabel("Z-");
+    bottom_btn->SetForegroundColour(wxColour(59, 58, 58));
+    z_col->Add(bottom_btn, 0, wxLEFT, FromDIP(10));
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
