@@ -182,7 +182,46 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
     z_col->Add(make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true), 0, wxLEFT | wxBOTTOM, FromDIP(10));
-    z_col->Add(make_icon_btn(resolve_icon("home", "monitor_axis_home_icon"), 80, 75, false, 45, 40), 0, wxBOTTOM, FromDIP(10));
+
+    auto *center_home_box = new StaticBox(right_container, wxID_ANY);
+    center_home_box->SetMinSize(wxSize(FromDIP(80), FromDIP(75)));
+    center_home_box->SetMaxSize(wxSize(FromDIP(80), FromDIP(75)));
+    center_home_box->SetCornerRadius(FromDIP(15));
+    center_home_box->SetBorderWidth(0);
+    center_home_box->SetBackgroundColorNormal(wxColour(210, 210, 210));
+
+    std::string home_icon = resolve_icon("home", "monitor_axis_home_icon");
+    if (!home_icon.empty()) {
+        wxBitmap home_bmp;
+        const std::string home_png_path = Slic3r::var(home_icon + ".png");
+        if (wxFileName::FileExists(from_u8(home_png_path))) {
+            wxImage img(from_u8(home_png_path), wxBITMAP_TYPE_PNG);
+            if (img.IsOk()) {
+                home_bmp = wxBitmap(img.Scale(FromDIP(45), FromDIP(40), wxIMAGE_QUALITY_HIGH));
+            }
+        }
+
+        if (!home_bmp.IsOk()) {
+            const int icon_px = this->ToDIP(wxSize(0, 45)).GetHeight();
+            home_bmp = create_scaled_bitmap(home_icon, this, icon_px > 0 ? icon_px : 1);
+            if (home_bmp.IsOk()) {
+                wxImage img = home_bmp.ConvertToImage();
+                if (img.IsOk())
+                    home_bmp = wxBitmap(img.Scale(FromDIP(45), FromDIP(40), wxIMAGE_QUALITY_HIGH));
+            }
+        }
+
+        if (home_bmp.IsOk()) {
+            auto *home_icon_widget = new wxStaticBitmap(center_home_box, wxID_ANY, home_bmp);
+            auto *center_home_sizer = new wxBoxSizer(wxVERTICAL);
+            center_home_sizer->AddStretchSpacer(1);
+            center_home_sizer->Add(home_icon_widget, 0, wxALIGN_CENTER_HORIZONTAL);
+            center_home_sizer->AddStretchSpacer(1);
+            center_home_box->SetSizer(center_home_sizer);
+        }
+    }
+
+    z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(10));
     z_col->Add(make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true), 0, wxLEFT, FromDIP(10));
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
