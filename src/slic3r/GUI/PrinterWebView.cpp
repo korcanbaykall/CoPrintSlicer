@@ -154,13 +154,26 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
-    auto make_icon_btn = [this, &make_btn](const std::string &icon_key, int w, int h, bool transparent_bg = false) {
+    auto make_icon_btn = [this, &make_btn](const std::string &icon_key, int w, int h, bool transparent_bg = false, int icon_w = -1, int icon_h = -1) {
         auto *btn = make_btn("", w, h, true);
         if (transparent_bg) {
             btn->SetBackgroundColour(wxColour(28, 30, 34));
             btn->SetForegroundColour(wxColour(28, 30, 34));
         }
         if (!icon_key.empty()) {
+            if (icon_w > 0 && icon_h > 0) {
+                const std::string png_path = Slic3r::var(icon_key + ".png");
+                if (wxFileName::FileExists(from_u8(png_path))) {
+                    wxImage img(from_u8(png_path), wxBITMAP_TYPE_PNG);
+                    if (img.IsOk()) {
+                        const int target_w = this->FromDIP(icon_w);
+                        const int target_h = this->FromDIP(icon_h);
+                        btn->SetBitmap(wxBitmap(img.Scale(target_w, target_h, wxIMAGE_QUALITY_HIGH)));
+                        return btn;
+                    }
+                }
+            }
+
             const int icon_px = this->ToDIP(wxSize(0, h)).GetHeight();
             btn->SetBitmap(create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1));
         }
@@ -168,9 +181,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     };
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
-    z_col->Add(make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true), 0, wxBOTTOM, FromDIP(10));
-    z_col->Add(make_icon_btn(resolve_icon("home", "monitor_axis_home_icon"), 80, 75), 0, wxBOTTOM, FromDIP(10));
-    z_col->Add(make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true), 0);
+    z_col->Add(make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true), 0, wxLEFT | wxBOTTOM, FromDIP(10));
+    z_col->Add(make_icon_btn(resolve_icon("home", "monitor_axis_home_icon"), 80, 75, false, 45, 40), 0, wxBOTTOM, FromDIP(10));
+    z_col->Add(make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true), 0, wxLEFT, FromDIP(10));
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
