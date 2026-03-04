@@ -106,8 +106,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int center_pos = (xy_square - center_size) / 2;
     const int gap = FromDIP(8);
 
-    const int top_w = FromDIP(190);
-    const int top_h = FromDIP(56);
+    const int top_w = FromDIP(220);
+    const int top_h = FromDIP(75);
     const int side_w = FromDIP(56);
     const int side_h = FromDIP(170);
     const int top_center_x = center_pos + (center_size - top_w) / 2 + FromDIP(15);
@@ -183,8 +183,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
     auto *top_btn = make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true);
-    top_btn->SetLabel("Z+");
-    top_btn->SetForegroundColour(wxColour(59, 58, 58));
     z_col->Add(top_btn, 0, wxLEFT | wxBOTTOM, FromDIP(10));
 
     auto *center_home_box = new StaticBox(right_container, wxID_ANY);
@@ -193,7 +191,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_home_box->SetCornerRadius(FromDIP(15));
     center_home_box->SetBorderWidth(0);
     center_home_box->SetBackgroundColorNormal(wxColour(255, 255, 255));
-    center_home_box->SetBackgroundColour(wxColour(28, 30, 34));
+    center_home_box->SetBackgroundColour(wxColour(255, 255, 255));
 
     wxBitmap home_bmp;
     const std::string home_png_path = Slic3r::var("home.png");
@@ -226,8 +224,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(15));
     auto *bottom_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true);
-    bottom_btn->SetLabel("Z-");
-    bottom_btn->SetForegroundColour(wxColour(59, 58, 58));
     z_col->Add(bottom_btn, 0, wxLEFT, FromDIP(10));
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
