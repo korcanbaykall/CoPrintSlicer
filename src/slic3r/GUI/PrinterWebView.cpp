@@ -154,8 +154,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
-    auto make_icon_btn = [this, &make_btn](const std::string &icon_key, int w, int h) {
+    auto make_icon_btn = [this, &make_btn](const std::string &icon_key, int w, int h, bool transparent_bg = false) {
         auto *btn = make_btn("", w, h, true);
+        if (transparent_bg) {
+            btn->SetBackgroundColour(wxColour(28, 30, 34));
+            btn->SetForegroundColour(wxColour(28, 30, 34));
+        }
         if (!icon_key.empty()) {
             const int icon_px = this->ToDIP(wxSize(0, h)).GetHeight();
             btn->SetBitmap(create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1));
@@ -164,9 +168,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     };
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
-    z_col->Add(make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75), 0, wxBOTTOM, FromDIP(10));
+    z_col->Add(make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true), 0, wxBOTTOM, FromDIP(10));
     z_col->Add(make_icon_btn(resolve_icon("monitor_axis_home_icon", "monitor_axis_home"), 90, 75), 0, wxBOTTOM, FromDIP(10));
-    z_col->Add(make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75), 0);
+    z_col->Add(make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true), 0);
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
