@@ -169,7 +169,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
     z_col->Add(make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true), 0, wxBOTTOM, FromDIP(10));
-    z_col->Add(make_icon_btn(resolve_icon("monitor_axis_home_icon", "monitor_axis_home"), 90, 75), 0, wxBOTTOM, FromDIP(10));
+    z_col->Add(make_icon_btn(resolve_icon("home", "monitor_axis_home_icon"), 80, 75), 0, wxBOTTOM, FromDIP(10));
     z_col->Add(make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true), 0);
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
