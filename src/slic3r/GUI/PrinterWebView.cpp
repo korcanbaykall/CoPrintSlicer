@@ -188,7 +188,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_home_box->SetMaxSize(wxSize(FromDIP(80), FromDIP(75)));
     center_home_box->SetCornerRadius(FromDIP(15));
     center_home_box->SetBorderWidth(0);
-    center_home_box->SetBackgroundColorNormal(wxColour(210, 210, 210));
+    center_home_box->SetBackgroundColorNormal(wxColour(255, 255, 255));
+    center_home_box->SetBackgroundColour(wxColour(255, 255, 255));
 
     std::string home_icon = resolve_icon("home", "monitor_axis_home_icon");
     if (!home_icon.empty()) {
@@ -221,7 +222,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         }
     }
 
-    z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(10));
+    z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(15));
     z_col->Add(make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true), 0, wxLEFT, FromDIP(10));
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
