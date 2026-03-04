@@ -193,7 +193,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_home_box->SetCornerRadius(FromDIP(15));
     center_home_box->SetBorderWidth(0);
     center_home_box->SetBackgroundColorNormal(wxColour(255, 255, 255));
-    center_home_box->SetBackgroundColour(wxColour(255, 255, 255));
+    center_home_box->SetBackgroundColour(wxColour(28, 30, 34));
 
     wxBitmap home_bmp;
     const std::string home_png_path = Slic3r::var("home.png");
