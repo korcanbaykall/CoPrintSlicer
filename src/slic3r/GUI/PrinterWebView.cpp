@@ -14,7 +14,6 @@
 #include <wx/string.h>
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
-#include <wx/dcmemory.h>
 
 #include <slic3r/GUI/Widgets/WebView.hpp>
 #include <wx/webview.h>
@@ -189,42 +188,13 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *top_btn = make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true);
     z_col->Add(top_btn, 0, wxLEFT | wxBOTTOM, FromDIP(10));
 
-    auto *center_home_box = new StaticBox(right_container, wxID_ANY);
+    auto *center_home_box = new Button(right_container, "", "home", 0, 40);
     center_home_box->SetMinSize(wxSize(FromDIP(80), FromDIP(75)));
     center_home_box->SetMaxSize(wxSize(FromDIP(80), FromDIP(75)));
     center_home_box->SetCornerRadius(FromDIP(15));
     center_home_box->SetBorderWidth(0);
     center_home_box->SetBackgroundColorNormal(wxColour(255, 255, 255));
     center_home_box->SetBackgroundColour(wxColour(28, 30, 34));
-
-    wxBitmap home_bmp;
-    const std::string home_png_path = Slic3r::var("home.png");
-    if (wxFileName::FileExists(from_u8(home_png_path))) {
-        wxImage img(from_u8(home_png_path), wxBITMAP_TYPE_PNG);
-        if (img.IsOk()) {
-            wxImage scaled = img.Scale(FromDIP(45), FromDIP(40), wxIMAGE_QUALITY_HIGH);
-            wxBitmap composed(FromDIP(45), FromDIP(40));
-            {
-                wxMemoryDC dc;
-                dc.SelectObject(composed);
-                dc.SetBackground(wxBrush(wxColour(255, 255, 255)));
-                dc.Clear();
-                dc.DrawBitmap(wxBitmap(scaled), 0, 0, true);
-                dc.SelectObject(wxNullBitmap);
-            }
-            home_bmp = composed;
-        }
-    }
-
-    if (home_bmp.IsOk()) {
-        auto *home_icon_widget = new wxStaticBitmap(center_home_box, wxID_ANY, home_bmp);
-        home_icon_widget->SetBackgroundColour(wxColour(255, 255, 255));
-        auto *center_home_sizer = new wxBoxSizer(wxVERTICAL);
-        center_home_sizer->AddStretchSpacer(1);
-        center_home_sizer->Add(home_icon_widget, 0, wxALIGN_CENTER_HORIZONTAL);
-        center_home_sizer->AddStretchSpacer(1);
-        center_home_box->SetSizer(center_home_sizer);
-    }
 
     z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(15));
     auto *bottom_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true);
