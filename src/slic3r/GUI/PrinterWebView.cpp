@@ -122,24 +122,22 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h, bool prefer_height_scale = false) {
         if (icon_key.empty())
             return;
-        const int pad = this->FromDIP(4);
-        int holder_w = box_w - pad * 2;
-        int holder_h = box_h - pad * 2;
-        if (holder_w < this->FromDIP(1)) holder_w = this->FromDIP(1);
-        if (holder_h < this->FromDIP(1)) holder_h = this->FromDIP(1);
+        int draw_w = box_w;
+        int draw_h = box_h;
+        if (draw_w < this->FromDIP(1)) draw_w = this->FromDIP(1);
+        if (draw_h < this->FromDIP(1)) draw_h = this->FromDIP(1);
 
-        auto *holder = new wxPanel(parent, wxID_ANY, wxPoint(x + pad, y + pad), wxSize(holder_w, holder_h));
-        holder->SetBackgroundColour(wxColour(28, 30, 34));
-
-        auto *sizer = new wxBoxSizer(wxVERTICAL);
-        sizer->AddStretchSpacer(1);
-        const int icon_target = prefer_height_scale ? (holder_h * 3) / 4 : (holder_w < holder_h ? holder_w : holder_h);
+        const int icon_target = prefer_height_scale ? (draw_h * 3) / 4 : (draw_w < draw_h ? draw_w : draw_h);
         const int icon_px = this->ToDIP(wxSize(0, icon_target)).GetHeight();
         auto bmp = create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1);
-        auto *icon = new wxStaticBitmap(holder, wxID_ANY, bmp);
-        sizer->Add(icon, 0, wxALIGN_CENTER);
-        sizer->AddStretchSpacer(1);
-        holder->SetSizer(sizer);
+        if (!bmp.IsOk())
+            return;
+
+        const wxSize bmp_sz = bmp.GetScaledSize();
+        const int icon_x = x + (draw_w - bmp_sz.GetWidth()) / 2;
+        const int icon_y = y + (draw_h - bmp_sz.GetHeight()) / 2;
+        auto *icon = new wxStaticBitmap(parent, wxID_ANY, bmp, wxPoint(icon_x, icon_y), bmp_sz);
+        icon->SetBackgroundColour(parent->GetBackgroundColour());
     };
 
     add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
