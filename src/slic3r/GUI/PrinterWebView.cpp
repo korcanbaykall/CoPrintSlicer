@@ -152,11 +152,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_btn->SetMaxSize(wxSize(center_size, center_size));
     center_btn->SetCornerRadius(FromDIP(7));
     center_btn->SetBorderWidth(0);
-    center_btn->SetBackgroundColorNormal(wxColour(210, 210, 210));
-    center_btn->SetBackgroundColour(wxColour(210, 210, 210));
+    center_btn->SetBackgroundColorNormal(wxColour(255, 255, 255));
+    center_btn->SetBackgroundColour(wxColour(255, 255, 255));
     std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
     if (!center_icon.empty()) {
         auto *center_icon_widget = new wxStaticBitmap(center_btn, wxID_ANY, create_scaled_bitmap(center_icon, this, 38));
+        center_icon_widget->SetBackgroundColour(wxColour(255, 255, 255));
         auto *center_sizer = new wxBoxSizer(wxVERTICAL);
         center_sizer->AddStretchSpacer(1);
         center_sizer->Add(center_icon_widget, 0, wxALIGN_CENTER_HORIZONTAL);
