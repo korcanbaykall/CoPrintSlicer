@@ -29,8 +29,17 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     SetBackgroundColour(wxColour(28, 30, 34));
 
     auto *main_sizer = new wxBoxSizer(wxHORIZONTAL);
-    auto *left_empty = new wxPanel(this, wxID_ANY);
-    left_empty->SetBackgroundColour(wxColour(28, 30, 34));
+    auto *left_container = new wxPanel(this, wxID_ANY);
+    left_container->SetBackgroundColour(wxColour(28, 30, 34));
+    auto *left_sizer = new wxBoxSizer(wxVERTICAL);
+    auto *preview_box = new StaticBox(left_container, wxID_ANY);
+    preview_box->SetCornerRadius(FromDIP(10));
+    preview_box->SetBorderWidth(1);
+    preview_box->SetBorderColorNormal(wxColour(55, 58, 64));
+    preview_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+    preview_box->SetBackgroundColour(wxColour(28, 30, 34));
+    left_sizer->Add(preview_box, 1, wxEXPAND | wxALL, FromDIP(10));
+    left_container->SetSizer(left_sizer);
 
     auto *right_container = new wxPanel(this, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
@@ -219,7 +228,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->AddStretchSpacer(1);
     right_container->SetSizer(right_sizer);
 
-    main_sizer->Add(left_empty, 1, wxEXPAND);
+    main_sizer->Add(left_container, 1, wxEXPAND);
     main_sizer->Add(right_container, 0, wxEXPAND | wxALL, FromDIP(10));
     SetSizer(main_sizer);
 
