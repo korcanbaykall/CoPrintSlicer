@@ -111,7 +111,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int side_h = FromDIP(220);
     const int left_side_inset_x = FromDIP(0);
     const int top_center_x = center_pos + (center_size - top_w) / 2;
-    const int side_shift_y = FromDIP(24);
+    const int side_shift_y = FromDIP(8);
 
     auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
     xy_area->SetMinSize(wxSize(xy_square, xy_square));
@@ -141,10 +141,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         holder->SetSizer(sizer);
     };
 
-    add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
-    add_axis_icon(xy_area, resolve_icon("vector11", ""), top_center_x, center_pos - gap - top_h, top_w, top_h);
     add_axis_icon(xy_area, resolve_icon("vector10", ""), center_pos - gap - side_w + left_side_inset_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h);
     add_axis_icon(xy_area, resolve_icon("vector12", ""), center_pos + center_size + gap, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h);
+    add_axis_icon(xy_area, resolve_icon("vector11", ""), top_center_x, center_pos - gap - top_h, top_w, top_h);
+    add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
 
     std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
     auto *center_btn = new Button(xy_area, "", center_icon.empty() ? wxString() : from_u8(center_icon), 0, 38);
