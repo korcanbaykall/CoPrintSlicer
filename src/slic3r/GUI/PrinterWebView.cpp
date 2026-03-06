@@ -111,7 +111,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int side_w = FromDIP(90);
     const int side_h = FromDIP(220);
     const int top_center_x = center_pos + (center_size - top_w) / 2 + FromDIP(15);
-    const int side_shift_y = FromDIP(38);
+    const int side_shift_y = FromDIP(30);
 
     auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
     xy_area->SetMinSize(wxSize(xy_square, xy_square));
@@ -132,7 +132,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
         auto *sizer = new wxBoxSizer(wxVERTICAL);
         sizer->AddStretchSpacer(1);
-        const int icon_target = prefer_height_scale ? holder_h : (holder_w < holder_h ? holder_w : holder_h);
+        const int icon_target = prefer_height_scale ? (holder_h * 3) / 4 : (holder_w < holder_h ? holder_w : holder_h);
         const int icon_px = this->ToDIP(wxSize(0, icon_target)).GetHeight();
         auto bmp = create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1);
         auto *icon = new wxStaticBitmap(holder, wxID_ANY, bmp);
