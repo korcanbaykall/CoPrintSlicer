@@ -106,13 +106,13 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int center_pos = (xy_square - center_size) / 2;
     const int gap = FromDIP(8);
 
-    const int top_w = FromDIP(250);
-    const int top_h = FromDIP(90);
+    const int top_w = FromDIP(220);
+    const int top_h = FromDIP(75);
     const int side_w = FromDIP(90);
-    const int side_h = FromDIP(250);
+    const int side_h = FromDIP(220);
     const int left_side_inset_x = FromDIP(12);
     const int top_center_x = center_pos + (center_size - top_w) / 2 + FromDIP(15);
-    const int side_shift_y = FromDIP(30);
+    const int side_shift_y = FromDIP(0);
 
     auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
     xy_area->SetMinSize(wxSize(xy_square, xy_square));
