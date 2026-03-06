@@ -38,9 +38,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetBorderColorNormal(wxColour(55, 58, 64));
     preview_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     preview_box->SetBackgroundColour(wxColour(28, 30, 34));
-    preview_box->SetMinSize(wxSize(-1, FromDIP(460)));
-    preview_box->SetMaxSize(wxSize(-1, FromDIP(460)));
-    left_sizer->Add(preview_box, 0, wxEXPAND | wxALL, FromDIP(10));
+    preview_box->SetMinSize(wxSize(-1, FromDIP(470)));
+    preview_box->SetMaxSize(wxSize(-1, FromDIP(470)));
+    left_sizer->Add(preview_box, 0, wxEXPAND | wxALL, FromDIP(15));
     left_container->SetSizer(left_sizer);
 
     auto *right_container = new wxPanel(this, wxID_ANY);
