@@ -44,7 +44,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_row->AddSpacer(FromDIP(27));
     preview_row->Add(preview_box, 1, wxEXPAND);
     preview_row->AddSpacer(FromDIP(28));
-    left_sizer->Add(preview_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(15));
+    left_sizer->Add(preview_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
 
     auto *progress_box = new StaticBox(left_container, wxID_ANY);
     progress_box->SetCornerRadius(FromDIP(10));
