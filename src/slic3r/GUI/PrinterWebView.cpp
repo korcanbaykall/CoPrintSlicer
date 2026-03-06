@@ -41,7 +41,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetMinSize(wxSize(-1, FromDIP(515)));
     preview_box->SetMaxSize(wxSize(-1, FromDIP(515)));
     auto *preview_row = new wxBoxSizer(wxHORIZONTAL);
-    preview_row->AddSpacer(FromDIP(77));
+    preview_row->AddSpacer(FromDIP(147));
     preview_row->Add(preview_box, 1, wxEXPAND);
     preview_row->AddSpacer(FromDIP(28));
     left_sizer->Add(preview_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
@@ -55,7 +55,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box->SetMinSize(wxSize(-1, FromDIP(220)));
     progress_box->SetMaxSize(wxSize(-1, FromDIP(220)));
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
-    progress_row->AddSpacer(FromDIP(77));
+    progress_row->AddSpacer(FromDIP(147));
     progress_row->Add(progress_box, 1, wxEXPAND);
     progress_row->AddSpacer(FromDIP(28));
     left_sizer->Add(progress_row, 0, wxEXPAND | wxTOP, FromDIP(5));
