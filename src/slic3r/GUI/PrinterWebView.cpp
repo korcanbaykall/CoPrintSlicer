@@ -112,7 +112,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int side_h = FromDIP(220);
     const int left_side_inset_x = FromDIP(12);
     const int top_center_x = center_pos + (center_size - top_w) / 2 + FromDIP(15);
-    const int side_shift_y = FromDIP(30);
+    const int side_shift_y = FromDIP(24);
 
     auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
     xy_area->SetMinSize(wxSize(xy_square, xy_square));
