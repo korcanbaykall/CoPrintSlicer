@@ -38,12 +38,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetBorderColorNormal(wxColour(55, 58, 64));
     preview_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     preview_box->SetBackgroundColour(wxColour(28, 30, 34));
-    preview_box->SetMinSize(wxSize(-1, FromDIP(515)));
-    preview_box->SetMaxSize(wxSize(-1, FromDIP(515)));
+    preview_box->SetMinSize(wxSize(-1, FromDIP(545)));
+    preview_box->SetMaxSize(wxSize(-1, FromDIP(545)));
     auto *preview_row = new wxBoxSizer(wxHORIZONTAL);
     preview_row->AddSpacer(FromDIP(220));
     preview_row->Add(preview_box, 1, wxEXPAND);
-    preview_row->AddSpacer(FromDIP(28));
+    preview_row->AddSpacer(FromDIP(58));
     left_sizer->Add(preview_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
 
     auto *progress_box = new StaticBox(left_container, wxID_ANY);
@@ -52,10 +52,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box->SetBorderColorNormal(wxColour(55, 58, 64));
     progress_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     progress_box->SetBackgroundColour(wxColour(28, 30, 34));
-    progress_box->SetMinSize(wxSize(-1, FromDIP(220)));
-    progress_box->SetMaxSize(wxSize(-1, FromDIP(220)));
+    progress_box->SetMinSize(wxSize(-1, FromDIP(270)));
+    progress_box->SetMaxSize(wxSize(-1, FromDIP(270)));
     auto *progress_box_sizer = new wxBoxSizer(wxVERTICAL);
-    progress_box_sizer->AddSpacer(FromDIP(75));
+    progress_box_sizer->AddSpacer(FromDIP(50));
     auto *progress_top_line = new wxPanel(progress_box, wxID_ANY);
     progress_top_line->SetMinSize(wxSize(-1, FromDIP(1)));
     progress_top_line->SetMaxSize(wxSize(-1, FromDIP(1)));
@@ -66,7 +66,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->AddSpacer(FromDIP(220));
     progress_row->Add(progress_box, 1, wxEXPAND);
-    progress_row->AddSpacer(FromDIP(28));
+    progress_row->AddSpacer(FromDIP(58));
     left_sizer->Add(progress_row, 0, wxEXPAND | wxTOP, FromDIP(5));
     left_sizer->AddSpacer(FromDIP(2));
 
