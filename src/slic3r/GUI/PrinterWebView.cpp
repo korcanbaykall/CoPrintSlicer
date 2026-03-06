@@ -110,6 +110,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int top_h = FromDIP(75);
     const int side_w = FromDIP(90);
     const int side_h = FromDIP(220);
+    const int left_side_inset_x = FromDIP(12);
     const int top_center_x = center_pos + (center_size - top_w) / 2 + FromDIP(15);
     const int side_shift_y = FromDIP(30);
 
@@ -142,7 +143,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     };
 
     add_axis_icon(xy_area, resolve_icon("vector11", ""), top_center_x, center_pos - gap - top_h, top_w, top_h);
-    add_axis_icon(xy_area, resolve_icon("vector10", ""), center_pos - gap - side_w, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, true);
+    add_axis_icon(xy_area, resolve_icon("vector10", ""), center_pos - gap - side_w + left_side_inset_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, true);
     add_axis_icon(xy_area, resolve_icon("vector12", ""), center_pos + center_size + gap, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, true);
     add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
 
