@@ -122,7 +122,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     xy_area->SetMaxSize(wxSize(xy_square, xy_square));
     xy_area->SetBackgroundColour(wxColour(28, 30, 34));
 
-    auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h, const wxColour &holder_bg = wxColour(28, 30, 34)) {
+    auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h, const wxColour &holder_bg = wxColour(28, 30, 34), bool snug_to_bitmap = false) {
         if (icon_key.empty())
             return;
         const int pad = this->FromDIP(0);
@@ -131,22 +131,32 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         if (holder_w < this->FromDIP(1)) holder_w = this->FromDIP(1);
         if (holder_h < this->FromDIP(1)) holder_h = this->FromDIP(1);
 
-        auto *holder = new wxPanel(parent, wxID_ANY, wxPoint(x + pad, y + pad), wxSize(holder_w, holder_h));
+        const int icon_target = holder_h;
+        const int icon_px = this->ToDIP(wxSize(0, icon_target)).GetHeight();
+        auto bmp = create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1);
+
+        wxPoint holder_pos(x + pad, y + pad);
+        if (snug_to_bitmap && bmp.IsOk()) {
+            const wxSize bmp_sz = bmp.GetScaledSize();
+            holder_w = std::max(this->FromDIP(1), std::min(holder_w, bmp_sz.GetWidth()));
+            holder_h = std::max(this->FromDIP(1), std::min(holder_h, bmp_sz.GetHeight()));
+            holder_pos.x = x + (box_w - holder_w) / 2;
+            holder_pos.y = y + (box_h - holder_h) / 2;
+        }
+
+        auto *holder = new wxPanel(parent, wxID_ANY, holder_pos, wxSize(holder_w, holder_h));
         holder->SetBackgroundColour(holder_bg);
 
         auto *sizer = new wxBoxSizer(wxVERTICAL);
         sizer->AddStretchSpacer(1);
-        const int icon_target = holder_h;
-        const int icon_px = this->ToDIP(wxSize(0, icon_target)).GetHeight();
-        auto bmp = create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1);
         auto *icon = new wxStaticBitmap(holder, wxID_ANY, bmp);
         sizer->Add(icon, 0, wxALIGN_CENTER);
         sizer->AddStretchSpacer(1);
         holder->SetSizer(sizer);
     };
 
-    add_axis_icon(xy_area, resolve_icon("vector10", ""), side_left_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(255, 255, 255));
-    add_axis_icon(xy_area, resolve_icon("vector12", ""), side_right_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(255, 255, 255));
+    add_axis_icon(xy_area, resolve_icon("vector10", ""), side_left_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(255, 255, 255), true);
+    add_axis_icon(xy_area, resolve_icon("vector12", ""), side_right_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(255, 255, 255), true);
     add_axis_icon(xy_area, resolve_icon("vector11", ""), top_center_x, center_pos - gap - top_h, top_w, top_h);
     add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
 
