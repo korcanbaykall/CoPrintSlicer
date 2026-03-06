@@ -82,14 +82,13 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
     auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, FromDIP(12)), wxGA_SMOOTH);
     progress_bar->SetValue(0);
-    progress_controls_row->Add(progress_bar, 1, wxALIGN_CENTER_VERTICAL);
-    progress_controls_row->AddSpacer(FromDIP(20));
+    progress_controls_row->Add(progress_bar, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(20));
     auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
     progress_controls_row->Add(pause_icon, 0, wxALIGN_CENTER_VERTICAL);
     progress_controls_row->AddSpacer(FromDIP(10));
     auto *stop_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("stop", this, 20));
     progress_controls_row->Add(stop_icon, 0, wxALIGN_CENTER_VERTICAL);
-    controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(10));
+    controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(105));
     controls_col->AddStretchSpacer(1);
     progress_content_row->Add(controls_col, 1, wxRIGHT | wxEXPAND, FromDIP(15));
 
