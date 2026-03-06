@@ -52,8 +52,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box->SetBorderColorNormal(wxColour(55, 58, 64));
     progress_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     progress_box->SetBackgroundColour(wxColour(28, 30, 34));
-    progress_box->SetMinSize(wxSize(-1, FromDIP(170)));
-    progress_box->SetMaxSize(wxSize(-1, FromDIP(170)));
+    progress_box->SetMinSize(wxSize(-1, FromDIP(200)));
+    progress_box->SetMaxSize(wxSize(-1, FromDIP(200)));
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->AddSpacer(FromDIP(27));
     progress_row->Add(progress_box, 1, wxEXPAND);
