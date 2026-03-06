@@ -102,7 +102,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     };
 
     const int xy_square = FromDIP(261);
-    const int center_size = FromDIP(90);
+    const int center_size = FromDIP(80);
     const int center_pos = (xy_square - center_size) / 2;
     const int gap = FromDIP(8);
 
@@ -147,7 +147,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     add_axis_icon(xy_area, resolve_icon("vector12", ""), center_pos + center_size + gap, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, true);
     add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
 
-    auto *center_btn = new StaticBox(xy_area, wxID_ANY, wxPoint(center_pos, center_pos), wxSize(center_size, center_size));
+    auto *center_btn = new Button(xy_area, "");
+    center_btn->SetPosition(wxPoint(center_pos, center_pos));
     center_btn->SetMinSize(wxSize(center_size, center_size));
     center_btn->SetMaxSize(wxSize(center_size, center_size));
     center_btn->SetCornerRadius(FromDIP(7));
@@ -155,15 +156,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_btn->SetBackgroundColorNormal(wxColour(255, 255, 255));
     center_btn->SetBackgroundColour(wxColour(255, 255, 255));
     std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
-    if (!center_icon.empty()) {
-        auto *center_icon_widget = new wxStaticBitmap(center_btn, wxID_ANY, create_scaled_bitmap(center_icon, this, 38));
-        center_icon_widget->SetBackgroundColour(wxColour(255, 255, 255));
-        auto *center_sizer = new wxBoxSizer(wxVERTICAL);
-        center_sizer->AddStretchSpacer(1);
-        center_sizer->Add(center_icon_widget, 0, wxALIGN_CENTER_HORIZONTAL);
-        center_sizer->AddStretchSpacer(1);
-        center_btn->SetSizer(center_sizer);
-    }
+    if (!center_icon.empty())
+        center_btn->SetIcon(from_u8(center_icon));
 
     content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
