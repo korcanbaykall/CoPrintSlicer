@@ -147,17 +147,15 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     add_axis_icon(xy_area, resolve_icon("vector12", ""), center_pos + center_size + gap, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, true);
     add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
 
-    auto *center_btn = new Button(xy_area, "");
-    center_btn->SetPosition(wxPoint(center_pos, center_pos));
+    std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
+    auto *center_btn = new Button(xy_area, "", center_icon.empty() ? wxString() : from_u8(center_icon), 0, 38);
+    center_btn->SetSize(wxRect(wxPoint(center_pos, center_pos), wxSize(center_size, center_size)));
     center_btn->SetMinSize(wxSize(center_size, center_size));
     center_btn->SetMaxSize(wxSize(center_size, center_size));
     center_btn->SetCornerRadius(FromDIP(7));
     center_btn->SetBorderWidth(0);
     center_btn->SetBackgroundColorNormal(wxColour(255, 255, 255));
     center_btn->SetBackgroundColour(wxColour(255, 255, 255));
-    std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
-    if (!center_icon.empty())
-        center_btn->SetIcon(from_u8(center_icon));
 
     content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
