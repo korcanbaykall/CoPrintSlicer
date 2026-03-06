@@ -155,7 +155,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_btn->SetCornerRadius(FromDIP(7));
     center_btn->SetBorderWidth(0);
     center_btn->SetBackgroundColorNormal(wxColour(255, 255, 255));
-    center_btn->SetBackgroundColour(wxColour(255, 255, 255));
+    center_btn->SetBackgroundColour(wxColour(28, 30, 34));
 
     content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
