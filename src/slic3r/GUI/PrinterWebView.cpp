@@ -122,7 +122,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     xy_area->SetMaxSize(wxSize(xy_square, xy_square));
     xy_area->SetBackgroundColour(wxColour(28, 30, 34));
 
-    auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h) {
+    auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h, const wxColour &holder_bg = wxColour(28, 30, 34)) {
         if (icon_key.empty())
             return;
         const int pad = this->FromDIP(0);
@@ -132,7 +132,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         if (holder_h < this->FromDIP(1)) holder_h = this->FromDIP(1);
 
         auto *holder = new wxPanel(parent, wxID_ANY, wxPoint(x + pad, y + pad), wxSize(holder_w, holder_h));
-        holder->SetBackgroundColour(wxColour(28, 30, 34));
+        holder->SetBackgroundColour(holder_bg);
 
         auto *sizer = new wxBoxSizer(wxVERTICAL);
         sizer->AddStretchSpacer(1);
@@ -145,8 +145,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         holder->SetSizer(sizer);
     };
 
-    add_axis_icon(xy_area, resolve_icon("vector10", ""), side_left_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h);
-    add_axis_icon(xy_area, resolve_icon("vector12", ""), side_right_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h);
+    add_axis_icon(xy_area, resolve_icon("vector10", ""), side_left_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(255, 255, 255));
+    add_axis_icon(xy_area, resolve_icon("vector12", ""), side_right_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(255, 255, 255));
     add_axis_icon(xy_area, resolve_icon("vector11", ""), top_center_x, center_pos - gap - top_h, top_w, top_h);
     add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
 
