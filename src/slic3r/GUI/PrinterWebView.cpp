@@ -12,6 +12,7 @@
 #include <wx/filename.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
+#include <wx/stattext.h>
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
 
@@ -55,12 +56,24 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box->SetMinSize(wxSize(-1, FromDIP(270)));
     progress_box->SetMaxSize(wxSize(-1, FromDIP(270)));
     auto *progress_box_sizer = new wxBoxSizer(wxVERTICAL);
-    progress_box_sizer->AddSpacer(FromDIP(50));
+    auto *progress_title = new wxStaticText(progress_box, wxID_ANY, _L("Yazdırma ilerlemesi"));
+    progress_title->SetForegroundColour(wxColour(150, 156, 166));
+    progress_box_sizer->Add(progress_title, 0, wxLEFT | wxTOP, FromDIP(15));
+    progress_box_sizer->AddSpacer(FromDIP(35));
     auto *progress_top_line = new wxPanel(progress_box, wxID_ANY);
     progress_top_line->SetMinSize(wxSize(-1, FromDIP(1)));
     progress_top_line->SetMaxSize(wxSize(-1, FromDIP(1)));
     progress_top_line->SetBackgroundColour(wxColour(96, 100, 108));
     progress_box_sizer->Add(progress_top_line, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(15));
+    progress_box_sizer->AddSpacer(FromDIP(15));
+    auto *progress_thumb_box = new StaticBox(progress_box, wxID_ANY);
+    progress_thumb_box->SetMinSize(wxSize(FromDIP(100), FromDIP(100)));
+    progress_thumb_box->SetMaxSize(wxSize(FromDIP(100), FromDIP(100)));
+    progress_thumb_box->SetCornerRadius(FromDIP(4));
+    progress_thumb_box->SetBorderWidth(0);
+    progress_thumb_box->SetBackgroundColorNormal(wxColour(210, 210, 210));
+    progress_thumb_box->SetBackgroundColour(wxColour(22, 24, 29));
+    progress_box_sizer->Add(progress_thumb_box, 0, wxLEFT, FromDIP(15));
     progress_box_sizer->AddStretchSpacer(1);
     progress_box->SetSizer(progress_box_sizer);
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
