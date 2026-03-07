@@ -88,7 +88,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_controls_row->AddSpacer(FromDIP(10));
     auto *stop_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("stop", this, 20));
     progress_controls_row->Add(stop_icon, 0, wxALIGN_CENTER_VERTICAL);
-    controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(105));
+    controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(55));
     controls_col->AddStretchSpacer(1);
     progress_content_row->Add(controls_col, 1, wxRIGHT | wxEXPAND, FromDIP(15));
 
