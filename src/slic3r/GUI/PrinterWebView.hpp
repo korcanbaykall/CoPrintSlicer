@@ -43,11 +43,15 @@ public:
     void OnLoaded(wxWebViewEvent& evt);
     void reload();
     void update_mode();
+    void set_printer_layer(int layer);
+    void set_file_layer(int layer);
+    void set_layer_info(int printer_layer, int file_layer);
 
     bool Show(bool show = true) override;
 
 private:
     void SendAPIKey();
+    void refresh_layer_info_from_selected_machine();
 
     wxWebView* m_browser;
     long m_zoomFactor;
@@ -55,6 +59,10 @@ private:
     bool m_apikey_sent;
 
     wxString m_url_deferred;
+    wxTimer *m_layer_refresh_timer { nullptr };
+    wxStaticText *m_layer_label { nullptr };
+    wxStaticText *m_layer_printer_value { nullptr };
+    wxStaticText *m_layer_file_value { nullptr };
 
     // DECLARE_EVENT_TABLE()
 };

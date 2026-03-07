@@ -5,6 +5,8 @@
 #include "slic3r/GUI/wxExtensions.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
+#include "slic3r/GUI/DeviceCore/DevManager.h"
+#include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "libslic3r/Utils.hpp"
 #include "libslic3r_version.h"
@@ -24,6 +26,13 @@ namespace pt = boost::property_tree;
 
 namespace Slic3r {
 namespace GUI {
+
+namespace {
+wxString layer_value_text(int layer)
+{
+    return layer < 0 ? wxString("N/A") : wxString::Format("%d", layer);
+}
+} // namespace
 
 PrinterWebView::PrinterWebView(wxWindow *parent)
         : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize)
@@ -89,6 +98,21 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *stop_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("stop", this, 20));
     progress_controls_row->Add(stop_icon, 0, wxALIGN_CENTER_VERTICAL);
     controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(55));
+
+    auto *layer_info_row = new wxBoxSizer(wxHORIZONTAL);
+    m_layer_label = new wxStaticText(progress_box, wxID_ANY, _L("Katman:"));
+    m_layer_label->SetForegroundColour(wxColour(150, 156, 166));
+    m_layer_printer_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
+    m_layer_printer_value->SetForegroundColour(wxColour(220, 220, 220));
+    m_layer_file_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
+    m_layer_file_value->SetForegroundColour(wxColour(220, 220, 220));
+    layer_info_row->Add(m_layer_label, 0, wxALIGN_CENTER_VERTICAL);
+    layer_info_row->AddSpacer(FromDIP(8));
+    layer_info_row->Add(m_layer_printer_value, 0, wxALIGN_CENTER_VERTICAL);
+    layer_info_row->AddSpacer(FromDIP(30));
+    layer_info_row->Add(m_layer_file_value, 0, wxALIGN_CENTER_VERTICAL);
+    controls_col->Add(layer_info_row, 0, wxTOP, FromDIP(10));
+
     controls_col->AddStretchSpacer(1);
     progress_content_row->Add(controls_col, 1, wxRIGHT | wxEXPAND, FromDIP(15));
 
@@ -297,12 +321,20 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     m_browser = nullptr;
     m_zoomFactor = 100;
+    m_layer_refresh_timer = new wxTimer(this);
+    Bind(wxEVT_TIMER, [this](wxTimerEvent &) { refresh_layer_info_from_selected_machine(); }, m_layer_refresh_timer->GetId());
+    m_layer_refresh_timer->Start(1000);
     Bind(wxEVT_CLOSE_WINDOW, &PrinterWebView::OnClose, this);
  }
 
 PrinterWebView::~PrinterWebView()
 {
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " Start";
+    if (m_layer_refresh_timer != nullptr) {
+        m_layer_refresh_timer->Stop();
+        delete m_layer_refresh_timer;
+        m_layer_refresh_timer = nullptr;
+    }
     SetEvtHandlerEnabled(false);
 
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " End";
@@ -318,6 +350,8 @@ void PrinterWebView::load_url(wxString& url, wxString apikey)
 
 bool PrinterWebView::Show(bool show)
 {
+    if (show)
+        refresh_layer_info_from_selected_machine();
     return wxPanel::Show(show);
 }
 
@@ -328,7 +362,40 @@ void PrinterWebView::reload()
 
 void PrinterWebView::update_mode()
 {
+    refresh_layer_info_from_selected_machine();
     return;
+}
+
+void PrinterWebView::set_printer_layer(int layer)
+{
+    if (m_layer_printer_value == nullptr)
+        return;
+    m_layer_printer_value->SetLabelText(layer_value_text(layer));
+    Layout();
+}
+
+void PrinterWebView::set_file_layer(int layer)
+{
+    if (m_layer_file_value == nullptr)
+        return;
+    m_layer_file_value->SetLabelText(layer_value_text(layer));
+    Layout();
+}
+
+void PrinterWebView::set_layer_info(int printer_layer, int file_layer)
+{
+    set_printer_layer(printer_layer);
+    set_file_layer(file_layer);
+}
+
+void PrinterWebView::refresh_layer_info_from_selected_machine()
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+
+    const int printer_layer = (obj != nullptr && obj->curr_layer > 0) ? obj->curr_layer : -1;
+    const int file_layer = (obj != nullptr && obj->total_layers > 0) ? obj->total_layers : -1;
+    set_layer_info(printer_layer, file_layer);
 }
 
 /**
@@ -337,6 +404,7 @@ void PrinterWebView::update_mode()
  */
 void PrinterWebView::UpdateState() {
   // SetTitle(m_browser->GetCurrentTitle());
+    refresh_layer_info_from_selected_machine();
 
 }
 
