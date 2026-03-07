@@ -803,7 +803,7 @@ void PrintingTaskPanel::create_panel(wxWindow* parent)
     auto progress_left_sizer = new wxBoxSizer(wxVERTICAL);
     auto progress_right_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-    const int progress_controls_offset_y = FromDIP(20);
+    const int progress_controls_offset_y = FromDIP(50);
 
     progress_left_sizer->Add(penel_text, 0, wxEXPAND | wxALL, 0);
     progress_left_sizer->Add(m_gauge_progress, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10) - progress_controls_offset_y);
