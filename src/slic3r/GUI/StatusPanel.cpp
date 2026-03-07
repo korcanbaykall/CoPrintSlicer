@@ -803,10 +803,8 @@ void PrintingTaskPanel::create_panel(wxWindow* parent)
     auto progress_left_sizer = new wxBoxSizer(wxVERTICAL);
     auto progress_right_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-    const int progress_controls_offset_y = FromDIP(50);
-
     progress_left_sizer->Add(penel_text, 0, wxEXPAND | wxALL, 0);
-    progress_left_sizer->Add(m_gauge_progress, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10) - progress_controls_offset_y);
+    progress_left_sizer->Add(m_gauge_progress, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10));
 
 
     progress_left_sizer->Add(penel_finish_time, 0, wxEXPAND |wxALL, 0);
@@ -815,9 +813,9 @@ void PrintingTaskPanel::create_panel(wxWindow* parent)
     progress_right_sizer->Add(0, 0, 0, wxEXPAND | wxLEFT, FromDIP(18));
     progress_right_sizer->Add(m_button_partskip, 0, wxALL | wxALIGN_CENTER_VERTICAL, FromDIP(0));//5
     progress_right_sizer->Add(0, 0, 0, wxEXPAND | wxLEFT, FromDIP(18));
-    progress_right_sizer->Add(m_button_pause_resume, 0, wxALL | wxALIGN_CENTER_VERTICAL | wxTOP, -progress_controls_offset_y);
+    progress_right_sizer->Add(m_button_pause_resume, 0, wxALL | wxALIGN_CENTER_VERTICAL, FromDIP(0));
     progress_right_sizer->Add(0, 0, 0, wxEXPAND | wxLEFT, FromDIP(18));
-    progress_right_sizer->Add(m_button_abort, 0, wxALL | wxALIGN_CENTER_VERTICAL | wxTOP, -progress_controls_offset_y);
+    progress_right_sizer->Add(m_button_abort, 0, wxALL | wxALIGN_CENTER_VERTICAL, FromDIP(0));
     progress_right_sizer->Add(0, 0, 0, wxEXPAND | wxLEFT, FromDIP(18));
 
     progress_lr_sizer->Add(progress_left_sizer, 1,   wxEXPAND | wxALL, 0);

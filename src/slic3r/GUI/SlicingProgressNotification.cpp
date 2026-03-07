@@ -274,9 +274,11 @@ void NotificationManager::SlicingProgressNotification::render(GLCanvas3D& canvas
 				float  margin_x = 8.0f * scale;
 				ImVec2 progress_bar_size = ImVec2(progress_panel_width - button_size.x - margin_x, 4.0f * scale);
                 float  text_bottom = progress_bar_size.y + m_line_height * 1.2f + 7.f * scale;
-                ImVec2 progress_bar_pos = child_window_pos + ImVec2(0, progress_panel_height - text_bottom);
-				ImVec2 button_pos = child_window_pos + ImVec2(progress_panel_width - button_size.x, progress_panel_height - text_bottom - button_size.y / 2.0f);
-				ImVec2 text_pos = ImVec2(progress_bar_pos.x, progress_bar_pos.y - m_line_height * (1.2f + m_lines_count - 1));
+				float  controls_offset_y = 50.0f * scale;
+				ImVec2 progress_bar_base_pos = child_window_pos + ImVec2(0, progress_panel_height - text_bottom);
+                ImVec2 progress_bar_pos = progress_bar_base_pos + ImVec2(0, -controls_offset_y);
+				ImVec2 button_pos = child_window_pos + ImVec2(progress_panel_width - button_size.x, progress_panel_height - text_bottom - button_size.y / 2.0f - controls_offset_y);
+				ImVec2 text_pos = ImVec2(progress_bar_base_pos.x, progress_bar_base_pos.y - m_line_height * (1.2f + m_lines_count - 1));
 
 				render_text(text_pos);
 				render_close_button(button_pos, button_size);
