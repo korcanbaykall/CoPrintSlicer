@@ -99,12 +99,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_controls_row->Add(stop_icon, 0, wxALIGN_CENTER_VERTICAL);
     controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(55));
 
-    controls_col->AddStretchSpacer(1);
-    progress_content_row->Add(controls_col, 1, wxRIGHT | wxEXPAND, FromDIP(15));
-
-    progress_box_sizer->Add(progress_content_row, 1, wxEXPAND);
     auto *layer_info_row = new wxBoxSizer(wxHORIZONTAL);
-    layer_info_row->AddSpacer(FromDIP(170));
+    layer_info_row->AddSpacer(FromDIP(0));
     m_layer_label = new wxStaticText(progress_box, wxID_ANY, _L("Katman:"));
     m_layer_label->SetForegroundColour(wxColour(150, 156, 166));
     m_layer_printer_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
@@ -116,7 +112,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     layer_info_row->Add(m_layer_printer_value, 0, wxALIGN_CENTER_VERTICAL);
     layer_info_row->AddSpacer(FromDIP(30));
     layer_info_row->Add(m_layer_file_value, 0, wxALIGN_CENTER_VERTICAL);
-    progress_box_sizer->Add(layer_info_row, 0, wxBOTTOM, FromDIP(16));
+    controls_col->Add(layer_info_row, 0, wxTOP, FromDIP(8));
+
+    controls_col->AddStretchSpacer(1);
+    progress_content_row->Add(controls_col, 1, wxRIGHT | wxEXPAND, FromDIP(15));
+
+    progress_box_sizer->Add(progress_content_row, 1, wxEXPAND);
     progress_box_sizer->AddStretchSpacer(1);
     progress_box->SetSizer(progress_box_sizer);
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
