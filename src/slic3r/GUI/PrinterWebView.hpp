@@ -46,6 +46,7 @@ public:
     void set_printer_layer(int layer);
     void set_file_layer(int layer);
     void set_layer_info(int printer_layer, int file_layer);
+    void set_estimated_remaining_seconds(int remaining_seconds);
 
     bool Show(bool show = true) override;
 
@@ -60,6 +61,8 @@ private:
 
     wxString m_url_deferred;
     wxTimer *m_layer_refresh_timer { nullptr };
+    wxStaticText *m_estimated_finish_label { nullptr };
+    wxStaticText *m_estimated_finish_value { nullptr };
     wxStaticText *m_layer_label { nullptr };
     wxStaticText *m_layer_printer_value { nullptr };
     wxStaticText *m_layer_file_value { nullptr };

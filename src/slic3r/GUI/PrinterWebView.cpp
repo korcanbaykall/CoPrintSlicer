@@ -32,6 +32,14 @@ wxString layer_value_text(int layer)
 {
     return layer < 0 ? wxString("N/A") : wxString::Format("%d", layer);
 }
+
+wxString remaining_minutes_text(int remaining_seconds)
+{
+    if (remaining_seconds < 0)
+        return "N/A";
+    const int minutes = (remaining_seconds + 59) / 60;
+    return wxString::Format("%dm", minutes);
+}
 } // namespace
 
 PrinterWebView::PrinterWebView(wxWindow *parent)
@@ -101,6 +109,15 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *layer_info_row = new wxBoxSizer(wxHORIZONTAL);
     layer_info_row->AddSpacer(FromDIP(0));
+    m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, _L("Tahmini bitiş süresi:"));
+    m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
+    m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
+    m_estimated_finish_value->SetForegroundColour(wxColour(220, 220, 220));
+    layer_info_row->Add(m_estimated_finish_label, 0, wxALIGN_CENTER_VERTICAL);
+    layer_info_row->AddSpacer(FromDIP(8));
+    layer_info_row->Add(m_estimated_finish_value, 0, wxALIGN_CENTER_VERTICAL);
+    layer_info_row->AddStretchSpacer(1);
+
     m_layer_label = new wxStaticText(progress_box, wxID_ANY, _L("Katman:"));
     m_layer_label->SetForegroundColour(wxColour(150, 156, 166));
     m_layer_printer_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
@@ -389,6 +406,14 @@ void PrinterWebView::set_layer_info(int printer_layer, int file_layer)
     set_file_layer(file_layer);
 }
 
+void PrinterWebView::set_estimated_remaining_seconds(int remaining_seconds)
+{
+    if (m_estimated_finish_value == nullptr)
+        return;
+    m_estimated_finish_value->SetLabelText(remaining_minutes_text(remaining_seconds));
+    Layout();
+}
+
 void PrinterWebView::refresh_layer_info_from_selected_machine()
 {
     auto *dev_manager = wxGetApp().getDeviceManager();
@@ -397,6 +422,18 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     const int printer_layer = (obj != nullptr && obj->curr_layer > 0) ? obj->curr_layer : -1;
     const int file_layer = (obj != nullptr && obj->total_layers > 0) ? obj->total_layers : -1;
     set_layer_info(printer_layer, file_layer);
+
+    int remaining_seconds = -1;
+    if (obj != nullptr) {
+        const int total_duration_seconds = (obj->slice_info != nullptr && obj->slice_info->prediction > 0) ? obj->slice_info->prediction : -1;
+        if (total_duration_seconds > 0 && obj->mc_print_percent >= 0 && obj->mc_print_percent <= 100) {
+            const int elapsed_seconds = static_cast<int>((static_cast<long long>(total_duration_seconds) * obj->mc_print_percent) / 100);
+            remaining_seconds = total_duration_seconds - elapsed_seconds;
+        } else if (obj->mc_left_time > 0) {
+            remaining_seconds = obj->mc_left_time;
+        }
+    }
+    set_estimated_remaining_seconds(remaining_seconds);
 }
 
 /**
