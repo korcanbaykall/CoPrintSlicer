@@ -119,26 +119,27 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetSizer(preview_box_sizer);
 
     auto *preview_menu_panel = new wxPanel(left_container, wxID_ANY);
-    preview_menu_panel->SetBackgroundColour(wxColour(239, 239, 239));
+    preview_menu_panel->SetBackgroundColour(wxColour(28, 30, 34));
     preview_menu_panel->SetMinSize(wxSize(FromDIP(220), FromDIP(545)));
     preview_menu_panel->SetMaxSize(wxSize(FromDIP(220), FromDIP(545)));
     auto *preview_menu_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto add_preview_menu_item = [this, preview_menu_panel, preview_menu_sizer](const wxString &text, bool selected = false) {
+    auto add_preview_menu_item = [this, preview_menu_panel, preview_menu_sizer](const wxString &text, int height, bool selected = false) {
         auto *item_panel = new wxPanel(preview_menu_panel, wxID_ANY);
-        item_panel->SetBackgroundColour(selected ? wxColour(233, 244, 230) : wxColour(239, 239, 239));
-        item_panel->SetMinSize(wxSize(-1, FromDIP(56)));
+        item_panel->SetBackgroundColour(selected ? wxColour(47, 54, 44) : wxColour(28, 30, 34));
+        item_panel->SetMinSize(wxSize(-1, FromDIP(height)));
+        item_panel->SetMaxSize(wxSize(-1, FromDIP(height)));
         auto *item_sizer = new wxBoxSizer(wxHORIZONTAL);
 
         auto *active_strip = new wxPanel(item_panel, wxID_ANY);
         active_strip->SetMinSize(wxSize(FromDIP(3), -1));
         active_strip->SetMaxSize(wxSize(FromDIP(3), -1));
-        active_strip->SetBackgroundColour(selected ? wxColour(47, 181, 90) : wxColour(239, 239, 239));
+        active_strip->SetBackgroundColour(selected ? wxColour(47, 181, 90) : wxColour(28, 30, 34));
         item_sizer->Add(active_strip, 0, wxEXPAND);
         item_sizer->AddSpacer(FromDIP(16));
 
         auto *label = new wxStaticText(item_panel, wxID_ANY, text);
-        label->SetForegroundColour(wxColour(18, 18, 18));
+        label->SetForegroundColour(wxColour(235, 235, 235));
         item_sizer->Add(label, 0, wxALIGN_CENTER_VERTICAL);
         item_sizer->AddStretchSpacer(1);
 
@@ -150,12 +151,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         preview_menu_sizer->Add(item_panel, 0, wxEXPAND);
     };
 
-    preview_menu_sizer->AddSpacer(FromDIP(90));
-    add_preview_menu_item("CoPrint Quadro");
-    add_preview_menu_item("Durum", true);
-    add_preview_menu_item("Depolama");
-    add_preview_menu_item("Guncelle");
-    add_preview_menu_item("Asistan");
+    preview_menu_sizer->AddSpacer(FromDIP(35));
+    add_preview_menu_item("CoPrint Quadro", 50);
+    add_preview_menu_item("Durum", 40, true);
+    add_preview_menu_item("Depolama", 40);
+    add_preview_menu_item("Guncelle", 40);
+    add_preview_menu_item("Asistan", 40);
     preview_menu_sizer->AddStretchSpacer(1);
     preview_menu_panel->SetSizer(preview_menu_sizer);
 
