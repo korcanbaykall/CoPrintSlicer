@@ -108,16 +108,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(55));
 
     auto *layer_info_row = new wxBoxSizer(wxHORIZONTAL);
-    layer_info_row->AddSpacer(FromDIP(0));
-    m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, _L("Tahmini bitiş süresi:"));
-    m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
-    m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
-    m_estimated_finish_value->SetForegroundColour(wxColour(220, 220, 220));
-    layer_info_row->Add(m_estimated_finish_label, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddSpacer(FromDIP(8));
-    layer_info_row->Add(m_estimated_finish_value, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddStretchSpacer(1);
-
     m_layer_label = new wxStaticText(progress_box, wxID_ANY, _L("Katman:"));
     m_layer_label->SetForegroundColour(wxColour(150, 156, 166));
     m_layer_printer_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
@@ -129,6 +119,14 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     layer_info_row->Add(m_layer_printer_value, 0, wxALIGN_CENTER_VERTICAL);
     layer_info_row->AddSpacer(FromDIP(30));
     layer_info_row->Add(m_layer_file_value, 0, wxALIGN_CENTER_VERTICAL);
+    layer_info_row->AddStretchSpacer(1);
+    m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, _L("Tahmini bitiş süresi:"));
+    m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
+    m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
+    m_estimated_finish_value->SetForegroundColour(wxColour(220, 220, 220));
+    layer_info_row->Add(m_estimated_finish_label, 0, wxALIGN_CENTER_VERTICAL);
+    layer_info_row->AddSpacer(FromDIP(8));
+    layer_info_row->Add(m_estimated_finish_value, 0, wxALIGN_CENTER_VERTICAL);
     controls_col->Add(layer_info_row, 0, wxTOP, FromDIP(8));
 
     controls_col->AddStretchSpacer(1);
@@ -515,3 +513,4 @@ void PrinterWebView::OnLoaded(wxWebViewEvent &evt)
 
 } // GUI
 } // Slic3r
+
