@@ -104,10 +104,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_thumb_box->SetMaxSize(wxSize(FromDIP(140), FromDIP(140)));
     progress_thumb_box->SetCornerRadius(FromDIP(4));
     progress_thumb_box->SetBorderWidth(0);
-    progress_thumb_box->SetBackgroundColorNormal(wxColour(210, 210, 210));
-    progress_thumb_box->SetBackgroundColour(wxColour(22, 24, 29));
+    progress_thumb_box->SetBackgroundColorNormal(wxColour(0, 0, 0));
+    progress_thumb_box->SetBackgroundColour(wxColour(0, 0, 0));
     auto *progress_thumb_sizer = new wxBoxSizer(wxVERTICAL);
     m_preview_thumbnail = new wxStaticBitmap(progress_thumb_box, wxID_ANY, wxNullBitmap);
+    m_preview_thumbnail->SetBackgroundColour(wxColour(0, 0, 0));
     m_preview_thumbnail->SetMinSize(wxSize(FromDIP(120), FromDIP(120)));
     m_preview_thumbnail->SetMaxSize(wxSize(FromDIP(120), FromDIP(120)));
     set_fallback_preview_thumbnail();
