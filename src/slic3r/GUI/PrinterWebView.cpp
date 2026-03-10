@@ -120,7 +120,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_content_row->AddSpacer(FromDIP(15));
 
     auto *controls_col = new wxBoxSizer(wxVERTICAL);
-    controls_col->AddSpacer(FromDIP(35));
+    controls_col->AddSpacer(FromDIP(55));
     
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
     auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, FromDIP(12)), wxGA_SMOOTH);
