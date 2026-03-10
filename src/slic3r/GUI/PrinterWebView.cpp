@@ -121,6 +121,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *controls_col = new wxBoxSizer(wxVERTICAL);
     controls_col->AddSpacer(FromDIP(55));
+    m_active_file_name_value = new wxStaticText(progress_box, wxID_ANY, "N/A", wxDefaultPosition, wxSize(FromDIP(420), -1), wxST_ELLIPSIZE_END);
+    m_active_file_name_value->SetForegroundColour(wxColour(220, 220, 220));
+    controls_col->Add(m_active_file_name_value, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
     
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
     auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, FromDIP(12)), wxGA_SMOOTH);
