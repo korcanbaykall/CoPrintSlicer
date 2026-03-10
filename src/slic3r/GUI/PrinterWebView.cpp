@@ -118,15 +118,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_content_row->AddSpacer(FromDIP(15));
 
     auto *controls_col = new wxBoxSizer(wxVERTICAL);
-    auto *file_name_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *file_name_label = new wxStaticText(progress_box, wxID_ANY, _L("Dosya:"));
-    file_name_label->SetForegroundColour(wxColour(150, 156, 166));
-    m_active_file_name_value = new wxStaticText(progress_box, wxID_ANY, "N/A", wxDefaultPosition, wxSize(FromDIP(420), -1), wxST_ELLIPSIZE_END);
-    m_active_file_name_value->SetForegroundColour(wxColour(220, 220, 220));
-    file_name_row->Add(file_name_label, 0, wxALIGN_CENTER_VERTICAL);
-    file_name_row->AddSpacer(FromDIP(8));
-    file_name_row->Add(m_active_file_name_value, 1, wxALIGN_CENTER_VERTICAL | wxEXPAND);
-    controls_col->Add(file_name_row, 0, wxEXPAND);
+    
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
     auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, FromDIP(12)), wxGA_SMOOTH);
     progress_bar->SetValue(0);
@@ -461,7 +453,14 @@ void PrinterWebView::set_fallback_preview_thumbnail()
         return;
 
     m_preview_thumbnail_url.clear();
-    m_preview_thumbnail->SetBitmap(create_scaled_bitmap("CoPrintSlicer", m_preview_thumbnail, 96));
+    const wxString logo_path = from_u8(Slic3r::resources_dir() + "/images/logo.jpg");
+    wxImage logo_image;
+    if (logo_image.LoadFile(logo_path, wxBITMAP_TYPE_JPEG)) {
+        wxImage resized = logo_image.Scale(FromDIP(120), FromDIP(120), wxIMAGE_QUALITY_HIGH);
+        m_preview_thumbnail->SetBitmap(wxBitmap(resized));
+    } else {
+        m_preview_thumbnail->SetBitmap(create_scaled_bitmap("CoPrintSlicer", m_preview_thumbnail, 96));
+    }
     Layout();
 }
 
@@ -625,6 +624,5 @@ void PrinterWebView::OnLoaded(wxWebViewEvent &evt)
 
 } // GUI
 } // Slic3r
-
 
 
