@@ -170,18 +170,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_controls_row->AddSpacer(FromDIP(35));
     controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(10));
 
-    auto *estimated_finish_row = new wxBoxSizer(wxHORIZONTAL);
-    estimated_finish_row->AddSpacer(FromDIP(465));
-    m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Tahmini biti\xC5\x9F s\xC3\xBCresi:"));
-    m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
-    m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
-    m_estimated_finish_value->SetForegroundColour(wxColour(220, 220, 220));
-    estimated_finish_row->Add(m_estimated_finish_label, 0, wxALIGN_CENTER_VERTICAL);
-    estimated_finish_row->AddSpacer(FromDIP(8));
-    estimated_finish_row->Add(m_estimated_finish_value, 0, wxALIGN_CENTER_VERTICAL);
-    estimated_finish_row->AddStretchSpacer(1);
-    controls_col->Add(estimated_finish_row, 0, wxTOP, FromDIP(12));
-
     auto *layer_info_row = new wxBoxSizer(wxHORIZONTAL);
     m_layer_label = new wxStaticText(progress_box, wxID_ANY, _L("Katman:"));
     m_layer_label->SetForegroundColour(wxColour(150, 156, 166));
@@ -194,7 +182,15 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     layer_info_row->Add(m_layer_printer_value, 0, wxALIGN_CENTER_VERTICAL);
     layer_info_row->AddSpacer(FromDIP(30));
     layer_info_row->Add(m_layer_file_value, 0, wxALIGN_CENTER_VERTICAL);
-    controls_col->Add(layer_info_row, 0, wxTOP, FromDIP(12));
+    layer_info_row->AddSpacer(FromDIP(315));
+    m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Tahmini biti\xC5\x9F s\xC3\xBCresi:"));
+    m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
+    m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
+    m_estimated_finish_value->SetForegroundColour(wxColour(220, 220, 220));
+    layer_info_row->Add(m_estimated_finish_label, 0, wxALIGN_CENTER_VERTICAL);
+    layer_info_row->AddSpacer(FromDIP(8));
+    layer_info_row->Add(m_estimated_finish_value, 0, wxALIGN_CENTER_VERTICAL);
+    controls_col->Add(layer_info_row, 0, wxTOP, FromDIP(4));
 
     controls_col->AddStretchSpacer(1);
     progress_content_row->Add(controls_col, 1, wxRIGHT | wxEXPAND, FromDIP(15));
