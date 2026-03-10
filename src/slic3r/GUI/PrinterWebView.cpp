@@ -33,6 +33,20 @@ wxString layer_value_text(int layer)
     return layer < 0 ? wxString("N/A") : wxString::Format("%d", layer);
 }
 
+wxString active_file_name_text(const MachineObject *obj)
+{
+    if (obj == nullptr)
+        return "N/A";
+
+    if (!obj->subtask_name.empty())
+        return from_u8(obj->subtask_name);
+
+    if (!obj->m_gcode_file.empty())
+        return from_u8(wxFileName(obj->m_gcode_file).GetFullName().utf8_string());
+
+    return "N/A";
+}
+
 wxString remaining_minutes_text(int remaining_seconds)
 {
     if (remaining_seconds < 0)
@@ -92,20 +106,30 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_thumb_box->SetBorderWidth(0);
     progress_thumb_box->SetBackgroundColorNormal(wxColour(210, 210, 210));
     progress_thumb_box->SetBackgroundColour(wxColour(22, 24, 29));
+    auto *progress_thumb_sizer = new wxBoxSizer(wxVERTICAL);
+    m_preview_thumbnail = new wxStaticBitmap(progress_thumb_box, wxID_ANY, create_scaled_bitmap("logo", this, 120));
+    m_preview_thumbnail->SetMinSize(wxSize(FromDIP(120), FromDIP(120)));
+    progress_thumb_sizer->AddStretchSpacer(1);
+    progress_thumb_sizer->Add(m_preview_thumbnail, 0, wxALIGN_CENTER_HORIZONTAL);
+    progress_thumb_sizer->AddStretchSpacer(1);
+    progress_thumb_box->SetSizer(progress_thumb_sizer);
     progress_content_row->Add(progress_thumb_box, 0, wxLEFT, FromDIP(15));
     progress_content_row->AddSpacer(FromDIP(15));
 
     auto *controls_col = new wxBoxSizer(wxVERTICAL);
+    m_active_file_name_value = new wxStaticText(progress_box, wxID_ANY, "N/A", wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END);
+    m_active_file_name_value->SetForegroundColour(wxColour(220, 220, 220));
+    controls_col->Add(m_active_file_name_value, 0, wxEXPAND);
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
     auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, FromDIP(12)), wxGA_SMOOTH);
     progress_bar->SetValue(0);
-    progress_controls_row->Add(progress_bar, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(65));
+    progress_controls_row->Add(progress_bar, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(15));
     auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
     progress_controls_row->Add(pause_icon, 0, wxALIGN_CENTER_VERTICAL);
     progress_controls_row->AddSpacer(FromDIP(10));
     auto *stop_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("stop", this, 20));
     progress_controls_row->Add(stop_icon, 0, wxALIGN_CENTER_VERTICAL);
-    controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(55));
+    controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(10));
 
     auto *layer_info_row = new wxBoxSizer(wxHORIZONTAL);
     m_layer_label = new wxStaticText(progress_box, wxID_ANY, _L("Katman:"));
@@ -338,6 +362,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     m_browser = nullptr;
     m_zoomFactor = 100;
+    Bind(wxEVT_WEBREQUEST_STATE, &PrinterWebView::on_thumbnail_webrequest_state, this);
     m_layer_refresh_timer = new wxTimer(this);
     Bind(wxEVT_TIMER, [this](wxTimerEvent &) { refresh_layer_info_from_selected_machine(); }, m_layer_refresh_timer->GetId());
     m_layer_refresh_timer->Start(1000);
@@ -347,6 +372,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 PrinterWebView::~PrinterWebView()
 {
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " Start";
+    if (m_thumbnail_web_request.IsOk())
+        m_thumbnail_web_request.Cancel();
     if (m_layer_refresh_timer != nullptr) {
         m_layer_refresh_timer->Stop();
         delete m_layer_refresh_timer;
@@ -413,10 +440,87 @@ void PrinterWebView::set_estimated_remaining_seconds(int remaining_seconds)
     Layout();
 }
 
+void PrinterWebView::set_active_file_name(const wxString &file_name)
+{
+    if (m_active_file_name_value == nullptr)
+        return;
+    m_active_file_name_value->SetLabelText(file_name.empty() ? "N/A" : file_name);
+    Layout();
+}
+
+void PrinterWebView::set_fallback_preview_thumbnail()
+{
+    if (m_preview_thumbnail == nullptr)
+        return;
+
+    m_preview_thumbnail_url.clear();
+    m_preview_thumbnail->SetBitmap(create_scaled_bitmap("logo", this, 120));
+    Layout();
+}
+
+void PrinterWebView::on_thumbnail_webrequest_state(wxWebRequestEvent &evt)
+{
+    if (!m_thumbnail_web_request.IsOk() || evt.GetRequest() != m_thumbnail_web_request)
+        return;
+
+    switch (evt.GetState()) {
+    case wxWebRequest::State_Completed: {
+        m_thumbnail_image = *evt.GetResponse().GetStream();
+        if (m_preview_thumbnail != nullptr && m_thumbnail_image.IsOk()) {
+            wxImage resized = m_thumbnail_image.Scale(FromDIP(120), FromDIP(120), wxIMAGE_QUALITY_HIGH);
+            m_preview_thumbnail->SetBitmap(wxBitmap(resized));
+            Layout();
+        } else {
+            set_fallback_preview_thumbnail();
+        }
+        break;
+    }
+    case wxWebRequest::State_Failed:
+    case wxWebRequest::State_Cancelled:
+    case wxWebRequest::State_Unauthorized:
+        set_fallback_preview_thumbnail();
+        break;
+    case wxWebRequest::State_Active:
+    case wxWebRequest::State_Idle:
+        break;
+    default:
+        break;
+    }
+}
+
+void PrinterWebView::update_preview_thumbnail(const MachineObject *obj)
+{
+    if (obj == nullptr || obj->slice_info == nullptr || obj->slice_info->thumbnail_url.empty()) {
+        if (m_thumbnail_web_request.IsOk())
+            m_thumbnail_web_request.Cancel();
+        set_fallback_preview_thumbnail();
+        return;
+    }
+
+    const wxString next_url = wxString(obj->slice_info->thumbnail_url);
+    if (next_url == m_preview_thumbnail_url)
+        return;
+
+    if (m_thumbnail_web_request.IsOk())
+        m_thumbnail_web_request.Cancel();
+
+    m_preview_thumbnail_url = next_url;
+    m_thumbnail_web_request = wxWebSession::GetDefault().CreateRequest(this, m_preview_thumbnail_url);
+    if (!m_thumbnail_web_request.IsOk()) {
+        set_fallback_preview_thumbnail();
+        return;
+    }
+
+    m_thumbnail_web_request.Start();
+}
+
 void PrinterWebView::refresh_layer_info_from_selected_machine()
 {
     auto *dev_manager = wxGetApp().getDeviceManager();
     auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+
+    set_active_file_name(active_file_name_text(obj));
+    update_preview_thumbnail(obj);
 
     const int printer_layer = (obj != nullptr && obj->curr_layer > 0) ? obj->curr_layer : -1;
     const int file_layer = (obj != nullptr && obj->total_layers > 0) ? obj->total_layers : -1;
