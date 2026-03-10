@@ -32,6 +32,7 @@
 namespace Slic3r {
 namespace GUI {
 
+class MachineObject;
 
 class PrinterWebView : public wxPanel {
 public:
