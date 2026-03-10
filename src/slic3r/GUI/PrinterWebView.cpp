@@ -78,6 +78,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *camera_label = new wxStaticText(preview_box, wxID_ANY, _L("Kamera"));
     camera_label->SetForegroundColour(wxColour(150, 156, 166));
     preview_box_sizer->Add(camera_label, 0, wxLEFT, FromDIP(20));
+    auto *preview_top_divider = new wxPanel(preview_box, wxID_ANY);
+    preview_top_divider->SetMinSize(wxSize(-1, FromDIP(1)));
+    preview_top_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
+    preview_top_divider->SetBackgroundColour(wxColour(96, 100, 108));
+    preview_box_sizer->Add(preview_top_divider, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(25));
     preview_box_sizer->AddStretchSpacer(1);
     auto *preview_bottom_divider = new wxPanel(preview_box, wxID_ANY);
     preview_bottom_divider->SetMinSize(wxSize(-1, FromDIP(1)));
