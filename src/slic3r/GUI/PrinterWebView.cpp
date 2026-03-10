@@ -74,7 +74,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetMinSize(wxSize(-1, FromDIP(545)));
     preview_box->SetMaxSize(wxSize(-1, FromDIP(545)));
     auto *preview_box_sizer = new wxBoxSizer(wxVERTICAL);
-    preview_box_sizer->AddSpacer(FromDIP(50));
+    preview_box_sizer->AddSpacer(FromDIP(7));
     auto *camera_label = new wxStaticText(preview_box, wxID_ANY, _L("Kamera"));
     camera_label->SetForegroundColour(wxColour(150, 156, 166));
     preview_box_sizer->Add(camera_label, 0, wxLEFT, FromDIP(20));
