@@ -121,7 +121,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box->SetMinSize(wxSize(-1, FromDIP(270)));
     progress_box->SetMaxSize(wxSize(-1, FromDIP(270)));
     auto *progress_box_sizer = new wxBoxSizer(wxVERTICAL);
-    auto *progress_title = new wxStaticText(progress_box, wxID_ANY, _L("YazdÄ±rma ilerlemesi"));
+    auto *progress_title = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Yazd\xC4\xB1rma ilerlemesi"));
     progress_title->SetForegroundColour(wxColour(150, 156, 166));
     progress_box_sizer->Add(progress_title, 0, wxLEFT | wxTOP, FromDIP(25));
     progress_box_sizer->AddSpacer(FromDIP(15));
@@ -171,8 +171,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(10));
 
     auto *estimated_finish_row = new wxBoxSizer(wxHORIZONTAL);
-    estimated_finish_row->AddSpacer(FromDIP(285));
-    m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, _L("Tahmini bitiÅŸ sÃ¼resi:"));
+    estimated_finish_row->AddSpacer(FromDIP(435));
+    m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Tahmini biti\xC5\x9F s\xC3\xBCresi:"));
     m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
     m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
     m_estimated_finish_value->SetForegroundColour(wxColour(220, 220, 220));
