@@ -171,7 +171,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(10));
 
     auto *estimated_finish_row = new wxBoxSizer(wxHORIZONTAL);
-    estimated_finish_row->AddSpacer(FromDIP(435));
+    estimated_finish_row->AddSpacer(FromDIP(465));
     m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Tahmini biti\xC5\x9F s\xC3\xBCresi:"));
     m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
     m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
