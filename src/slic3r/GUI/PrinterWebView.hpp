@@ -24,6 +24,7 @@
 #include "wx/fs_mem.h"
 #include "wx/stdpaths.h"
 #include <wx/panel.h>
+#include <wx/popupwin.h>
 #include <wx/tbarbase.h>
 #include "wx/textctrl.h"
 #include <wx/timer.h>
@@ -54,6 +55,8 @@ public:
     void update_preview_thumbnail(const MachineObject *obj);
     void set_fallback_preview_thumbnail();
     void on_thumbnail_webrequest_state(wxWebRequestEvent &evt);
+    void toggle_printers_popup();
+    void dismiss_printers_popup();
 
     bool Show(bool show = true) override;
 
@@ -72,6 +75,8 @@ private:
     wxWebRequest m_thumbnail_web_request;
     wxImage m_thumbnail_image;
     wxStaticBitmap *m_preview_thumbnail { nullptr };
+    wxWindow *m_preview_printers_button { nullptr };
+    wxPopupTransientWindow *m_printers_popup { nullptr };
     wxStaticText *m_active_file_name_value { nullptr };
     wxStaticText *m_estimated_finish_label { nullptr };
     wxStaticText *m_estimated_finish_value { nullptr };

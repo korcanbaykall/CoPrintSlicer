@@ -124,7 +124,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_menu_panel->SetMaxSize(wxSize(FromDIP(220), FromDIP(545)));
     auto *preview_menu_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto add_preview_menu_item = [this, preview_menu_panel, preview_menu_sizer](const wxString &text, int height, bool selected = false) {
+    auto add_preview_menu_item = [this, preview_menu_panel, preview_menu_sizer](const wxString &text, int height, bool selected = false, bool clickable = false) {
         auto *item_panel = new wxPanel(preview_menu_panel, wxID_ANY);
         item_panel->SetBackgroundColour(selected ? wxColour(47, 54, 44) : wxColour(28, 30, 34));
         item_panel->SetMinSize(wxSize(-1, FromDIP(height)));
@@ -148,17 +148,66 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         item_sizer->Add(chevron, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(16));
 
         item_panel->SetSizer(item_sizer);
+        if (clickable) {
+            m_preview_printers_button = item_panel;
+            item_panel->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { toggle_printers_popup(); });
+            label->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { toggle_printers_popup(); });
+            chevron->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { toggle_printers_popup(); });
+        }
         preview_menu_sizer->Add(item_panel, 0, wxEXPAND);
     };
 
     preview_menu_sizer->AddSpacer(FromDIP(35));
-    add_preview_menu_item("CoPrint Quadro", 50);
+    add_preview_menu_item("Printers", 50, false, true);
     add_preview_menu_item("Durum", 40, true);
     add_preview_menu_item("Depolama", 40);
     add_preview_menu_item("Guncelle", 40);
     add_preview_menu_item("Asistan", 40);
     preview_menu_sizer->AddStretchSpacer(1);
     preview_menu_panel->SetSizer(preview_menu_sizer);
+
+    m_printers_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
+    auto *printers_popup_panel = new wxPanel(m_printers_popup, wxID_ANY);
+    printers_popup_panel->SetBackgroundColour(wxColour(245, 245, 245));
+    auto *printers_popup_sizer = new wxBoxSizer(wxVERTICAL);
+
+    auto *printer_current_row = new wxBoxSizer(wxHORIZONTAL);
+    printer_current_row->AddSpacer(FromDIP(12));
+    printer_current_row->Add(new wxStaticBitmap(printers_popup_panel, wxID_ANY, create_scaled_bitmap("printer_preview_BL-P001", this, 18)), 0, wxALIGN_CENTER_VERTICAL);
+    printer_current_row->AddSpacer(FromDIP(10));
+    auto *current_printer_label = new wxStaticText(printers_popup_panel, wxID_ANY, "A1 Combo-cp2");
+    current_printer_label->SetForegroundColour(wxColour(20, 20, 20));
+    printer_current_row->Add(current_printer_label, 0, wxALIGN_CENTER_VERTICAL);
+    printer_current_row->AddStretchSpacer(1);
+    printers_popup_sizer->Add(printer_current_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(12));
+
+    auto *search_box = new wxTextCtrl(printers_popup_panel, wxID_ANY, "", wxDefaultPosition, wxSize(FromDIP(210), -1));
+    search_box->SetHint("Ara");
+    printers_popup_sizer->Add(search_box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
+
+    auto add_popup_line = [this, printers_popup_panel, printers_popup_sizer](const wxString &text, const wxColour &color, bool bold = false) {
+        auto *line = new wxStaticText(printers_popup_panel, wxID_ANY, text);
+        line->SetForegroundColour(color);
+        if (bold) {
+            wxFont font = line->GetFont();
+            font.SetWeight(wxFONTWEIGHT_BOLD);
+            line->SetFont(font);
+        }
+        printers_popup_sizer->Add(line, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(16));
+    };
+
+    add_popup_line("Cihazim", wxColour(120, 120, 120));
+    add_popup_line("A1 Combo-cp2", wxColour(20, 20, 20));
+    add_popup_line("X1C", wxColour(20, 20, 20));
+    add_popup_line("+ Pin Kodu ile Esleştirme", wxColour(20, 20, 20), true);
+    add_popup_line("+ Erişim Kodu ile Bağla", wxColour(20, 20, 20), true);
+    add_popup_line("Diğer Cihaz", wxColour(120, 120, 120));
+    add_popup_line("P1P", wxColour(80, 80, 80));
+    add_popup_line("Cihazlarımı bulamıyor musunuz?", wxColour(38, 94, 190));
+
+    printers_popup_panel->SetSizer(printers_popup_sizer);
+    printers_popup_sizer->Fit(printers_popup_panel);
+    m_printers_popup->SetSize(printers_popup_panel->GetSize());
 
     auto *preview_row = new wxBoxSizer(wxHORIZONTAL);
     preview_row->Add(preview_menu_panel, 0, wxTOP, FromDIP(5));
@@ -465,6 +514,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 PrinterWebView::~PrinterWebView()
 {
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " Start";
+    dismiss_printers_popup();
     if (m_thumbnail_web_request.IsOk())
         m_thumbnail_web_request.Cancel();
     if (m_layer_refresh_timer != nullptr) {
@@ -539,6 +589,27 @@ void PrinterWebView::set_active_file_name(const wxString &file_name)
         return;
     m_active_file_name_value->SetLabelText(file_name.empty() ? "N/A" : file_name);
     Layout();
+}
+
+void PrinterWebView::toggle_printers_popup()
+{
+    if (m_printers_popup == nullptr || m_preview_printers_button == nullptr)
+        return;
+
+    if (m_printers_popup->IsShown()) {
+        m_printers_popup->Dismiss();
+        return;
+    }
+
+    const wxPoint screen_pos = m_preview_printers_button->ClientToScreen(wxPoint(0, m_preview_printers_button->GetSize().GetHeight()));
+    m_printers_popup->Position(screen_pos, wxSize(0, 0));
+    m_printers_popup->Popup(m_preview_printers_button);
+}
+
+void PrinterWebView::dismiss_printers_popup()
+{
+    if (m_printers_popup != nullptr && m_printers_popup->IsShown())
+        m_printers_popup->Dismiss();
 }
 
 void PrinterWebView::set_fallback_preview_thumbnail()
