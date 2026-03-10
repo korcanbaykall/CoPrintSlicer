@@ -107,9 +107,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_thumb_box->SetBackgroundColorNormal(wxColour(210, 210, 210));
     progress_thumb_box->SetBackgroundColour(wxColour(22, 24, 29));
     auto *progress_thumb_sizer = new wxBoxSizer(wxVERTICAL);
-    m_preview_thumbnail = new wxStaticBitmap(progress_thumb_box, wxID_ANY, create_scaled_bitmap("CoPrintSlicer", progress_thumb_box, 96));
+    m_preview_thumbnail = new wxStaticBitmap(progress_thumb_box, wxID_ANY, wxNullBitmap);
     m_preview_thumbnail->SetMinSize(wxSize(FromDIP(120), FromDIP(120)));
     m_preview_thumbnail->SetMaxSize(wxSize(FromDIP(120), FromDIP(120)));
+    set_fallback_preview_thumbnail();
     progress_thumb_sizer->AddStretchSpacer(1);
     progress_thumb_sizer->Add(m_preview_thumbnail, 0, wxALIGN_CENTER_HORIZONTAL);
     progress_thumb_sizer->AddStretchSpacer(1);
@@ -456,7 +457,14 @@ void PrinterWebView::set_fallback_preview_thumbnail()
     const wxString logo_path = from_u8(Slic3r::resources_dir() + "/images/logo.jpg");
     wxImage logo_image;
     if (logo_image.LoadFile(logo_path, wxBITMAP_TYPE_JPEG)) {
-        wxImage resized = logo_image.Scale(FromDIP(120), FromDIP(120), wxIMAGE_QUALITY_HIGH);
+        const int max_width = FromDIP(110);
+        const int max_height = FromDIP(60);
+        const double width_ratio = static_cast<double>(max_width) / static_cast<double>(logo_image.GetWidth());
+        const double height_ratio = static_cast<double>(max_height) / static_cast<double>(logo_image.GetHeight());
+        const double scale_ratio = std::min(width_ratio, height_ratio);
+        const int scaled_width = std::max(1, static_cast<int>(logo_image.GetWidth() * scale_ratio));
+        const int scaled_height = std::max(1, static_cast<int>(logo_image.GetHeight() * scale_ratio));
+        wxImage resized = logo_image.Scale(scaled_width, scaled_height, wxIMAGE_QUALITY_HIGH);
         m_preview_thumbnail->SetBitmap(wxBitmap(resized));
     } else {
         m_preview_thumbnail->SetBitmap(create_scaled_bitmap("CoPrintSlicer", m_preview_thumbnail, 96));
@@ -624,5 +632,3 @@ void PrinterWebView::OnLoaded(wxWebViewEvent &evt)
 
 } // GUI
 } // Slic3r
-
-
