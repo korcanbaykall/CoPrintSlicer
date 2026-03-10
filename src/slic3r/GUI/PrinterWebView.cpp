@@ -188,7 +188,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     layer_info_row->Add(m_estimated_finish_label, 0, wxALIGN_CENTER_VERTICAL);
     layer_info_row->AddSpacer(FromDIP(8));
     layer_info_row->Add(m_estimated_finish_value, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddSpacer(FromDIP(70));
+    layer_info_row->AddSpacer(FromDIP(130));
     controls_col->Add(layer_info_row, 0, wxTOP, FromDIP(12));
 
     controls_col->AddStretchSpacer(1);
