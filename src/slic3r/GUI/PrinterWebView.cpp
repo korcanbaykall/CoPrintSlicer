@@ -73,6 +73,15 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetBackgroundColour(wxColour(28, 30, 34));
     preview_box->SetMinSize(wxSize(-1, FromDIP(545)));
     preview_box->SetMaxSize(wxSize(-1, FromDIP(545)));
+    auto *preview_box_sizer = new wxBoxSizer(wxVERTICAL);
+    preview_box_sizer->AddStretchSpacer(1);
+    auto *preview_bottom_divider = new wxPanel(preview_box, wxID_ANY);
+    preview_bottom_divider->SetMinSize(wxSize(-1, FromDIP(1)));
+    preview_bottom_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
+    preview_bottom_divider->SetBackgroundColour(wxColour(96, 100, 108));
+    preview_box_sizer->Add(preview_bottom_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(15));
+    preview_box_sizer->AddSpacer(FromDIP(30));
+    preview_box->SetSizer(preview_box_sizer);
     auto *preview_row = new wxBoxSizer(wxHORIZONTAL);
     preview_row->AddSpacer(FromDIP(240));
     preview_row->Add(preview_box, 1, wxEXPAND);
