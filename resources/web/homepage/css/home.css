@@ -266,6 +266,8 @@ body
 {
 	width:56px;
 	height: 56px;
+	/* CoPrintSlicer: shift green New Project / Open Project icons to yellow */
+	filter: hue-rotate(-131deg) saturate(1.15) brightness(1.05);
 }
 
 .MenuDesc

@@ -41,7 +41,7 @@ void RadioGroup::Create(
 
     m_focus_color = StateColor(
         std::pair(bg                 , (int)StateColor::NotFocused),
-        std::pair(wxColour("#009688"), (int)StateColor::Focused)
+        std::pair(wxColour("#E6A800"), (int)StateColor::Focused)  // CoPrintSlicer yellow
     );
 
     auto bmp_size   = m_on.GetBmpSize();

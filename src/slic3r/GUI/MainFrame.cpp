@@ -2105,9 +2105,9 @@ void MainFrame::update_side_button_style()
     m_slice_btn->SetExtraSize(wxSize(FromDIP(38), FromDIP(10)));
     m_slice_btn->SetBottomColour(wxColour(0x3B4446));*/
     StateColor m_btn_bg_enable = StateColor(
-        std::pair<wxColour, int>(wxColour(0, 137, 123), StateColor::Pressed),
-        std::pair<wxColour, int>(wxColour(48, 221, 112), StateColor::Hovered),
-        std::pair<wxColour, int>(wxColour(0, 150, 136), StateColor::Normal)
+        std::pair<wxColour, int>(wxColour(184, 134, 0), StateColor::Pressed),
+        std::pair<wxColour, int>(wxColour(230, 180, 50), StateColor::Hovered),
+        std::pair<wxColour, int>(wxColour(230, 168, 0), StateColor::Normal)  // CoPrintSlicer yellow
     );
 
     // m_publish_btn->SetMinSize(wxSize(FromDIP(125), FromDIP(24)));
@@ -2121,6 +2121,10 @@ void MainFrame::update_side_button_style()
     m_slice_btn->SetCornerRadius(FromDIP(12));
     m_slice_btn->SetExtraSize(wxSize(FromDIP(38), FromDIP(10)));
     m_slice_btn->SetMinSize(wxSize(-1, FromDIP(24)));
+    m_slice_btn->SetBackgroundColor(m_btn_bg_enable);
+    m_slice_btn->SetBorderColor(m_btn_bg_enable);
+    m_slice_option_btn->SetBackgroundColor(m_btn_bg_enable);
+    m_slice_option_btn->SetBorderColor(m_btn_bg_enable);
 
     m_slice_option_btn->SetTextLayout(SideButton::EHorizontalOrientation::HO_Center);
     m_slice_option_btn->SetCornerRadius(FromDIP(12));

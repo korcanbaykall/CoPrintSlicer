@@ -65,6 +65,12 @@ body
 	background-color: #4A4420;
 }
 
+/* CoPrintSlicer: New Project / Open Project icons yellow in dark theme */
+.MenuIcon img
+{
+	filter: hue-rotate(-131deg) saturate(1.15) brightness(1.1);
+}
+
 .FileImg
 {
 	background-color: #36363C; /*ORCA use darker color for dark theme for thumbnails*/
@@ -80,7 +86,7 @@ body
 
 .CT_Item:hover
 {
-	background-color:#00675b; /*ORCA color*/
+	background-color:#B8860B; /* CoPrintSlicer yellow (dark theme) */
 }
 
 /*----User Manual------*/
