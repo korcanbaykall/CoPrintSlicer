@@ -84,7 +84,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_bottom_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
     preview_bottom_divider->SetBackgroundColour(wxColour(96, 100, 108));
     preview_box_sizer->Add(preview_bottom_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(15));
-    auto *preview_bottom_panel = new wxPanel(preview_box, wxID_ANY);
+    auto *preview_bottom_panel = new StaticBox(preview_box, wxID_ANY);
+    preview_bottom_panel->SetCornerRadius(FromDIP(0));
+    preview_bottom_panel->SetBorderWidth(1);
+    preview_bottom_panel->SetBorderColorNormal(wxColour(55, 58, 64));
+    preview_bottom_panel->SetBackgroundColorNormal(wxColour(28, 30, 34));
     preview_bottom_panel->SetBackgroundColour(wxColour(28, 30, 34));
     preview_bottom_panel->SetMinSize(wxSize(-1, FromDIP(70)));
     preview_bottom_panel->SetMaxSize(wxSize(-1, FromDIP(70)));
@@ -98,7 +102,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_bottom_row->Add(play_icon, 0, wxALIGN_CENTER_VERTICAL);
     preview_bottom_sizer->Add(preview_bottom_row, 0, wxEXPAND);
     preview_bottom_panel->SetSizer(preview_bottom_sizer);
-    preview_box_sizer->Add(preview_bottom_panel, 0, wxEXPAND);
+    preview_box_sizer->Add(preview_bottom_panel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
     preview_box->SetSizer(preview_box_sizer);
     auto *preview_row = new wxBoxSizer(wxHORIZONTAL);
     preview_row->AddSpacer(FromDIP(240));
