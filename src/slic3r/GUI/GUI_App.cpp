@@ -356,9 +356,9 @@ public:
         int width = bmp.GetWidth();
 		int height = bmp.GetHeight();
 
-		// Logo
+		// Logo – CoPrintSlicer branding (light/dark)
         BitmapCache bmp_cache;
-        wxBitmap logo_bmp = *bmp_cache.load_svg(is_dark ? "splash_logo_dark" : "splash_logo", width, height);  // use with full width & height
+        wxBitmap logo_bmp = *bmp_cache.load_svg(is_dark ? "CoPrintSlicer_about_dark" : "CoPrintSlicer_about", width, height);
         memDc.DrawBitmap(logo_bmp, 0, 0, true);
 
         // App title

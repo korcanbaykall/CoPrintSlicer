@@ -348,7 +348,8 @@ wxBitmap* BitmapCache::load_svg(const std::string &bitmap_name, unsigned target_
         replaces["#009688"] = "#00675b";
 
     // Device/monitor screen: use yellow instead of green for monitor_* assets
-    if (strstr(bitmap_name.c_str(), "monitor_") != NULL) {
+    // Home screen: use yellow for tab_home_* and monitor_* assets
+    if (strstr(bitmap_name.c_str(), "monitor_") != NULL || strstr(bitmap_name.c_str(), "tab_home") != NULL) {
         if (dark_mode) {
             replaces["\"#009688\""] = "\"#B8860B\"";
             replaces["\"#00675b\""] = "\"#B8860B\"";

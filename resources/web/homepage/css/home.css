@@ -179,12 +179,12 @@ body
 
 .BtnItem:hover
 {
-	background-color: #BFE1DE; /*ORCA color with %25 opacity*/
+	background-color: #F5E6C8; /* CoPrintSlicer yellow tint */
 }
 
 .BtnItemSelected
 {
-	background-color: #BFE1DE; /*ORCA color with %25 opacity*/
+	background-color: #F5E6C8; /* CoPrintSlicer yellow tint */
 }
 
 .BtnIcon
@@ -253,8 +253,8 @@ body
 
 .MenuItem:hover
 {
-	border-color: #009688;		/*ORCA color*/
-	background-color: #E5F0EE; /*ORCA color with %25 opacity*/
+	border-color: #E6A800;		/* CoPrintSlicer yellow */
+	background-color: #FBF4E6; /* CoPrintSlicer yellow tint */
 }
 
 .MenuIcon
@@ -429,7 +429,7 @@ body
 .CT_Item:hover
 {
 	cursor: pointer;
-	background-color:#009688; /*ORCA color*/
+	background-color:#E6A800; /* CoPrintSlicer yellow */
 	border-radius: 4px;
 	color: #fff;
 }
@@ -665,7 +665,7 @@ body
 #HotModel_RIGHT_Title:hover
 {
 	cursor: pointer;	
-	color:#009688;	
+	color:#E6A800;	
 }
 
 .HotModelPiece
