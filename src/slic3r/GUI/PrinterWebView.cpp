@@ -676,7 +676,12 @@ void PrinterWebView::rebuild_printers_popup()
 
     m_printers_popup_panel->SetSizer(printers_popup_sizer);
     printers_popup_sizer->Fit(m_printers_popup_panel);
-    m_printers_popup->SetSize(m_printers_popup_panel->GetSize());
+    m_printers_popup_panel->Layout();
+
+    const wxSize popup_size = m_printers_popup_panel->GetBestSize();
+    m_printers_popup_panel->SetSize(popup_size);
+    m_printers_popup->SetClientSize(popup_size);
+    m_printers_popup->SetSize(popup_size);
     m_printers_popup->Layout();
 }
 
