@@ -133,6 +133,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *left_container = new wxPanel(m_status_page, wxID_ANY);
     left_container->SetBackgroundColour(wxColour(28, 30, 34));
+    left_container->SetMinSize(wxSize(FromDIP(860), -1));
+    left_container->SetMaxSize(wxSize(FromDIP(860), -1));
     auto *left_sizer = new wxBoxSizer(wxVERTICAL);
     auto *preview_box = new StaticBox(left_container, wxID_ANY);
     preview_box->SetCornerRadius(FromDIP(10));
@@ -140,8 +142,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetBorderColorNormal(wxColour(55, 58, 64));
     preview_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     preview_box->SetBackgroundColour(wxColour(28, 30, 34));
-    preview_box->SetMinSize(wxSize(-1, FromDIP(545)));
-    preview_box->SetMaxSize(wxSize(-1, FromDIP(545)));
+    preview_box->SetMinSize(wxSize(FromDIP(860), FromDIP(545)));
+    preview_box->SetMaxSize(wxSize(FromDIP(860), FromDIP(545)));
     auto *preview_box_sizer = new wxBoxSizer(wxVERTICAL);
     preview_box_sizer->AddSpacer(FromDIP(15));
     auto *camera_label = new wxStaticText(preview_box, wxID_ANY, _L("Kamera"));
@@ -194,8 +196,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box->SetBorderColorNormal(wxColour(55, 58, 64));
     progress_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     progress_box->SetBackgroundColour(wxColour(28, 30, 34));
-    progress_box->SetMinSize(wxSize(-1, FromDIP(270)));
-    progress_box->SetMaxSize(wxSize(-1, FromDIP(270)));
+    progress_box->SetMinSize(wxSize(FromDIP(860), FromDIP(270)));
+    progress_box->SetMaxSize(wxSize(FromDIP(860), FromDIP(270)));
     auto *progress_box_sizer = new wxBoxSizer(wxVERTICAL);
     auto *progress_title = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Yazd\xC4\xB1rma ilerlemesi"));
     progress_title->SetForegroundColour(wxColour(150, 156, 166));
@@ -230,14 +232,14 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *controls_col = new wxBoxSizer(wxVERTICAL);
     controls_col->AddSpacer(FromDIP(55));
-    m_active_file_name_value = new wxStaticText(progress_box, wxID_ANY, "N/A", wxDefaultPosition, wxSize(FromDIP(500), -1), wxST_ELLIPSIZE_END);
+    m_active_file_name_value = new wxStaticText(progress_box, wxID_ANY, "N/A", wxDefaultPosition, wxSize(FromDIP(420), -1), wxST_ELLIPSIZE_END);
     m_active_file_name_value->SetForegroundColour(wxColour(97, 211, 124));
     controls_col->Add(m_active_file_name_value, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
     
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, FromDIP(12)), wxGA_SMOOTH);
+    auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(500), FromDIP(12)), wxGA_SMOOTH);
     progress_bar->SetValue(0);
-    progress_controls_row->Add(progress_bar, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(45));
+    progress_controls_row->Add(progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(45));
     auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
     progress_controls_row->Add(pause_icon, 0, wxALIGN_CENTER_VERTICAL);
     progress_controls_row->AddSpacer(FromDIP(10));
@@ -269,7 +271,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     controls_col->Add(layer_info_row, 0, wxTOP, FromDIP(4));
 
     controls_col->AddStretchSpacer(1);
-    progress_content_row->Add(controls_col, 1, wxRIGHT | wxEXPAND, FromDIP(15));
+    progress_content_row->Add(controls_col, 0, wxRIGHT, FromDIP(15));
 
     progress_box_sizer->Add(progress_content_row, 1, wxEXPAND);
     progress_box_sizer->AddStretchSpacer(1);
@@ -466,7 +468,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->AddStretchSpacer(1);
     right_container->SetSizer(right_sizer);
 
-    status_page_sizer->Add(left_container, 1, wxEXPAND | wxRIGHT, FromDIP(20));
+    status_page_sizer->Add(left_container, 0, wxEXPAND | wxRIGHT, FromDIP(20));
     status_page_sizer->Add(right_container, 0, wxEXPAND | wxALL, FromDIP(10));
     m_status_page->SetSizer(status_page_sizer);
 
@@ -616,6 +618,8 @@ void PrinterWebView::rebuild_printers_popup()
     const auto local_machines = dev_manager ? dev_manager->get_local_machinelist() : std::map<std::string, MachineObject*>();
     const bool has_any_machine = selected_machine != nullptr || !my_machines.empty() || !local_machines.empty();
 
+    m_printers_popup_panel->SetMinSize(wxSize(FromDIP(238), -1));
+
     if (selected_machine != nullptr) {
         auto *printer_current_row = new wxBoxSizer(wxHORIZONTAL);
         printer_current_row->AddSpacer(FromDIP(12));
@@ -628,11 +632,13 @@ void PrinterWebView::rebuild_printers_popup()
         printers_popup_sizer->Add(printer_current_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(12));
     }
 
+    printers_popup_sizer->AddSpacer(FromDIP(5));
+
     auto *search_box = new wxTextCtrl(m_printers_popup_panel, wxID_ANY, "", wxDefaultPosition, wxSize(FromDIP(210), -1));
     search_box->SetHint("Ara");
     printers_popup_sizer->Add(search_box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
 
-    auto add_popup_line = [this, printers_popup_sizer](wxWindow *parent, const wxString &text, const wxColour &color, bool bold = false) {
+    auto add_popup_line = [this, printers_popup_sizer](wxWindow *parent, const wxString &text, const wxColour &color, bool bold = false, int top = 16) {
         auto *line = new wxStaticText(parent, wxID_ANY, text);
         line->SetForegroundColour(color);
         if (bold) {
@@ -640,39 +646,51 @@ void PrinterWebView::rebuild_printers_popup()
             font.SetWeight(wxFONTWEIGHT_BOLD);
             line->SetFont(font);
         }
-        printers_popup_sizer->Add(line, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(16));
+        printers_popup_sizer->Add(line, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(top));
     };
 
-    if (!has_any_machine) {
-        add_popup_line(m_printers_popup_panel, "Cihaz ekle +", wxColour(20, 20, 20), true);
-        add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true);
-    } else {
-        add_popup_line(m_printers_popup_panel, "Cihazim", wxColour(120, 120, 120));
-        if (selected_machine != nullptr)
-            add_popup_line(m_printers_popup_panel, from_u8(selected_machine->get_dev_name()), wxColour(20, 20, 20));
+    std::map<std::string, MachineObject*> visible_my_machines = my_machines;
+    if (selected_machine != nullptr)
+        visible_my_machines.emplace(selected_machine->get_dev_id(), selected_machine);
 
-        for (const auto &entry : my_machines) {
-            auto *machine = entry.second;
-            if (machine == nullptr)
-                continue;
-            if (selected_machine != nullptr && machine->get_dev_id() == selected_machine->get_dev_id())
-                continue;
-            add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(20, 20, 20));
-        }
-
-        for (const auto &entry : local_machines) {
-            auto *machine = entry.second;
-            if (machine == nullptr)
-                continue;
-            if (selected_machine != nullptr && machine->get_dev_id() == selected_machine->get_dev_id())
-                continue;
-            add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(80, 80, 80));
-        }
-
-        add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true);
+    std::map<std::string, MachineObject*> other_local_machines;
+    for (const auto &entry : local_machines) {
+        if (entry.second == nullptr)
+            continue;
+        if (visible_my_machines.find(entry.first) != visible_my_machines.end())
+            continue;
+        other_local_machines.emplace(entry);
     }
 
-    add_popup_line(m_printers_popup_panel, "Cihazlarimi bulamiyor musunuz?", wxColour(38, 94, 190));
+    if (!has_any_machine) {
+        add_popup_line(m_printers_popup_panel, "Cihaz ekle +", wxColour(20, 20, 20), true, 18);
+        add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 14);
+    } else {
+        if (!visible_my_machines.empty()) {
+            add_popup_line(m_printers_popup_panel, "Cihazim", wxColour(120, 120, 120), false, 18);
+            for (const auto &entry : visible_my_machines) {
+                auto *machine = entry.second;
+                if (machine == nullptr)
+                    continue;
+                add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(20, 20, 20), false, 12);
+            }
+        }
+
+        if (!other_local_machines.empty()) {
+            add_popup_line(m_printers_popup_panel, "Diger Cihazlar", wxColour(120, 120, 120), false, 18);
+            for (const auto &entry : other_local_machines) {
+                auto *machine = entry.second;
+                if (machine == nullptr)
+                    continue;
+                add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(80, 80, 80), false, 12);
+            }
+        }
+
+        add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 16);
+    }
+
+    add_popup_line(m_printers_popup_panel, "Cihazlarimi bulamiyor musunuz?", wxColour(38, 94, 190), false, 16);
+    printers_popup_sizer->AddSpacer(FromDIP(10));
 
     m_printers_popup_panel->SetSizer(printers_popup_sizer);
     printers_popup_sizer->Fit(m_printers_popup_panel);
