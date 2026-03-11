@@ -82,6 +82,7 @@ private:
     void select_tab(PrinterWebViewTab tab);
     void update_sidebar_selection();
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
+    void rebuild_printers_popup();
 
     wxWebView* m_browser;
     long m_zoomFactor;
@@ -98,6 +99,7 @@ private:
     wxStaticBitmap *m_preview_thumbnail { nullptr };
     wxWindow *m_preview_printers_button { nullptr };
     wxPopupTransientWindow *m_printers_popup { nullptr };
+    wxPanel *m_printers_popup_panel { nullptr };
     wxPanel *m_status_page { nullptr };
     wxPanel *m_storage_page { nullptr };
     wxPanel *m_update_page { nullptr };
