@@ -28,12 +28,20 @@
 #include <wx/tbarbase.h>
 #include "wx/textctrl.h"
 #include <wx/timer.h>
+#include <vector>
 
 
 namespace Slic3r {
 class MachineObject;
 
 namespace GUI {
+
+enum class PrinterWebViewTab {
+    Status,
+    Storage,
+    Update,
+    Assistant
+};
 
 class PrinterWebView : public wxPanel {
 public:
@@ -61,8 +69,19 @@ public:
     bool Show(bool show = true) override;
 
 private:
+    struct SidebarMenuItem {
+        PrinterWebViewTab tab;
+        wxPanel *panel { nullptr };
+        wxPanel *active_strip { nullptr };
+        wxStaticText *label { nullptr };
+        wxStaticText *chevron { nullptr };
+    };
+
     void SendAPIKey();
     void refresh_layer_info_from_selected_machine();
+    void select_tab(PrinterWebViewTab tab);
+    void update_sidebar_selection();
+    wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
 
     wxWebView* m_browser;
     long m_zoomFactor;
@@ -74,9 +93,15 @@ private:
     wxTimer *m_layer_refresh_timer { nullptr };
     wxWebRequest m_thumbnail_web_request;
     wxImage m_thumbnail_image;
+    PrinterWebViewTab m_selected_tab { PrinterWebViewTab::Status };
+    std::vector<SidebarMenuItem> m_sidebar_items;
     wxStaticBitmap *m_preview_thumbnail { nullptr };
     wxWindow *m_preview_printers_button { nullptr };
     wxPopupTransientWindow *m_printers_popup { nullptr };
+    wxPanel *m_status_page { nullptr };
+    wxPanel *m_storage_page { nullptr };
+    wxPanel *m_update_page { nullptr };
+    wxPanel *m_assistant_page { nullptr };
     wxStaticText *m_active_file_name_value { nullptr };
     wxStaticText *m_estimated_finish_label { nullptr };
     wxStaticText *m_estimated_finish_value { nullptr };
