@@ -133,8 +133,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *left_container = new wxPanel(m_status_page, wxID_ANY);
     left_container->SetBackgroundColour(wxColour(28, 30, 34));
-    left_container->SetMinSize(wxSize(FromDIP(860), -1));
-    left_container->SetMaxSize(wxSize(FromDIP(860), -1));
+    left_container->SetMinSize(wxSize(FromDIP(890), -1));
+    left_container->SetMaxSize(wxSize(FromDIP(890), -1));
     auto *left_sizer = new wxBoxSizer(wxVERTICAL);
     auto *preview_box = new StaticBox(left_container, wxID_ANY);
     preview_box->SetCornerRadius(FromDIP(10));
@@ -142,8 +142,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetBorderColorNormal(wxColour(55, 58, 64));
     preview_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     preview_box->SetBackgroundColour(wxColour(28, 30, 34));
-    preview_box->SetMinSize(wxSize(FromDIP(860), FromDIP(545)));
-    preview_box->SetMaxSize(wxSize(FromDIP(860), FromDIP(545)));
+    preview_box->SetMinSize(wxSize(FromDIP(890), FromDIP(545)));
+    preview_box->SetMaxSize(wxSize(FromDIP(890), FromDIP(545)));
     auto *preview_box_sizer = new wxBoxSizer(wxVERTICAL);
     preview_box_sizer->AddSpacer(FromDIP(15));
     auto *camera_label = new wxStaticText(preview_box, wxID_ANY, _L("Kamera"));
@@ -196,8 +196,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box->SetBorderColorNormal(wxColour(55, 58, 64));
     progress_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     progress_box->SetBackgroundColour(wxColour(28, 30, 34));
-    progress_box->SetMinSize(wxSize(FromDIP(860), FromDIP(270)));
-    progress_box->SetMaxSize(wxSize(FromDIP(860), FromDIP(270)));
+    progress_box->SetMinSize(wxSize(FromDIP(890), FromDIP(270)));
+    progress_box->SetMaxSize(wxSize(FromDIP(890), FromDIP(270)));
     auto *progress_box_sizer = new wxBoxSizer(wxVERTICAL);
     auto *progress_title = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Yazd\xC4\xB1rma ilerlemesi"));
     progress_title->SetForegroundColour(wxColour(150, 156, 166));
@@ -237,7 +237,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     controls_col->Add(m_active_file_name_value, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
     
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(500), FromDIP(12)), wxGA_SMOOTH);
+    auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(520), FromDIP(12)), wxGA_SMOOTH);
     progress_bar->SetValue(0);
     progress_controls_row->Add(progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(45));
     auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
