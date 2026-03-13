@@ -278,10 +278,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box_sizer->AddStretchSpacer(1);
     progress_box->SetSizer(progress_box_sizer);
 
-    auto make_placeholder_box = [this, left_container]() {
+    auto make_upper_placeholder_box = [this, left_container]() {
         auto *box = new StaticBox(left_container, wxID_ANY);
-        box->SetMinSize(wxSize(FromDIP(550), FromDIP(245)));
-        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(245)));
+        box->SetMinSize(wxSize(FromDIP(550), FromDIP(270)));
+        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(270)));
         box->SetCornerRadius(FromDIP(10));
         box->SetBorderWidth(1);
         box->SetBorderColorNormal(wxColour(55, 58, 64));
@@ -290,8 +290,20 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         return box;
     };
 
-    auto *upper_placeholder_box = make_placeholder_box();
-    auto *lower_placeholder_box = make_placeholder_box();
+    auto make_lower_placeholder_box = [this, left_container]() {
+        auto *box = new StaticBox(left_container, wxID_ANY);
+        box->SetMinSize(wxSize(FromDIP(550), FromDIP(225)));
+        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(225)));
+        box->SetCornerRadius(FromDIP(10));
+        box->SetBorderWidth(1);
+        box->SetBorderColorNormal(wxColour(55, 58, 64));
+        box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+        box->SetBackgroundColour(wxColour(28, 30, 34));
+        return box;
+    };
+
+    auto *upper_placeholder_box = make_upper_placeholder_box();
+    auto *lower_placeholder_box = make_lower_placeholder_box();
 
     auto *upper_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
     auto *upper_header_row = new wxBoxSizer(wxHORIZONTAL);
@@ -326,40 +338,35 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     for (int i = 0; i < 4; ++i) {
         auto *tool_row = new wxBoxSizer(wxHORIZONTAL);
 
-        auto *left_group = new wxBoxSizer(wxHORIZONTAL);
-        auto *left_color = new StaticBox(upper_placeholder_box, wxID_ANY);
+        auto *left_shell = new StaticBox(upper_placeholder_box, wxID_ANY);
+        left_shell->SetMinSize(wxSize(FromDIP(206), FromDIP(44)));
+        left_shell->SetMaxSize(wxSize(FromDIP(206), FromDIP(44)));
+        left_shell->SetCornerRadius(FromDIP(12));
+        left_shell->SetBorderWidth(0);
+        left_shell->SetBackgroundColorNormal(wxColour(43, 46, 52));
+        left_shell->SetBackgroundColour(wxColour(43, 46, 52));
+        auto *left_shell_sizer = new wxBoxSizer(wxHORIZONTAL);
+
+        auto *left_color = new wxPanel(left_shell, wxID_ANY);
         left_color->SetMinSize(wxSize(FromDIP(36), FromDIP(44)));
         left_color->SetMaxSize(wxSize(FromDIP(36), FromDIP(44)));
-        left_color->SetCornerRadius(FromDIP(12));
-        left_color->SetBorderWidth(0);
-        left_color->SetBackgroundColorNormal(filament_colors[i]);
         left_color->SetBackgroundColour(filament_colors[i]);
-        left_group->Add(left_color, 0);
+        left_shell_sizer->Add(left_color, 0, wxEXPAND);
+        left_shell_sizer->AddSpacer(FromDIP(14));
 
-        auto *left_card = new StaticBox(upper_placeholder_box, wxID_ANY);
-        left_card->SetMinSize(wxSize(FromDIP(170), FromDIP(44)));
-        left_card->SetMaxSize(wxSize(FromDIP(170), FromDIP(44)));
-        left_card->SetCornerRadius(FromDIP(12));
-        left_card->SetBorderWidth(0);
-        left_card->SetBackgroundColorNormal(wxColour(43, 46, 52));
-        left_card->SetBackgroundColour(wxColour(43, 46, 52));
-        auto *left_card_sizer = new wxBoxSizer(wxHORIZONTAL);
-        left_card_sizer->AddSpacer(FromDIP(14));
-
-        auto *material_label = new wxStaticText(left_card, wxID_ANY, "PLA");
+        auto *material_label = new wxStaticText(left_shell, wxID_ANY, "PLA");
         material_label->SetForegroundColour(wxColour(235, 235, 235));
         wxFont material_font = material_label->GetFont();
         material_font.SetWeight(wxFONTWEIGHT_BOLD);
         material_label->SetFont(material_font);
-        left_card_sizer->Add(material_label, 0, wxALIGN_CENTER_VERTICAL);
-        left_card_sizer->AddStretchSpacer(1);
+        left_shell_sizer->Add(material_label, 0, wxALIGN_CENTER_VERTICAL);
+        left_shell_sizer->AddStretchSpacer(1);
 
-        auto *weight_label = new wxStaticText(left_card, wxID_ANY, "14.3g");
+        auto *weight_label = new wxStaticText(left_shell, wxID_ANY, "14.3g");
         weight_label->SetForegroundColour(wxColour(220, 220, 220));
-        left_card_sizer->Add(weight_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(14));
-        left_card->SetSizer(left_card_sizer);
-        left_group->Add(left_card, 0);
-        tool_row->Add(left_group, 0, wxALIGN_CENTER_VERTICAL);
+        left_shell_sizer->Add(weight_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(14));
+        left_shell->SetSizer(left_shell_sizer);
+        tool_row->Add(left_shell, 0, wxALIGN_CENTER_VERTICAL);
 
         tool_row->AddSpacer(FromDIP(16));
         auto *arrow_label = new wxStaticText(upper_placeholder_box, wxID_ANY, ">");
@@ -370,40 +377,35 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         tool_row->Add(arrow_label, 0, wxALIGN_CENTER_VERTICAL);
         tool_row->AddSpacer(FromDIP(16));
 
-        auto *right_group = new wxBoxSizer(wxHORIZONTAL);
-        auto *right_color = new StaticBox(upper_placeholder_box, wxID_ANY);
+        auto *right_shell = new StaticBox(upper_placeholder_box, wxID_ANY);
+        right_shell->SetMinSize(wxSize(FromDIP(136), FromDIP(44)));
+        right_shell->SetMaxSize(wxSize(FromDIP(136), FromDIP(44)));
+        right_shell->SetCornerRadius(FromDIP(12));
+        right_shell->SetBorderWidth(0);
+        right_shell->SetBackgroundColorNormal(wxColour(43, 46, 52));
+        right_shell->SetBackgroundColour(wxColour(43, 46, 52));
+        auto *right_shell_sizer = new wxBoxSizer(wxHORIZONTAL);
+
+        auto *right_color = new wxPanel(right_shell, wxID_ANY);
         right_color->SetMinSize(wxSize(FromDIP(18), FromDIP(44)));
         right_color->SetMaxSize(wxSize(FromDIP(18), FromDIP(44)));
-        right_color->SetCornerRadius(FromDIP(12));
-        right_color->SetBorderWidth(0);
-        right_color->SetBackgroundColorNormal(filament_colors[i]);
         right_color->SetBackgroundColour(filament_colors[i]);
-        right_group->Add(right_color, 0);
+        right_shell_sizer->Add(right_color, 0, wxEXPAND);
+        right_shell_sizer->AddSpacer(FromDIP(16));
 
-        auto *right_card = new StaticBox(upper_placeholder_box, wxID_ANY);
-        right_card->SetMinSize(wxSize(FromDIP(118), FromDIP(44)));
-        right_card->SetMaxSize(wxSize(FromDIP(118), FromDIP(44)));
-        right_card->SetCornerRadius(FromDIP(12));
-        right_card->SetBorderWidth(0);
-        right_card->SetBackgroundColorNormal(wxColour(43, 46, 52));
-        right_card->SetBackgroundColour(wxColour(43, 46, 52));
-        auto *right_card_sizer = new wxBoxSizer(wxHORIZONTAL);
-        right_card_sizer->AddSpacer(FromDIP(16));
-
-        auto *tool_label = new wxStaticText(right_card, wxID_ANY, wxString::Format("T%d", i + 1));
+        auto *tool_label = new wxStaticText(right_shell, wxID_ANY, wxString::Format("T%d", i + 1));
         tool_label->SetForegroundColour(wxColour(235, 235, 235));
         wxFont tool_font = tool_label->GetFont();
         tool_font.SetWeight(wxFONTWEIGHT_BOLD);
         tool_label->SetFont(tool_font);
-        right_card_sizer->Add(tool_label, 0, wxALIGN_CENTER_VERTICAL);
-        right_card_sizer->AddStretchSpacer(1);
+        right_shell_sizer->Add(tool_label, 0, wxALIGN_CENTER_VERTICAL);
+        right_shell_sizer->AddStretchSpacer(1);
 
-        auto *refresh_label = new wxStaticText(right_card, wxID_ANY, "<>");
+        auto *refresh_label = new wxStaticText(right_shell, wxID_ANY, "<>");
         refresh_label->SetForegroundColour(wxColour(200, 200, 200));
-        right_card_sizer->Add(refresh_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(14));
-        right_card->SetSizer(right_card_sizer);
-        right_group->Add(right_card, 0);
-        tool_row->Add(right_group, 0, wxALIGN_CENTER_VERTICAL);
+        right_shell_sizer->Add(refresh_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(14));
+        right_shell->SetSizer(right_shell_sizer);
+        tool_row->Add(right_shell, 0, wxALIGN_CENTER_VERTICAL);
 
         upper_placeholder_sizer->Add(tool_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(8));
     }
