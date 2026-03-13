@@ -307,7 +307,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *upper_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
     auto *upper_header_row = new wxBoxSizer(wxHORIZONTAL);
-    const int assigned_tools_offset = FromDIP(200);
+    const int assigned_tools_offset = FromDIP(130);
 
     auto *model_colors_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Model Colors");
     model_colors_label->SetForegroundColour(wxColour(151, 151, 151));
