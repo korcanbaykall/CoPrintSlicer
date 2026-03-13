@@ -335,15 +335,75 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     printer_info_row->Add(printer_photo_box, 0, wxALIGN_TOP);
     printer_info_row->AddSpacer(FromDIP(20));
 
+    auto *printer_text_col = new wxBoxSizer(wxVERTICAL);
+
     auto *printer_name = new wxStaticText(lower_placeholder_box, wxID_ANY, "Anycubic Kobra 3");
     printer_name->SetForegroundColour(wxColour(235, 235, 235));
     wxFont printer_name_font = printer_name->GetFont();
     printer_name_font.SetWeight(wxFONTWEIGHT_BOLD);
     printer_name_font.SetPointSize(printer_name_font.GetPointSize() + 1);
     printer_name->SetFont(printer_name_font);
-    printer_info_row->Add(printer_name, 0, wxALIGN_TOP);
+    printer_text_col->Add(printer_name, 0, wxALIGN_TOP);
+    printer_text_col->AddSpacer(FromDIP(10));
 
-    lower_placeholder_sizer->Add(printer_info_row, 0, wxLEFT, FromDIP(20));
+    auto *printer_model_row = new wxBoxSizer(wxHORIZONTAL);
+    auto *printer_model_label = new wxStaticText(lower_placeholder_box, wxID_ANY, wxString::FromUTF8("Model \xC4\xB0smi:"));
+    printer_model_label->SetForegroundColour(wxColour(180, 180, 180));
+    printer_model_row->Add(printer_model_label, 0, wxALIGN_TOP);
+    printer_model_row->AddSpacer(FromDIP(10));
+
+    auto *printer_model_value = new wxStaticText(
+        lower_placeholder_box,
+        wxID_ANY,
+        "Anycubic Kobra 3 0.4mm nozzle",
+        wxDefaultPosition,
+        wxSize(FromDIP(300), -1),
+        wxST_ELLIPSIZE_END);
+    printer_model_value->SetForegroundColour(wxColour(220, 220, 220));
+    printer_model_row->Add(printer_model_value, 0, wxALIGN_TOP);
+
+    printer_text_col->Add(printer_model_row, 0, wxALIGN_TOP);
+    printer_text_col->AddSpacer(FromDIP(6));
+
+    auto *printer_serial_row = new wxBoxSizer(wxHORIZONTAL);
+    auto *printer_serial_label = new wxStaticText(lower_placeholder_box, wxID_ANY, wxString::FromUTF8("Seri No:"));
+    printer_serial_label->SetForegroundColour(wxColour(180, 180, 180));
+    printer_serial_row->Add(printer_serial_label, 0, wxALIGN_TOP);
+    printer_serial_row->AddSpacer(FromDIP(10));
+
+    auto *printer_serial_value = new wxStaticText(
+        lower_placeholder_box,
+        wxID_ANY,
+        "0937-A27E-89E5-",
+        wxDefaultPosition,
+        wxSize(FromDIP(300), -1),
+        wxST_ELLIPSIZE_END);
+    printer_serial_value->SetForegroundColour(wxColour(220, 220, 220));
+    printer_serial_row->Add(printer_serial_value, 0, wxALIGN_TOP);
+
+    printer_text_col->Add(printer_serial_row, 0, wxALIGN_TOP);
+    printer_text_col->AddSpacer(FromDIP(6));
+
+    auto *printer_firmware_row = new wxBoxSizer(wxHORIZONTAL);
+    auto *printer_firmware_label = new wxStaticText(lower_placeholder_box, wxID_ANY, wxString::FromUTF8("Yaz\xC4\xB1l\xC4\xB1m S\xC3\xBCr\xC3\xBCm\xC3\xBC:"));
+    printer_firmware_label->SetForegroundColour(wxColour(180, 180, 180));
+    printer_firmware_row->Add(printer_firmware_label, 0, wxALIGN_TOP);
+    printer_firmware_row->AddSpacer(FromDIP(10));
+
+    auto *printer_firmware_value = new wxStaticText(
+        lower_placeholder_box,
+        wxID_ANY,
+        "2.4.5",
+        wxDefaultPosition,
+        wxSize(FromDIP(160), -1),
+        wxST_ELLIPSIZE_END);
+    printer_firmware_value->SetForegroundColour(wxColour(220, 220, 220));
+    printer_firmware_row->Add(printer_firmware_value, 0, wxALIGN_TOP);
+
+    printer_text_col->Add(printer_firmware_row, 0, wxALIGN_TOP);
+    printer_info_row->Add(printer_text_col, 0, wxALIGN_TOP);
+
+    lower_placeholder_sizer->Add(printer_info_row, 0, wxLEFT | wxBOTTOM, FromDIP(20));
 
     lower_placeholder_sizer->AddStretchSpacer(1);
     lower_placeholder_box->SetSizer(lower_placeholder_sizer);
