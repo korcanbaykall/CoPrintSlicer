@@ -295,11 +295,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *upper_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
     auto *upper_header_row = new wxBoxSizer(wxHORIZONTAL);
+    const int assigned_tools_offset = FromDIP(300);
 
     auto *model_colors_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Model Colors");
     model_colors_label->SetForegroundColour(wxColour(151, 151, 151));
     upper_header_row->Add(model_colors_label, 0, wxALIGN_CENTER_VERTICAL);
-    upper_header_row->AddStretchSpacer(1);
+    upper_header_row->AddSpacer(assigned_tools_offset);
 
     auto *assigned_tools_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Assigned Tools");
     assigned_tools_label->SetForegroundColour(wxColour(151, 151, 151));
@@ -444,8 +445,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *printer_info_row = new wxBoxSizer(wxHORIZONTAL);
 
     auto *printer_photo_box = new StaticBox(lower_placeholder_box, wxID_ANY);
-    printer_photo_box->SetMinSize(wxSize(FromDIP(100), FromDIP(130)));
-    printer_photo_box->SetMaxSize(wxSize(FromDIP(100), FromDIP(130)));
+    printer_photo_box->SetMinSize(wxSize(FromDIP(100), FromDIP(110)));
+    printer_photo_box->SetMaxSize(wxSize(FromDIP(100), FromDIP(110)));
     printer_photo_box->SetCornerRadius(FromDIP(6));
     printer_photo_box->SetBorderWidth(1);
     printer_photo_box->SetBorderColorNormal(wxColour(55, 58, 64));
