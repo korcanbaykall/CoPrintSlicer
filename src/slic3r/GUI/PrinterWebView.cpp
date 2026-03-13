@@ -280,8 +280,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto make_upper_placeholder_box = [this, left_container]() {
         auto *box = new StaticBox(left_container, wxID_ANY);
-        box->SetMinSize(wxSize(FromDIP(550), FromDIP(270)));
-        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(270)));
+        box->SetMinSize(wxSize(FromDIP(550), FromDIP(275)));
+        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(275)));
         box->SetCornerRadius(FromDIP(10));
         box->SetBorderWidth(1);
         box->SetBorderColorNormal(wxColour(55, 58, 64));
@@ -307,7 +307,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *upper_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
     auto *upper_header_row = new wxBoxSizer(wxHORIZONTAL);
-    const int assigned_tools_offset = FromDIP(300);
+    const int assigned_tools_offset = FromDIP(200);
 
     auto *model_colors_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Model Colors");
     model_colors_label->SetForegroundColour(wxColour(151, 151, 151));
