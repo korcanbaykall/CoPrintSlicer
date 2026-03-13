@@ -282,7 +282,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_row->AddSpacer(FromDIP(30));
 
     auto *progress_side_box = new StaticBox(left_container, wxID_ANY);
-    progress_side_box->SetMinSize(wxSize(FromDIP(180), FromDIP(135)));
+    progress_side_box->SetMinSize(wxSize(FromDIP(360), FromDIP(135)));
     progress_side_box->SetCornerRadius(FromDIP(10));
     progress_side_box->SetBorderWidth(1);
     progress_side_box->SetBorderColorNormal(wxColour(55, 58, 64));
