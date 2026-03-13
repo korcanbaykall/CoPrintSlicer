@@ -278,8 +278,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto make_placeholder_box = [this, left_container]() {
         auto *box = new StaticBox(left_container, wxID_ANY);
-        box->SetMinSize(wxSize(FromDIP(550), FromDIP(255)));
-        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(255)));
+        box->SetMinSize(wxSize(FromDIP(550), FromDIP(215)));
+        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(215)));
         box->SetCornerRadius(FromDIP(10));
         box->SetBorderWidth(1);
         box->SetBorderColorNormal(wxColour(55, 58, 64));
@@ -294,7 +294,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
     progress_row->AddSpacer(FromDIP(30));
-    progress_row->Add(lower_placeholder_box, 0, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(30));
+    progress_row->Add(lower_placeholder_box, 0, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(20));
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
@@ -487,7 +487,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *side_column = new wxBoxSizer(wxVERTICAL);
     side_column->Add(right_container, 0, wxEXPAND);
-    side_column->AddSpacer(FromDIP(30));
+    side_column->AddSpacer(FromDIP(20));
     side_column->Add(upper_placeholder_box, 0, wxEXPAND);
 
     top_row->AddSpacer(FromDIP(20));
