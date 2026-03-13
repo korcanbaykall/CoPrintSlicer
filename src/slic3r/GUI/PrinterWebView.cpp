@@ -272,6 +272,17 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     controls_col->AddStretchSpacer(1);
     progress_content_row->Add(controls_col, 0, wxRIGHT, FromDIP(15));
+    progress_content_row->AddStretchSpacer(1);
+
+    auto *progress_side_box = new StaticBox(progress_box, wxID_ANY);
+    progress_side_box->SetMinSize(wxSize(FromDIP(150), FromDIP(70)));
+    progress_side_box->SetMaxSize(wxSize(FromDIP(150), FromDIP(70)));
+    progress_side_box->SetCornerRadius(FromDIP(8));
+    progress_side_box->SetBorderWidth(1);
+    progress_side_box->SetBorderColorNormal(wxColour(55, 58, 64));
+    progress_side_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+    progress_side_box->SetBackgroundColour(wxColour(28, 30, 34));
+    progress_content_row->Add(progress_side_box, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(15));
 
     progress_box_sizer->Add(progress_content_row, 1, wxEXPAND);
     progress_box_sizer->AddStretchSpacer(1);
