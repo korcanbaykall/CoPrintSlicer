@@ -621,15 +621,42 @@ void PrinterWebView::rebuild_printers_popup()
     m_printers_popup_panel->SetMinSize(wxSize(FromDIP(238), -1));
 
     if (selected_machine != nullptr) {
+        auto *printer_current_panel = new wxPanel(m_printers_popup_panel, wxID_ANY);
+        printer_current_panel->SetBackgroundColour(wxColour(245, 245, 245));
         auto *printer_current_row = new wxBoxSizer(wxHORIZONTAL);
         printer_current_row->AddSpacer(FromDIP(12));
-        printer_current_row->Add(new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap("printer_preview_BL-P001", this, 18)), 0, wxALIGN_CENTER_VERTICAL);
+        printer_current_row->Add(new wxStaticBitmap(printer_current_panel, wxID_ANY, create_scaled_bitmap("printer_preview_BL-P001", this, 18)), 0, wxALIGN_CENTER_VERTICAL);
         printer_current_row->AddSpacer(FromDIP(10));
-        auto *current_printer_label = new wxStaticText(m_printers_popup_panel, wxID_ANY, from_u8(selected_machine->get_dev_name()));
+
+        auto *current_printer_label = new wxStaticText(printer_current_panel, wxID_ANY, from_u8(selected_machine->get_dev_name()));
         current_printer_label->SetForegroundColour(wxColour(20, 20, 20));
         printer_current_row->Add(current_printer_label, 0, wxALIGN_CENTER_VERTICAL);
         printer_current_row->AddStretchSpacer(1);
-        printers_popup_sizer->Add(printer_current_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(12));
+
+        auto *logout_label = new wxStaticText(printer_current_panel, wxID_ANY, wxString::FromUTF8("C\xC4\xB1k\xC4\xB1\xC5\x9F"));
+        logout_label->SetForegroundColour(wxColour(110, 110, 110));
+        logout_label->SetCursor(wxCursor(wxCURSOR_HAND));
+        printer_current_row->Add(logout_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(6));
+
+        auto *logout_icon = new wxStaticBitmap(printer_current_panel, wxID_ANY, create_scaled_bitmap("menu_exit", this, 14));
+        logout_icon->SetCursor(wxCursor(wxCURSOR_HAND));
+        printer_current_row->Add(logout_icon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
+
+        auto logout_handler = [this](wxMouseEvent &) {
+            dismiss_printers_popup();
+            wxGetApp().request_user_logout();
+        };
+        logout_label->Bind(wxEVT_LEFT_DOWN, logout_handler);
+        logout_icon->Bind(wxEVT_LEFT_DOWN, logout_handler);
+
+        printer_current_panel->SetSizer(printer_current_row);
+        printers_popup_sizer->Add(printer_current_panel, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(12));
+
+        auto *header_divider = new wxPanel(m_printers_popup_panel, wxID_ANY);
+        header_divider->SetMinSize(wxSize(-1, FromDIP(1)));
+        header_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
+        header_divider->SetBackgroundColour(wxColour(220, 220, 220));
+        printers_popup_sizer->Add(header_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
     }
 
     printers_popup_sizer->AddSpacer(FromDIP(5));
@@ -649,9 +676,14 @@ void PrinterWebView::rebuild_printers_popup()
         printers_popup_sizer->Add(line, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(top));
     };
 
-    std::map<std::string, MachineObject*> visible_my_machines = my_machines;
-    if (selected_machine != nullptr)
-        visible_my_machines.emplace(selected_machine->get_dev_id(), selected_machine);
+    std::map<std::string, MachineObject*> visible_my_machines;
+    for (const auto &entry : my_machines) {
+        if (entry.second == nullptr)
+            continue;
+        if (selected_machine != nullptr && entry.first == selected_machine->get_dev_id())
+            continue;
+        visible_my_machines.emplace(entry);
+    }
 
     std::map<std::string, MachineObject*> other_local_machines;
     for (const auto &entry : local_machines) {
