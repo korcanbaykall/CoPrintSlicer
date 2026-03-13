@@ -291,6 +291,16 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *upper_placeholder_box = make_placeholder_box();
     auto *lower_placeholder_box = make_placeholder_box();
 
+    auto *lower_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
+    lower_placeholder_sizer->AddSpacer(FromDIP(20));
+    auto *lower_placeholder_divider = new wxPanel(lower_placeholder_box, wxID_ANY);
+    lower_placeholder_divider->SetMinSize(wxSize(-1, FromDIP(1)));
+    lower_placeholder_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
+    lower_placeholder_divider->SetBackgroundColour(wxColour(55, 58, 64));
+    lower_placeholder_sizer->Add(lower_placeholder_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(20));
+    lower_placeholder_sizer->AddStretchSpacer(1);
+    lower_placeholder_box->SetSizer(lower_placeholder_sizer);
+
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
     progress_row->AddSpacer(FromDIP(20));
