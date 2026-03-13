@@ -280,8 +280,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto make_placeholder_box = [this, left_container]() {
         auto *box = new StaticBox(left_container, wxID_ANY);
-        box->SetMinSize(wxSize(FromDIP(550), FromDIP(260)));
-        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(260)));
+        box->SetMinSize(wxSize(FromDIP(550), FromDIP(270)));
+        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(270)));
         box->SetCornerRadius(FromDIP(10));
         box->SetBorderWidth(1);
         box->SetBorderColorNormal(wxColour(55, 58, 64));
@@ -398,7 +398,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         right_group->Add(right_card, 0);
         tool_row->Add(right_group, 0, wxALIGN_CENTER_VERTICAL);
 
-        upper_placeholder_sizer->Add(tool_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(i == 0 ? 4 : 8));
+        upper_placeholder_sizer->Add(tool_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(8));
     }
 
     upper_placeholder_sizer->AddStretchSpacer(1);
@@ -516,7 +516,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     printer_text_col->Add(printer_firmware_row, 0, wxALIGN_TOP);
     printer_info_row->Add(printer_text_col, 0, wxALIGN_TOP);
 
-    lower_placeholder_sizer->Add(printer_info_row, 0, wxLEFT | wxBOTTOM, FromDIP(20));
+    lower_placeholder_sizer->Add(printer_info_row, 0, wxLEFT | wxBOTTOM, FromDIP(25));
 
     lower_placeholder_sizer->AddStretchSpacer(1);
     lower_placeholder_box->SetSizer(lower_placeholder_sizer);
