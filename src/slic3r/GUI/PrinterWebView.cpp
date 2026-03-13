@@ -290,11 +290,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *upper_placeholder_box = make_placeholder_box();
     auto *lower_placeholder_box = make_placeholder_box();
-    const int placeholder_offset = FromDIP(940);
 
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
-    progress_row->AddSpacer(placeholder_offset - FromDIP(920));
+    progress_row->AddSpacer(FromDIP(20));
     progress_row->Add(lower_placeholder_box, 0, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(20));
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
@@ -491,7 +490,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     side_column->AddSpacer(FromDIP(20));
     side_column->Add(upper_placeholder_box, 0, wxEXPAND);
 
-    top_row->AddSpacer(placeholder_offset);
+    top_row->AddSpacer(FromDIP(20));
     top_row->Add(side_column, 0, wxTOP | wxBOTTOM | wxRIGHT, FromDIP(5));
     left_sizer->Add(top_row, 0, wxEXPAND);
     left_sizer->Add(progress_row, 0, wxEXPAND | wxTOP, FromDIP(20));
