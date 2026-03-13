@@ -320,6 +320,31 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     lower_placeholder_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
     lower_placeholder_divider->SetBackgroundColour(wxColour(55, 58, 64));
     lower_placeholder_sizer->Add(lower_placeholder_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(20));
+
+    lower_placeholder_sizer->AddSpacer(FromDIP(20));
+    auto *printer_info_row = new wxBoxSizer(wxHORIZONTAL);
+
+    auto *printer_photo_box = new StaticBox(lower_placeholder_box, wxID_ANY);
+    printer_photo_box->SetMinSize(wxSize(FromDIP(100), FromDIP(150)));
+    printer_photo_box->SetMaxSize(wxSize(FromDIP(100), FromDIP(150)));
+    printer_photo_box->SetCornerRadius(FromDIP(6));
+    printer_photo_box->SetBorderWidth(1);
+    printer_photo_box->SetBorderColorNormal(wxColour(55, 58, 64));
+    printer_photo_box->SetBackgroundColorNormal(wxColour(20, 22, 26));
+    printer_photo_box->SetBackgroundColour(wxColour(20, 22, 26));
+    printer_info_row->Add(printer_photo_box, 0, wxALIGN_TOP);
+    printer_info_row->AddSpacer(FromDIP(20));
+
+    auto *printer_name = new wxStaticText(lower_placeholder_box, wxID_ANY, "Anycubic Kobra 3");
+    printer_name->SetForegroundColour(wxColour(235, 235, 235));
+    wxFont printer_name_font = printer_name->GetFont();
+    printer_name_font.SetWeight(wxFONTWEIGHT_BOLD);
+    printer_name_font.SetPointSize(printer_name_font.GetPointSize() + 1);
+    printer_name->SetFont(printer_name_font);
+    printer_info_row->Add(printer_name, 0, wxALIGN_TOP);
+
+    lower_placeholder_sizer->Add(printer_info_row, 0, wxLEFT, FromDIP(20));
+
     lower_placeholder_sizer->AddStretchSpacer(1);
     lower_placeholder_box->SetSizer(lower_placeholder_sizer);
 
