@@ -133,8 +133,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *left_container = new wxPanel(m_status_page, wxID_ANY);
     left_container->SetBackgroundColour(wxColour(28, 30, 34));
-    left_container->SetMinSize(wxSize(FromDIP(910), -1));
-    left_container->SetMaxSize(wxSize(FromDIP(910), -1));
+    left_container->SetMinSize(wxSize(FromDIP(1170), -1));
+    left_container->SetMaxSize(wxSize(FromDIP(1170), -1));
     auto *left_sizer = new wxBoxSizer(wxVERTICAL);
     auto *preview_box = new StaticBox(left_container, wxID_ANY);
     preview_box->SetCornerRadius(FromDIP(10));
@@ -272,22 +272,26 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     controls_col->AddStretchSpacer(1);
     progress_content_row->Add(controls_col, 0, wxRIGHT, FromDIP(15));
-    progress_content_row->AddStretchSpacer(1);
-
-    auto *progress_side_box = new StaticBox(progress_box, wxID_ANY);
-    progress_side_box->SetMinSize(wxSize(FromDIP(150), FromDIP(70)));
-    progress_side_box->SetMaxSize(wxSize(FromDIP(150), FromDIP(70)));
-    progress_side_box->SetCornerRadius(FromDIP(8));
-    progress_side_box->SetBorderWidth(1);
-    progress_side_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    progress_side_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    progress_side_box->SetBackgroundColour(wxColour(28, 30, 34));
-    progress_content_row->Add(progress_side_box, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(15));
 
     progress_box_sizer->Add(progress_content_row, 1, wxEXPAND);
     progress_box_sizer->AddStretchSpacer(1);
     progress_box->SetSizer(progress_box_sizer);
-    left_sizer->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
+
+    auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
+    progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
+    progress_row->AddSpacer(FromDIP(30));
+
+    auto *progress_side_box = new StaticBox(left_container, wxID_ANY);
+    progress_side_box->SetMinSize(wxSize(FromDIP(230), FromDIP(135)));
+    progress_side_box->SetMaxSize(wxSize(FromDIP(230), FromDIP(135)));
+    progress_side_box->SetCornerRadius(FromDIP(10));
+    progress_side_box->SetBorderWidth(1);
+    progress_side_box->SetBorderColorNormal(wxColour(55, 58, 64));
+    progress_side_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+    progress_side_box->SetBackgroundColour(wxColour(28, 30, 34));
+    progress_row->Add(progress_side_box, 0, wxTOP, FromDIP(72));
+
+    left_sizer->Add(progress_row, 0, wxEXPAND);
     left_sizer->AddSpacer(FromDIP(2));
 
     left_container->SetSizer(left_sizer);
