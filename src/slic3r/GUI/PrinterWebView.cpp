@@ -307,6 +307,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     printer_button->SetBackgroundColorNormal(wxColour(28, 30, 34));
     printer_button->SetTextColorNormal(wxColour(120, 170, 255));
     lower_placeholder_header->Add(printer_button, 0, wxALIGN_CENTER_VERTICAL);
+    lower_placeholder_header->AddSpacer(FromDIP(20));
+
+    auto *printer_menu_text = new wxStaticText(lower_placeholder_box, wxID_ANY, "...");
+    printer_menu_text->SetForegroundColour(wxColour(180, 180, 180));
+    lower_placeholder_header->Add(printer_menu_text, 0, wxALIGN_CENTER_VERTICAL);
 
     lower_placeholder_sizer->Add(lower_placeholder_header, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(20));
     lower_placeholder_sizer->AddSpacer(FromDIP(10));
