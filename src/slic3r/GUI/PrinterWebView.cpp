@@ -276,18 +276,25 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box_sizer->AddStretchSpacer(1);
     progress_box->SetSizer(progress_box_sizer);
 
+    auto make_placeholder_box = [this, left_container]() {
+        auto *box = new StaticBox(left_container, wxID_ANY);
+        box->SetMinSize(wxSize(FromDIP(550), FromDIP(155)));
+        box->SetCornerRadius(FromDIP(10));
+        box->SetBorderWidth(1);
+        box->SetBorderColorNormal(wxColour(55, 58, 64));
+        box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+        box->SetBackgroundColour(wxColour(28, 30, 34));
+        return box;
+    };
+
+    auto *middle_row = new wxBoxSizer(wxHORIZONTAL);
+    middle_row->AddSpacer(FromDIP(940));
+    middle_row->Add(make_placeholder_box(), 1, wxEXPAND | wxRIGHT, FromDIP(20));
+
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
     progress_row->AddSpacer(FromDIP(30));
-
-    auto *progress_side_box = new StaticBox(left_container, wxID_ANY);
-    progress_side_box->SetMinSize(wxSize(FromDIP(550), FromDIP(205)));
-    progress_side_box->SetCornerRadius(FromDIP(10));
-    progress_side_box->SetBorderWidth(1);
-    progress_side_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    progress_side_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    progress_side_box->SetBackgroundColour(wxColour(28, 30, 34));
-    progress_row->Add(progress_side_box, 1, wxEXPAND | wxTOP | wxRIGHT, FromDIP(20));
+    progress_row->Add(make_placeholder_box(), 1, wxEXPAND | wxTOP | wxRIGHT, FromDIP(20));
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
@@ -479,6 +486,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     top_row->AddSpacer(FromDIP(20));
     top_row->Add(right_container, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
     left_sizer->Add(top_row, 0, wxEXPAND);
+    left_sizer->Add(middle_row, 0, wxEXPAND | wxTOP, FromDIP(20));
     left_sizer->Add(progress_row, 0, wxEXPAND);
     left_sizer->AddSpacer(FromDIP(2));
 
