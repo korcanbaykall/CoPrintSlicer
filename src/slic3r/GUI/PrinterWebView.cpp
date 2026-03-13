@@ -280,8 +280,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto make_placeholder_box = [this, left_container]() {
         auto *box = new StaticBox(left_container, wxID_ANY);
-        box->SetMinSize(wxSize(FromDIP(550), FromDIP(270)));
-        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(270)));
+        box->SetMinSize(wxSize(FromDIP(550), FromDIP(255)));
+        box->SetMaxSize(wxSize(FromDIP(550), FromDIP(255)));
         box->SetCornerRadius(FromDIP(10));
         box->SetBorderWidth(1);
         box->SetBorderColorNormal(wxColour(55, 58, 64));
@@ -444,8 +444,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *printer_info_row = new wxBoxSizer(wxHORIZONTAL);
 
     auto *printer_photo_box = new StaticBox(lower_placeholder_box, wxID_ANY);
-    printer_photo_box->SetMinSize(wxSize(FromDIP(100), FromDIP(150)));
-    printer_photo_box->SetMaxSize(wxSize(FromDIP(100), FromDIP(150)));
+    printer_photo_box->SetMinSize(wxSize(FromDIP(100), FromDIP(130)));
+    printer_photo_box->SetMaxSize(wxSize(FromDIP(100), FromDIP(130)));
     printer_photo_box->SetCornerRadius(FromDIP(6));
     printer_photo_box->SetBorderWidth(1);
     printer_photo_box->SetBorderColorNormal(wxColour(55, 58, 64));
