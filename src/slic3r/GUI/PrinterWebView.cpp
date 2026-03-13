@@ -292,7 +292,24 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *lower_placeholder_box = make_placeholder_box();
 
     auto *lower_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
-    lower_placeholder_sizer->AddSpacer(FromDIP(20));
+    auto *lower_placeholder_header = new wxBoxSizer(wxHORIZONTAL);
+    auto *printer_title = new wxStaticText(lower_placeholder_box, wxID_ANY, wxString::FromUTF8("Yaz\xC4\xB1c\xC4\xB1"));
+    printer_title->SetForegroundColour(wxColour(220, 220, 220));
+    lower_placeholder_header->Add(printer_title, 0, wxALIGN_CENTER_VERTICAL);
+    lower_placeholder_header->AddSpacer(FromDIP(30));
+
+    auto *printer_button = new Button(lower_placeholder_box, "Yazdirma\nSe\xc3\xa7enekleri");
+    printer_button->SetMinSize(wxSize(FromDIP(150), FromDIP(40)));
+    printer_button->SetMaxSize(wxSize(FromDIP(150), FromDIP(40)));
+    printer_button->SetCornerRadius(FromDIP(12));
+    printer_button->SetBorderWidth(1);
+    printer_button->SetBorderColorNormal(wxColour(78, 129, 255));
+    printer_button->SetBackgroundColorNormal(wxColour(28, 30, 34));
+    printer_button->SetTextColorNormal(wxColour(120, 170, 255));
+    lower_placeholder_header->Add(printer_button, 0, wxALIGN_CENTER_VERTICAL);
+
+    lower_placeholder_sizer->Add(lower_placeholder_header, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(20));
+    lower_placeholder_sizer->AddSpacer(FromDIP(10));
     auto *lower_placeholder_divider = new wxPanel(lower_placeholder_box, wxID_ANY);
     lower_placeholder_divider->SetMinSize(wxSize(-1, FromDIP(1)));
     lower_placeholder_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
