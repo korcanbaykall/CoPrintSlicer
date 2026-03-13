@@ -288,14 +288,13 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         return box;
     };
 
-    auto *middle_row = new wxBoxSizer(wxHORIZONTAL);
-    middle_row->AddSpacer(FromDIP(940));
-    middle_row->Add(make_placeholder_box(), 1, wxRIGHT | wxALIGN_TOP, FromDIP(20));
+    auto *upper_placeholder_box = make_placeholder_box();
+    auto *lower_placeholder_box = make_placeholder_box();
 
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
     progress_row->AddSpacer(FromDIP(30));
-    progress_row->Add(make_placeholder_box(), 1, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(20));
+    progress_row->Add(lower_placeholder_box, 1, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(20));
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
@@ -486,9 +485,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     top_row->AddSpacer(FromDIP(20));
     top_row->Add(right_container, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
+    top_row->AddSpacer(FromDIP(20));
+    top_row->Add(upper_placeholder_box, 1, wxALIGN_BOTTOM | wxBOTTOM | wxRIGHT, FromDIP(30));
     left_sizer->Add(top_row, 0, wxEXPAND);
-    left_sizer->Add(middle_row, 0, wxEXPAND | wxTOP, FromDIP(20));
-    left_sizer->Add(progress_row, 0, wxEXPAND);
+    left_sizer->Add(progress_row, 0, wxEXPAND | wxTOP, FromDIP(30));
     left_sizer->AddSpacer(FromDIP(2));
 
     left_container->SetSizer(left_sizer);
