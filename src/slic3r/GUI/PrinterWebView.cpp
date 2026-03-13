@@ -294,7 +294,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
-    progress_row->AddSpacer(placeholder_offset - FromDIP(910));
+    progress_row->AddSpacer(placeholder_offset - FromDIP(920));
     progress_row->Add(lower_placeholder_box, 0, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(20));
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
