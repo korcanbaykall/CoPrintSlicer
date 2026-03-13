@@ -294,12 +294,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
     progress_row->AddSpacer(FromDIP(30));
-    progress_row->Add(lower_placeholder_box, 1, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(20));
+    progress_row->Add(lower_placeholder_box, 0, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(40));
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
     right_container->SetMinSize(wxSize(FromDIP(520), -1));
-    right_container->SetMaxSize(wxSize(FromDIP(520), -1));
+    right_container->SetMaxSize(wxSize(FromDIP(520), FromDIP(360)));
     auto *right_sizer = new wxBoxSizer(wxVERTICAL);
 
     auto make_btn = [this, right_container](const wxString &txt, int w, int h, bool active = false) {
@@ -482,13 +482,16 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
-    right_sizer->AddStretchSpacer(1);
     right_container->SetSizer(right_sizer);
+    right_container->Fit();
+
+    auto *side_column = new wxBoxSizer(wxVERTICAL);
+    side_column->Add(right_container, 0, wxEXPAND);
+    side_column->AddSpacer(FromDIP(30));
+    side_column->Add(upper_placeholder_box, 0, wxEXPAND);
 
     top_row->AddSpacer(FromDIP(20));
-    top_row->Add(right_container, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
-    top_row->AddSpacer(FromDIP(20));
-    top_row->Add(upper_placeholder_box, 1, wxALIGN_BOTTOM | wxBOTTOM | wxRIGHT, FromDIP(30));
+    top_row->Add(side_column, 0, wxTOP | wxBOTTOM | wxRIGHT, FromDIP(5));
     left_sizer->Add(top_row, 0, wxEXPAND);
     left_sizer->Add(progress_row, 0, wxEXPAND | wxTOP, FromDIP(30));
     left_sizer->AddSpacer(FromDIP(2));
