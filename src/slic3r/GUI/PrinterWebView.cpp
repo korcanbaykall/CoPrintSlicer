@@ -326,16 +326,19 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         auto *tool_row = new wxBoxSizer(wxHORIZONTAL);
 
         auto *left_group = new wxBoxSizer(wxHORIZONTAL);
-        auto *left_color = new wxPanel(upper_placeholder_box, wxID_ANY);
+        auto *left_color = new StaticBox(upper_placeholder_box, wxID_ANY);
         left_color->SetMinSize(wxSize(FromDIP(36), FromDIP(44)));
         left_color->SetMaxSize(wxSize(FromDIP(36), FromDIP(44)));
+        left_color->SetCornerRadius(FromDIP(12));
+        left_color->SetBorderWidth(0);
+        left_color->SetBackgroundColorNormal(filament_colors[i]);
         left_color->SetBackgroundColour(filament_colors[i]);
         left_group->Add(left_color, 0);
 
         auto *left_card = new StaticBox(upper_placeholder_box, wxID_ANY);
         left_card->SetMinSize(wxSize(FromDIP(170), FromDIP(44)));
         left_card->SetMaxSize(wxSize(FromDIP(170), FromDIP(44)));
-        left_card->SetCornerRadius(FromDIP(8));
+        left_card->SetCornerRadius(FromDIP(12));
         left_card->SetBorderWidth(0);
         left_card->SetBackgroundColorNormal(wxColour(43, 46, 52));
         left_card->SetBackgroundColour(wxColour(43, 46, 52));
@@ -367,16 +370,19 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         tool_row->AddSpacer(FromDIP(16));
 
         auto *right_group = new wxBoxSizer(wxHORIZONTAL);
-        auto *right_color = new wxPanel(upper_placeholder_box, wxID_ANY);
+        auto *right_color = new StaticBox(upper_placeholder_box, wxID_ANY);
         right_color->SetMinSize(wxSize(FromDIP(18), FromDIP(44)));
         right_color->SetMaxSize(wxSize(FromDIP(18), FromDIP(44)));
+        right_color->SetCornerRadius(FromDIP(12));
+        right_color->SetBorderWidth(0);
+        right_color->SetBackgroundColorNormal(filament_colors[i]);
         right_color->SetBackgroundColour(filament_colors[i]);
         right_group->Add(right_color, 0);
 
         auto *right_card = new StaticBox(upper_placeholder_box, wxID_ANY);
         right_card->SetMinSize(wxSize(FromDIP(118), FromDIP(44)));
         right_card->SetMaxSize(wxSize(FromDIP(118), FromDIP(44)));
-        right_card->SetCornerRadius(FromDIP(8));
+        right_card->SetCornerRadius(FromDIP(12));
         right_card->SetBorderWidth(0);
         right_card->SetBackgroundColorNormal(wxColour(43, 46, 52));
         right_card->SetBackgroundColour(wxColour(43, 46, 52));
@@ -522,7 +528,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     lower_placeholder_box->SetSizer(lower_placeholder_sizer);
 
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
-    progress_row->Add(progress_box, 0, wxEXPAND | wxTOP, FromDIP(5));
+    auto *progress_box_col = new wxBoxSizer(wxVERTICAL);
+    progress_box_col->AddSpacer(FromDIP(25));
+    progress_box_col->Add(progress_box, 0, wxEXPAND);
+    progress_row->Add(progress_box_col, 0, wxEXPAND);
     progress_row->AddSpacer(FromDIP(20));
     progress_row->Add(lower_placeholder_box, 0, wxTOP | wxRIGHT | wxALIGN_TOP, FromDIP(20));
 
