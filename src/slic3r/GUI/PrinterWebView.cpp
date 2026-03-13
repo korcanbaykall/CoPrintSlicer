@@ -293,12 +293,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *lower_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
     auto *lower_placeholder_header = new wxBoxSizer(wxHORIZONTAL);
-    auto *printer_title = new wxStaticText(lower_placeholder_box, wxID_ANY, wxString::FromUTF8("Yaz\xC4\xB1c\xC4\xB1"));
+    auto *printer_title = new wxStaticText(lower_placeholder_box, wxID_ANY, wxString::FromUTF8("Yaz\xC4\xB1""c\xC4\xB1"));
     printer_title->SetForegroundColour(wxColour(220, 220, 220));
     lower_placeholder_header->Add(printer_title, 0, wxALIGN_CENTER_VERTICAL);
     lower_placeholder_header->AddSpacer(FromDIP(30));
 
-    auto *printer_button = new Button(lower_placeholder_box, "Yazdirma\nSe\xc3\xa7enekleri");
+    auto *printer_button = new Button(lower_placeholder_box, wxString::FromUTF8("Yazdirma\nSe\xC3\xA7""enekleri"));
     printer_button->SetMinSize(wxSize(FromDIP(150), FromDIP(40)));
     printer_button->SetMaxSize(wxSize(FromDIP(150), FromDIP(40)));
     printer_button->SetCornerRadius(FromDIP(12));
