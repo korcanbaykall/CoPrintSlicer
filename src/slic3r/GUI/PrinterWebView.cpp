@@ -133,8 +133,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *left_container = new wxPanel(m_status_page, wxID_ANY);
     left_container->SetBackgroundColour(wxColour(28, 30, 34));
-    left_container->SetMinSize(wxSize(FromDIP(2200), -1));
     auto *left_sizer = new wxBoxSizer(wxVERTICAL);
+    auto *top_row = new wxBoxSizer(wxHORIZONTAL);
     auto *preview_box = new StaticBox(left_container, wxID_ANY);
     preview_box->SetCornerRadius(FromDIP(10));
     preview_box->SetBorderWidth(1);
@@ -187,7 +187,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_bottom_panel->SetSizer(preview_bottom_sizer);
     preview_box_sizer->Add(preview_bottom_panel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
     preview_box->SetSizer(preview_box_sizer);
-    left_sizer->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
+    top_row->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
 
     auto *progress_box = new StaticBox(left_container, wxID_ANY);
     progress_box->SetCornerRadius(FromDIP(10));
@@ -289,12 +289,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_side_box->SetBackgroundColour(wxColour(28, 30, 34));
     progress_row->Add(progress_side_box, 1, wxEXPAND | wxTOP | wxRIGHT, FromDIP(20));
 
-    left_sizer->Add(progress_row, 0, wxEXPAND);
-    left_sizer->AddSpacer(FromDIP(2));
-
-    left_container->SetSizer(left_sizer);
-
-    auto *right_container = new wxPanel(m_status_page, wxID_ANY);
+    auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
     auto *right_sizer = new wxBoxSizer(wxVERTICAL);
 
@@ -481,8 +476,15 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->AddStretchSpacer(1);
     right_container->SetSizer(right_sizer);
 
+    top_row->AddSpacer(FromDIP(20));
+    top_row->Add(right_container, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
+    left_sizer->Add(top_row, 0, wxEXPAND);
+    left_sizer->Add(progress_row, 0, wxEXPAND);
+    left_sizer->AddSpacer(FromDIP(2));
+
+    left_container->SetSizer(left_sizer);
+
     status_page_sizer->Add(left_container, 1, wxEXPAND | wxRIGHT, FromDIP(20));
-    status_page_sizer->Add(right_container, 0, wxEXPAND | wxALL, FromDIP(10));
     m_status_page->SetSizer(status_page_sizer);
 
     m_storage_page = create_placeholder_page(content_host, "Depolama", "Bu alan simdilik hazirlaniyor.");
