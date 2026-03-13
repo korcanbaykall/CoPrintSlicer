@@ -19,6 +19,8 @@
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
 
+#include <array>
+
 #include <slic3r/GUI/Widgets/WebView.hpp>
 #include <wx/webview.h>
 
@@ -290,6 +292,117 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *upper_placeholder_box = make_placeholder_box();
     auto *lower_placeholder_box = make_placeholder_box();
+
+    auto *upper_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
+    auto *upper_header_row = new wxBoxSizer(wxHORIZONTAL);
+
+    auto *model_colors_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Model Colors");
+    model_colors_label->SetForegroundColour(wxColour(151, 151, 151));
+    upper_header_row->Add(model_colors_label, 0, wxALIGN_CENTER_VERTICAL);
+    upper_header_row->AddStretchSpacer(1);
+
+    auto *assigned_tools_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Assigned Tools");
+    assigned_tools_label->SetForegroundColour(wxColour(151, 151, 151));
+    upper_header_row->Add(assigned_tools_label, 0, wxALIGN_CENTER_VERTICAL);
+
+    upper_placeholder_sizer->Add(upper_header_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(20));
+    upper_placeholder_sizer->AddSpacer(FromDIP(10));
+
+    auto *upper_header_divider = new wxPanel(upper_placeholder_box, wxID_ANY);
+    upper_header_divider->SetMinSize(wxSize(-1, FromDIP(1)));
+    upper_header_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
+    upper_header_divider->SetBackgroundColour(wxColour(44, 129, 255));
+    upper_placeholder_sizer->Add(upper_header_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(20));
+    upper_placeholder_sizer->AddSpacer(FromDIP(8));
+
+    const std::array<wxColour, 4> filament_colors = {
+        wxColour(214, 181, 46),
+        wxColour(57, 145, 212),
+        wxColour(217, 101, 43),
+        wxColour(164, 207, 42)
+    };
+
+    for (int i = 0; i < 4; ++i) {
+        auto *tool_row = new wxBoxSizer(wxHORIZONTAL);
+
+        auto *left_group = new wxBoxSizer(wxHORIZONTAL);
+        auto *left_color = new wxPanel(upper_placeholder_box, wxID_ANY);
+        left_color->SetMinSize(wxSize(FromDIP(36), FromDIP(44)));
+        left_color->SetMaxSize(wxSize(FromDIP(36), FromDIP(44)));
+        left_color->SetBackgroundColour(filament_colors[i]);
+        left_group->Add(left_color, 0);
+
+        auto *left_card = new StaticBox(upper_placeholder_box, wxID_ANY);
+        left_card->SetMinSize(wxSize(FromDIP(170), FromDIP(44)));
+        left_card->SetMaxSize(wxSize(FromDIP(170), FromDIP(44)));
+        left_card->SetCornerRadius(FromDIP(8));
+        left_card->SetBorderWidth(0);
+        left_card->SetBackgroundColorNormal(wxColour(43, 46, 52));
+        left_card->SetBackgroundColour(wxColour(43, 46, 52));
+        auto *left_card_sizer = new wxBoxSizer(wxHORIZONTAL);
+        left_card_sizer->AddSpacer(FromDIP(14));
+
+        auto *material_label = new wxStaticText(left_card, wxID_ANY, "PLA");
+        material_label->SetForegroundColour(wxColour(235, 235, 235));
+        wxFont material_font = material_label->GetFont();
+        material_font.SetWeight(wxFONTWEIGHT_BOLD);
+        material_label->SetFont(material_font);
+        left_card_sizer->Add(material_label, 0, wxALIGN_CENTER_VERTICAL);
+        left_card_sizer->AddStretchSpacer(1);
+
+        auto *weight_label = new wxStaticText(left_card, wxID_ANY, "14.3g");
+        weight_label->SetForegroundColour(wxColour(220, 220, 220));
+        left_card_sizer->Add(weight_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(14));
+        left_card->SetSizer(left_card_sizer);
+        left_group->Add(left_card, 0);
+        tool_row->Add(left_group, 0, wxALIGN_CENTER_VERTICAL);
+
+        tool_row->AddSpacer(FromDIP(16));
+        auto *arrow_label = new wxStaticText(upper_placeholder_box, wxID_ANY, ">");
+        arrow_label->SetForegroundColour(wxColour(200, 200, 200));
+        wxFont arrow_font = arrow_label->GetFont();
+        arrow_font.SetPointSize(arrow_font.GetPointSize() + 4);
+        arrow_label->SetFont(arrow_font);
+        tool_row->Add(arrow_label, 0, wxALIGN_CENTER_VERTICAL);
+        tool_row->AddSpacer(FromDIP(16));
+
+        auto *right_group = new wxBoxSizer(wxHORIZONTAL);
+        auto *right_color = new wxPanel(upper_placeholder_box, wxID_ANY);
+        right_color->SetMinSize(wxSize(FromDIP(18), FromDIP(44)));
+        right_color->SetMaxSize(wxSize(FromDIP(18), FromDIP(44)));
+        right_color->SetBackgroundColour(filament_colors[i]);
+        right_group->Add(right_color, 0);
+
+        auto *right_card = new StaticBox(upper_placeholder_box, wxID_ANY);
+        right_card->SetMinSize(wxSize(FromDIP(118), FromDIP(44)));
+        right_card->SetMaxSize(wxSize(FromDIP(118), FromDIP(44)));
+        right_card->SetCornerRadius(FromDIP(8));
+        right_card->SetBorderWidth(0);
+        right_card->SetBackgroundColorNormal(wxColour(43, 46, 52));
+        right_card->SetBackgroundColour(wxColour(43, 46, 52));
+        auto *right_card_sizer = new wxBoxSizer(wxHORIZONTAL);
+        right_card_sizer->AddSpacer(FromDIP(16));
+
+        auto *tool_label = new wxStaticText(right_card, wxID_ANY, wxString::Format("T%d", i + 1));
+        tool_label->SetForegroundColour(wxColour(235, 235, 235));
+        wxFont tool_font = tool_label->GetFont();
+        tool_font.SetWeight(wxFONTWEIGHT_BOLD);
+        tool_label->SetFont(tool_font);
+        right_card_sizer->Add(tool_label, 0, wxALIGN_CENTER_VERTICAL);
+        right_card_sizer->AddStretchSpacer(1);
+
+        auto *refresh_label = new wxStaticText(right_card, wxID_ANY, "<>");
+        refresh_label->SetForegroundColour(wxColour(200, 200, 200));
+        right_card_sizer->Add(refresh_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(14));
+        right_card->SetSizer(right_card_sizer);
+        right_group->Add(right_card, 0);
+        tool_row->Add(right_group, 0, wxALIGN_CENTER_VERTICAL);
+
+        upper_placeholder_sizer->Add(tool_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(i == 0 ? 4 : 8));
+    }
+
+    upper_placeholder_sizer->AddStretchSpacer(1);
+    upper_placeholder_box->SetSizer(upper_placeholder_sizer);
 
     auto *lower_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
     auto *lower_placeholder_header = new wxBoxSizer(wxHORIZONTAL);
