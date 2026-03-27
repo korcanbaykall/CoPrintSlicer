@@ -781,7 +781,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     top_row->Add(side_column, 0, wxTOP | wxBOTTOM | wxRIGHT, FromDIP(5));
     left_sizer->Add(top_row, 0, wxEXPAND);
     left_sizer->Add(progress_row, 0, wxEXPAND);
-    left_sizer->AddSpacer(FromDIP(2));
+    left_sizer->AddSpacer(FromDIP(52));
 
     left_container->SetSizer(left_sizer);
 
