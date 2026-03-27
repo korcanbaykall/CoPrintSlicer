@@ -753,9 +753,13 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
-    right_placeholder_box->SetSize(wxRect(wxPoint(FromDIP(405), FromDIP(92)), wxSize(FromDIP(220), FromDIP(240))));
-    right_placeholder_box->SetMinSize(wxSize(FromDIP(220), FromDIP(240)));
-    right_placeholder_box->SetMaxSize(wxSize(FromDIP(220), FromDIP(240)));
+    const int right_placeholder_width = FromDIP(220);
+    const int right_placeholder_height = FromDIP(240);
+    const int right_placeholder_right_margin = FromDIP(12);
+    const int right_placeholder_x = FromDIP(520) - right_placeholder_width - right_placeholder_right_margin;
+    right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(92)), wxSize(right_placeholder_width, right_placeholder_height)));
+    right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
+    right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetCornerRadius(FromDIP(12));
     right_placeholder_box->SetBorderWidth(1);
     right_placeholder_box->SetBorderColorNormal(wxColour(55, 58, 64));
