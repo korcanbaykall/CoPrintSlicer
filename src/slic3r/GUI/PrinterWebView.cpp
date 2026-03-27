@@ -778,10 +778,22 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         line->SetBackgroundColour(wxColour(55, 58, 64));
     };
 
-    add_placeholder_line(64);
-    add_placeholder_line(128);
-    add_placeholder_line(192);
-    add_placeholder_line(right_placeholder_height - FromDIP(62));
+    add_placeholder_line(60);
+    add_placeholder_line(120);
+    add_placeholder_line(180);
+    add_placeholder_line(240);
+
+    auto *bed_label = new wxStaticText(right_placeholder_box, wxID_ANY, "Bed");
+    bed_label->SetPosition(wxPoint(FromDIP(12), FromDIP(20)));
+    bed_label->SetForegroundColour(wxColour(220, 220, 220));
+
+    auto *bed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
+    bed_value->SetPosition(wxPoint(FromDIP(49), FromDIP(20)));
+    bed_value->SetForegroundColour(wxColour(220, 220, 220));
+
+    auto *bed_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
+    bed_unit->SetPosition(wxPoint(FromDIP(112), FromDIP(20)));
+    bed_unit->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
