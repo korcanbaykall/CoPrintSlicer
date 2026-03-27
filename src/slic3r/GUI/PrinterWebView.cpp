@@ -335,8 +335,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         wxColour(164, 207, 42)
     };
 
+    const int tool_rows_left_offset = FromDIP(30);
+
     for (int i = 0; i < 4; ++i) {
         auto *tool_row = new wxBoxSizer(wxHORIZONTAL);
+        tool_row->AddSpacer(tool_rows_left_offset);
 
         auto *left_shell = new StaticBox(upper_placeholder_box, wxID_ANY);
         left_shell->SetMinSize(wxSize(FromDIP(206), FromDIP(44)));
