@@ -756,7 +756,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
-    const int right_placeholder_width = FromDIP(180);
+    const int right_placeholder_width = FromDIP(190);
     const int right_placeholder_height = FromDIP(320);
     const int right_placeholder_x = FromDIP(529);
     right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(32)), wxSize(right_placeholder_width, right_placeholder_height)));
@@ -767,6 +767,20 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_placeholder_box->SetBorderColorNormal(wxColour(55, 58, 64));
     right_placeholder_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     right_placeholder_box->SetBackgroundColour(wxColour(28, 30, 34));
+
+    auto add_placeholder_line = [this, right_placeholder_box, right_placeholder_width](int top_offset) {
+        auto *line = new wxPanel(right_placeholder_box, wxID_ANY);
+        line->SetSize(wxRect(
+            wxPoint(FromDIP(0), FromDIP(top_offset)),
+            wxSize(right_placeholder_width, FromDIP(1))));
+        line->SetMinSize(wxSize(right_placeholder_width, FromDIP(1)));
+        line->SetMaxSize(wxSize(right_placeholder_width, FromDIP(1)));
+        line->SetBackgroundColour(wxColour(55, 58, 64));
+    };
+
+    add_placeholder_line(30);
+    add_placeholder_line(60);
+    add_placeholder_line(90);
 
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
