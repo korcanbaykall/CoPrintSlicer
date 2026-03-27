@@ -800,10 +800,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bed_unit->SetPosition(wxPoint(FromDIP(152), FromDIP(20)));
     bed_unit->SetForegroundColour(wxColour(220, 220, 220));
 
-    auto *extruder_label = new wxStaticText(right_placeholder_box, wxID_ANY, "Extruder");
+    auto *extruder_label = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_extruder);
     extruder_label->SetPosition(wxPoint(FromDIP(12), FromDIP(80)));
     extruder_label->SetForegroundColour(wxColour(220, 220, 220));
     extruder_label->SetCursor(wxCursor(wxCURSOR_HAND));
+    m_extruder_display_label = extruder_label;
 
     auto *extruder_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
     extruder_value->SetPosition(wxPoint(FromDIP(99), FromDIP(80)));
@@ -1146,8 +1147,8 @@ void PrinterWebView::rebuild_extruder_popup()
     }
     m_extruder_popup_panel->DestroyChildren();
 
-    const int popup_width = FromDIP(190);
-    const int popup_height = FromDIP(60);
+    const int popup_width = FromDIP(95);
+    const int popup_height = FromDIP(180);
 
     m_extruder_popup_panel->SetMinSize(wxSize(popup_width, popup_height));
     m_extruder_popup_panel->SetMaxSize(wxSize(popup_width, popup_height));
@@ -1173,9 +1174,24 @@ void PrinterWebView::rebuild_extruder_popup()
         line->SetBackgroundColour(wxColour(55, 58, 64));
     };
 
-    add_popup_line(15);
-    add_popup_line(30);
     add_popup_line(45);
+    add_popup_line(90);
+    add_popup_line(135);
+
+    const std::array<wxString, 4> extruder_labels = { "T1", "T2", "T3", "T4" };
+    for (int i = 0; i < 4; ++i) {
+        auto *label = new wxStaticText(popup_box, wxID_ANY, extruder_labels[i]);
+        label->SetForegroundColour(wxColour(220, 220, 220));
+        label->SetCursor(wxCursor(wxCURSOR_HAND));
+        label->SetPosition(wxPoint(FromDIP(12), FromDIP(13 + i * 45)));
+        label->Bind(wxEVT_LEFT_DOWN, [this, choice = extruder_labels[i]](wxMouseEvent &) {
+            m_selected_extruder = choice;
+            if (m_extruder_display_label != nullptr)
+                m_extruder_display_label->SetLabelText(m_selected_extruder);
+            dismiss_extruder_popup();
+            Layout();
+        });
+    }
 
     popup_sizer->Add(popup_box, 0, wxEXPAND);
     m_extruder_popup_panel->SetSizer(popup_sizer);

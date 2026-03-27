@@ -106,6 +106,8 @@ private:
     wxWindow *m_extruder_popup_button { nullptr };
     wxPopupTransientWindow *m_extruder_popup { nullptr };
     wxPanel *m_extruder_popup_panel { nullptr };
+    wxStaticText *m_extruder_display_label { nullptr };
+    wxString m_selected_extruder { "Extruder" };
     wxPanel *m_status_page { nullptr };
     wxPanel *m_storage_page { nullptr };
     wxPanel *m_update_page { nullptr };
