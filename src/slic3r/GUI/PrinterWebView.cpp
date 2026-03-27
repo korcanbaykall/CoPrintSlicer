@@ -788,11 +788,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bed_label->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *bed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
-    bed_value->SetPosition(wxPoint(FromDIP(49), FromDIP(20)));
+    bed_value->SetPosition(wxPoint(FromDIP(79), FromDIP(20)));
     bed_value->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *bed_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
-    bed_unit->SetPosition(wxPoint(FromDIP(112), FromDIP(20)));
+    bed_unit->SetPosition(wxPoint(FromDIP(142), FromDIP(20)));
     bed_unit->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
