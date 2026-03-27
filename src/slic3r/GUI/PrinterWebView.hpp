@@ -67,6 +67,8 @@ public:
     void dismiss_printers_popup();
     void toggle_extruder_popup();
     void dismiss_extruder_popup();
+    void toggle_fan_popup();
+    void dismiss_fan_popup();
 
     bool Show(bool show = true) override;
 
@@ -86,6 +88,7 @@ private:
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
     void rebuild_printers_popup();
     void rebuild_extruder_popup();
+    void rebuild_fan_popup();
 
     wxWebView* m_browser;
     long m_zoomFactor;
@@ -108,6 +111,11 @@ private:
     wxPanel *m_extruder_popup_panel { nullptr };
     wxStaticText *m_extruder_display_label { nullptr };
     wxString m_selected_extruder { "Extruder" };
+    wxWindow *m_fan_popup_button { nullptr };
+    wxPopupTransientWindow *m_fan_popup { nullptr };
+    wxPanel *m_fan_popup_panel { nullptr };
+    wxStaticText *m_fan_display_label { nullptr };
+    wxString m_selected_fan { "Fan" };
     wxPanel *m_status_page { nullptr };
     wxPanel *m_storage_page { nullptr };
     wxPanel *m_update_page { nullptr };

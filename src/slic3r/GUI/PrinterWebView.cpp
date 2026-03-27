@@ -130,6 +130,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_extruder_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
     rebuild_extruder_popup();
 
+    m_fan_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
+    m_fan_popup_panel = new wxPanel(m_fan_popup, wxID_ANY);
+    m_fan_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
+    rebuild_fan_popup();
+
     auto *content_host = new wxPanel(this, wxID_ANY);
     content_host->SetBackgroundColour(wxColour(28, 30, 34));
     auto *content_host_sizer = new wxBoxSizer(wxVERTICAL);
@@ -822,6 +827,28 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     extruder_value->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
     extruder_unit->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
 
+    auto *fan_label = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_fan);
+    fan_label->SetPosition(wxPoint(FromDIP(12), FromDIP(140)));
+    fan_label->SetForegroundColour(wxColour(220, 220, 220));
+    fan_label->SetCursor(wxCursor(wxCURSOR_HAND));
+    m_fan_display_label = fan_label;
+
+    auto *fan_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
+    fan_value->SetPosition(wxPoint(FromDIP(99), FromDIP(140)));
+    fan_value->SetForegroundColour(wxColour(220, 220, 220));
+    fan_value->SetCursor(wxCursor(wxCURSOR_HAND));
+
+    auto *fan_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
+    fan_unit->SetPosition(wxPoint(FromDIP(152), FromDIP(140)));
+    fan_unit->SetForegroundColour(wxColour(220, 220, 220));
+    fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
+
+    m_fan_popup_button = fan_label;
+    auto fan_popup_handler = [this](wxMouseEvent &) { toggle_fan_popup(); };
+    fan_label->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
+    fan_value->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
+    fan_unit->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
+
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
         wxPoint(right_placeholder_x + right_placeholder_width - FromDIP(1), FromDIP(44)),
@@ -879,6 +906,7 @@ PrinterWebView::~PrinterWebView()
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " Start";
     dismiss_printers_popup();
     dismiss_extruder_popup();
+    dismiss_fan_popup();
     if (m_thumbnail_web_request.IsOk())
         m_thumbnail_web_request.Cancel();
     if (m_layer_refresh_timer != nullptr) {
@@ -999,6 +1027,29 @@ void PrinterWebView::dismiss_extruder_popup()
 {
     if (m_extruder_popup != nullptr && m_extruder_popup->IsShown())
         m_extruder_popup->Dismiss();
+}
+
+void PrinterWebView::toggle_fan_popup()
+{
+    if (m_fan_popup == nullptr || m_fan_popup_button == nullptr)
+        return;
+
+    rebuild_fan_popup();
+
+    if (m_fan_popup->IsShown()) {
+        m_fan_popup->Dismiss();
+        return;
+    }
+
+    const wxPoint screen_pos = m_fan_popup_button->ClientToScreen(wxPoint(0, m_fan_popup_button->GetSize().GetHeight() + FromDIP(8)));
+    m_fan_popup->Position(screen_pos, wxSize(0, 0));
+    m_fan_popup->Popup(m_fan_popup_button);
+}
+
+void PrinterWebView::dismiss_fan_popup()
+{
+    if (m_fan_popup != nullptr && m_fan_popup->IsShown())
+        m_fan_popup->Dismiss();
 }
 
 void PrinterWebView::rebuild_printers_popup()
@@ -1183,7 +1234,11 @@ void PrinterWebView::rebuild_extruder_popup()
         auto *label = new wxStaticText(popup_box, wxID_ANY, extruder_labels[i]);
         label->SetForegroundColour(wxColour(220, 220, 220));
         label->SetCursor(wxCursor(wxCURSOR_HAND));
-        label->SetPosition(wxPoint(FromDIP(12), FromDIP(13 + i * 45)));
+        const wxSize label_size = label->GetBestSize();
+        const int row_height = FromDIP(45);
+        const int label_x = (popup_width - label_size.GetWidth()) / 2;
+        const int label_y = i * row_height + (row_height - label_size.GetHeight()) / 2;
+        label->SetPosition(wxPoint(label_x, label_y));
         label->Bind(wxEVT_LEFT_DOWN, [this, choice = extruder_labels[i]](wxMouseEvent &) {
             m_selected_extruder = choice;
             if (m_extruder_display_label != nullptr)
@@ -1203,6 +1258,79 @@ void PrinterWebView::rebuild_extruder_popup()
     m_extruder_popup->SetClientSize(popup_size);
     m_extruder_popup->SetSize(popup_size);
     m_extruder_popup->Layout();
+}
+
+void PrinterWebView::rebuild_fan_popup()
+{
+    if (m_fan_popup == nullptr || m_fan_popup_panel == nullptr)
+        return;
+
+    if (auto *old_sizer = m_fan_popup_panel->GetSizer()) {
+        m_fan_popup_panel->SetSizer(nullptr, false);
+        delete old_sizer;
+    }
+    m_fan_popup_panel->DestroyChildren();
+
+    const int popup_width = FromDIP(95);
+    const int popup_height = FromDIP(180);
+
+    m_fan_popup_panel->SetMinSize(wxSize(popup_width, popup_height));
+    m_fan_popup_panel->SetMaxSize(wxSize(popup_width, popup_height));
+    m_fan_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
+
+    auto *popup_sizer = new wxBoxSizer(wxVERTICAL);
+    auto *popup_box = new StaticBox(m_fan_popup_panel, wxID_ANY);
+    popup_box->SetMinSize(wxSize(popup_width, popup_height));
+    popup_box->SetMaxSize(wxSize(popup_width, popup_height));
+    popup_box->SetCornerRadius(FromDIP(12));
+    popup_box->SetBorderWidth(1);
+    popup_box->SetBorderColorNormal(wxColour(55, 58, 64));
+    popup_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+    popup_box->SetBackgroundColour(wxColour(22, 24, 29));
+
+    auto add_popup_line = [this, popup_box, popup_width](int top_offset) {
+        auto *line = new wxPanel(popup_box, wxID_ANY);
+        line->SetSize(wxRect(
+            wxPoint(FromDIP(0), FromDIP(top_offset)),
+            wxSize(popup_width, FromDIP(1))));
+        line->SetMinSize(wxSize(popup_width, FromDIP(1)));
+        line->SetMaxSize(wxSize(popup_width, FromDIP(1)));
+        line->SetBackgroundColour(wxColour(55, 58, 64));
+    };
+
+    add_popup_line(45);
+    add_popup_line(90);
+    add_popup_line(135);
+
+    const std::array<wxString, 4> fan_labels = { "T1", "T2", "T3", "T4" };
+    for (int i = 0; i < 4; ++i) {
+        auto *label = new wxStaticText(popup_box, wxID_ANY, fan_labels[i]);
+        label->SetForegroundColour(wxColour(220, 220, 220));
+        label->SetCursor(wxCursor(wxCURSOR_HAND));
+        const wxSize label_size = label->GetBestSize();
+        const int row_height = FromDIP(45);
+        const int label_x = (popup_width - label_size.GetWidth()) / 2;
+        const int label_y = i * row_height + (row_height - label_size.GetHeight()) / 2;
+        label->SetPosition(wxPoint(label_x, label_y));
+        label->Bind(wxEVT_LEFT_DOWN, [this, choice = fan_labels[i]](wxMouseEvent &) {
+            m_selected_fan = choice;
+            if (m_fan_display_label != nullptr)
+                m_fan_display_label->SetLabelText(m_selected_fan);
+            dismiss_fan_popup();
+            Layout();
+        });
+    }
+
+    popup_sizer->Add(popup_box, 0, wxEXPAND);
+    m_fan_popup_panel->SetSizer(popup_sizer);
+    popup_sizer->Fit(m_fan_popup_panel);
+    m_fan_popup_panel->Layout();
+
+    const wxSize popup_size = m_fan_popup_panel->GetBestSize();
+    m_fan_popup_panel->SetSize(popup_size);
+    m_fan_popup->SetClientSize(popup_size);
+    m_fan_popup->SetSize(popup_size);
+    m_fan_popup->Layout();
 }
 
 void PrinterWebView::select_tab(PrinterWebViewTab tab)
