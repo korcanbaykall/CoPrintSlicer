@@ -347,9 +347,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         left_shell->SetBackgroundColour(wxColour(43, 46, 52));
         auto *left_shell_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-        auto *left_color = new wxPanel(left_shell, wxID_ANY);
+        auto *left_color = new StaticBox(left_shell, wxID_ANY);
         left_color->SetMinSize(wxSize(FromDIP(36), FromDIP(44)));
         left_color->SetMaxSize(wxSize(FromDIP(36), FromDIP(44)));
+        left_color->SetCornerRadius(FromDIP(12));
+        left_color->SetBorderWidth(0);
+        left_color->SetBackgroundColorNormal(filament_colors[i]);
         left_color->SetBackgroundColour(filament_colors[i]);
         left_shell_sizer->Add(left_color, 0, wxEXPAND);
         left_shell_sizer->AddSpacer(FromDIP(14));
@@ -386,9 +389,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         right_shell->SetBackgroundColour(wxColour(43, 46, 52));
         auto *right_shell_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-        auto *right_color = new wxPanel(right_shell, wxID_ANY);
+        auto *right_color = new StaticBox(right_shell, wxID_ANY);
         right_color->SetMinSize(wxSize(FromDIP(18), FromDIP(44)));
         right_color->SetMaxSize(wxSize(FromDIP(18), FromDIP(44)));
+        right_color->SetCornerRadius(FromDIP(12));
+        right_color->SetBorderWidth(0);
+        right_color->SetBackgroundColorNormal(filament_colors[i]);
         right_color->SetBackgroundColour(filament_colors[i]);
         right_shell_sizer->Add(right_color, 0, wxEXPAND);
         right_shell_sizer->AddSpacer(FromDIP(16));
