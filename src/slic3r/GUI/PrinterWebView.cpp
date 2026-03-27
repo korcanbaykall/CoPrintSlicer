@@ -769,6 +769,14 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_placeholder_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     right_placeholder_box->SetBackgroundColour(wxColour(28, 30, 34));
 
+    auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
+    right_placeholder_right_border->SetSize(wxRect(
+        wxPoint(right_placeholder_x + right_placeholder_width - FromDIP(1), FromDIP(44)),
+        wxSize(FromDIP(1), right_placeholder_height - FromDIP(24))));
+    right_placeholder_right_border->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(24)));
+    right_placeholder_right_border->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(24)));
+    right_placeholder_right_border->SetBackgroundColour(wxColour(55, 58, 64));
+
     right_container->SetSizer(right_sizer);
     right_container->Layout();
 
