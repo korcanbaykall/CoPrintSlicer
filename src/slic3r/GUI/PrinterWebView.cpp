@@ -282,7 +282,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         auto *box = new StaticBox(left_container, wxID_ANY);
         box->SetMinSize(wxSize(FromDIP(550), FromDIP(283)));
         box->SetMaxSize(wxSize(FromDIP(550), FromDIP(283)));
-        box->SetCornerRadius(FromDIP(10));
+        box->SetCornerRadius(FromDIP(12));
         box->SetBorderWidth(1);
         box->SetBorderColorNormal(wxColour(55, 58, 64));
         box->SetBackgroundColorNormal(wxColour(22, 24, 29));
