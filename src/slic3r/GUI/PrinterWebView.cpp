@@ -754,7 +754,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
-    const int right_placeholder_width = FromDIP(220);
+    const int right_placeholder_width = FromDIP(200);
     const int right_placeholder_height = FromDIP(320);
     const int right_placeholder_right_margin = FromDIP(12);
     const int right_placeholder_min_x = FromDIP(510);
