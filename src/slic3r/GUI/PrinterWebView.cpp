@@ -125,6 +125,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_printers_popup_panel->SetBackgroundColour(wxColour(245, 245, 245));
     rebuild_printers_popup();
 
+    m_extruder_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
+    m_extruder_popup_panel = new wxPanel(m_extruder_popup, wxID_ANY);
+    m_extruder_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
+    rebuild_extruder_popup();
+
     auto *content_host = new wxPanel(this, wxID_ANY);
     content_host->SetBackgroundColour(wxColour(28, 30, 34));
     auto *content_host_sizer = new wxBoxSizer(wxVERTICAL);
@@ -795,6 +800,27 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bed_unit->SetPosition(wxPoint(FromDIP(152), FromDIP(20)));
     bed_unit->SetForegroundColour(wxColour(220, 220, 220));
 
+    auto *extruder_label = new wxStaticText(right_placeholder_box, wxID_ANY, "Extruder");
+    extruder_label->SetPosition(wxPoint(FromDIP(12), FromDIP(80)));
+    extruder_label->SetForegroundColour(wxColour(220, 220, 220));
+    extruder_label->SetCursor(wxCursor(wxCURSOR_HAND));
+
+    auto *extruder_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
+    extruder_value->SetPosition(wxPoint(FromDIP(99), FromDIP(80)));
+    extruder_value->SetForegroundColour(wxColour(220, 220, 220));
+    extruder_value->SetCursor(wxCursor(wxCURSOR_HAND));
+
+    auto *extruder_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
+    extruder_unit->SetPosition(wxPoint(FromDIP(152), FromDIP(80)));
+    extruder_unit->SetForegroundColour(wxColour(220, 220, 220));
+    extruder_unit->SetCursor(wxCursor(wxCURSOR_HAND));
+
+    m_extruder_popup_button = extruder_label;
+    auto extruder_popup_handler = [this](wxMouseEvent &) { toggle_extruder_popup(); };
+    extruder_label->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
+    extruder_value->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
+    extruder_unit->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
+
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
         wxPoint(right_placeholder_x + right_placeholder_width - FromDIP(1), FromDIP(44)),
@@ -851,6 +877,7 @@ PrinterWebView::~PrinterWebView()
 {
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " Start";
     dismiss_printers_popup();
+    dismiss_extruder_popup();
     if (m_thumbnail_web_request.IsOk())
         m_thumbnail_web_request.Cancel();
     if (m_layer_refresh_timer != nullptr) {
@@ -948,6 +975,29 @@ void PrinterWebView::dismiss_printers_popup()
 {
     if (m_printers_popup != nullptr && m_printers_popup->IsShown())
         m_printers_popup->Dismiss();
+}
+
+void PrinterWebView::toggle_extruder_popup()
+{
+    if (m_extruder_popup == nullptr || m_extruder_popup_button == nullptr)
+        return;
+
+    rebuild_extruder_popup();
+
+    if (m_extruder_popup->IsShown()) {
+        m_extruder_popup->Dismiss();
+        return;
+    }
+
+    const wxPoint screen_pos = m_extruder_popup_button->ClientToScreen(wxPoint(0, m_extruder_popup_button->GetSize().GetHeight() + FromDIP(8)));
+    m_extruder_popup->Position(screen_pos, wxSize(0, 0));
+    m_extruder_popup->Popup(m_extruder_popup_button);
+}
+
+void PrinterWebView::dismiss_extruder_popup()
+{
+    if (m_extruder_popup != nullptr && m_extruder_popup->IsShown())
+        m_extruder_popup->Dismiss();
 }
 
 void PrinterWebView::rebuild_printers_popup()
@@ -1083,6 +1133,60 @@ void PrinterWebView::rebuild_printers_popup()
     m_printers_popup->SetClientSize(popup_size);
     m_printers_popup->SetSize(popup_size);
     m_printers_popup->Layout();
+}
+
+void PrinterWebView::rebuild_extruder_popup()
+{
+    if (m_extruder_popup == nullptr || m_extruder_popup_panel == nullptr)
+        return;
+
+    if (auto *old_sizer = m_extruder_popup_panel->GetSizer()) {
+        m_extruder_popup_panel->SetSizer(nullptr, false);
+        delete old_sizer;
+    }
+    m_extruder_popup_panel->DestroyChildren();
+
+    const int popup_width = FromDIP(190);
+    const int popup_height = FromDIP(60);
+
+    m_extruder_popup_panel->SetMinSize(wxSize(popup_width, popup_height));
+    m_extruder_popup_panel->SetMaxSize(wxSize(popup_width, popup_height));
+    m_extruder_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
+
+    auto *popup_sizer = new wxBoxSizer(wxVERTICAL);
+    auto *popup_box = new StaticBox(m_extruder_popup_panel, wxID_ANY);
+    popup_box->SetMinSize(wxSize(popup_width, popup_height));
+    popup_box->SetMaxSize(wxSize(popup_width, popup_height));
+    popup_box->SetCornerRadius(FromDIP(12));
+    popup_box->SetBorderWidth(1);
+    popup_box->SetBorderColorNormal(wxColour(55, 58, 64));
+    popup_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+    popup_box->SetBackgroundColour(wxColour(22, 24, 29));
+
+    auto add_popup_line = [this, popup_box, popup_width](int top_offset) {
+        auto *line = new wxPanel(popup_box, wxID_ANY);
+        line->SetSize(wxRect(
+            wxPoint(FromDIP(0), FromDIP(top_offset)),
+            wxSize(popup_width, FromDIP(1))));
+        line->SetMinSize(wxSize(popup_width, FromDIP(1)));
+        line->SetMaxSize(wxSize(popup_width, FromDIP(1)));
+        line->SetBackgroundColour(wxColour(55, 58, 64));
+    };
+
+    add_popup_line(15);
+    add_popup_line(30);
+    add_popup_line(45);
+
+    popup_sizer->Add(popup_box, 0, wxEXPAND);
+    m_extruder_popup_panel->SetSizer(popup_sizer);
+    popup_sizer->Fit(m_extruder_popup_panel);
+    m_extruder_popup_panel->Layout();
+
+    const wxSize popup_size = m_extruder_popup_panel->GetBestSize();
+    m_extruder_popup_panel->SetSize(popup_size);
+    m_extruder_popup->SetClientSize(popup_size);
+    m_extruder_popup->SetSize(popup_size);
+    m_extruder_popup->Layout();
 }
 
 void PrinterWebView::select_tab(PrinterWebViewTab tab)
