@@ -755,11 +755,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
     const int right_placeholder_width = FromDIP(220);
-    const int right_placeholder_height = FromDIP(270);
+    const int right_placeholder_height = FromDIP(320);
     const int right_placeholder_right_margin = FromDIP(12);
     const int right_placeholder_min_x = FromDIP(510);
     const int right_placeholder_x = std::max(right_placeholder_min_x, right_container_width - right_placeholder_width - right_placeholder_right_margin);
-    right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(62)), wxSize(right_placeholder_width, right_placeholder_height)));
+    right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(42)), wxSize(right_placeholder_width, right_placeholder_height)));
     right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetCornerRadius(FromDIP(12));
