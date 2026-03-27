@@ -307,16 +307,30 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *upper_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
     auto *upper_header_row = new wxBoxSizer(wxHORIZONTAL);
-    const int assigned_tools_offset = FromDIP(130);
+    const int left_shell_width = FromDIP(206);
+    const int right_shell_width = FromDIP(136);
+    const int tool_row_gap = FromDIP(16);
+    const int arrow_column_width = FromDIP(24);
 
     auto *model_colors_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Model Colors");
     model_colors_label->SetForegroundColour(wxColour(151, 151, 151));
-    upper_header_row->Add(model_colors_label, 0, wxALIGN_CENTER_VERTICAL);
-    upper_header_row->AddSpacer(assigned_tools_offset);
+    auto *model_colors_slot = new wxBoxSizer(wxHORIZONTAL);
+    model_colors_slot->Add(model_colors_label, 0, wxALIGN_CENTER_VERTICAL);
+
+    upper_header_row->AddStretchSpacer(1);
+    upper_header_row->Add(model_colors_slot, 0, wxALIGN_CENTER_VERTICAL | wxFIXED_MINSIZE);
+    upper_header_row->SetItemMinSize(model_colors_slot, left_shell_width, -1);
+    upper_header_row->AddSpacer(tool_row_gap);
+    upper_header_row->AddSpacer(arrow_column_width);
+    upper_header_row->AddSpacer(tool_row_gap);
 
     auto *assigned_tools_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Assigned Tools");
     assigned_tools_label->SetForegroundColour(wxColour(151, 151, 151));
-    upper_header_row->Add(assigned_tools_label, 0, wxALIGN_CENTER_VERTICAL);
+    auto *assigned_tools_slot = new wxBoxSizer(wxHORIZONTAL);
+    assigned_tools_slot->Add(assigned_tools_label, 0, wxALIGN_CENTER_VERTICAL);
+    upper_header_row->Add(assigned_tools_slot, 0, wxALIGN_CENTER_VERTICAL | wxFIXED_MINSIZE);
+    upper_header_row->SetItemMinSize(assigned_tools_slot, right_shell_width, -1);
+    upper_header_row->AddStretchSpacer(1);
 
     upper_placeholder_sizer->Add(upper_header_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(20));
     upper_placeholder_sizer->AddSpacer(FromDIP(10));
