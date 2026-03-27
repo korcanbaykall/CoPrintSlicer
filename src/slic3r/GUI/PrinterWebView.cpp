@@ -568,8 +568,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
     const int right_container_width = FromDIP(760);
+    const int right_container_height = FromDIP(360);
+    right_container->SetSize(wxSize(right_container_width, right_container_height));
     right_container->SetMinSize(wxSize(right_container_width, -1));
-    right_container->SetMaxSize(wxSize(right_container_width, FromDIP(360)));
+    right_container->SetMaxSize(wxSize(right_container_width, right_container_height));
     auto *right_sizer = new wxBoxSizer(wxVERTICAL);
 
     auto make_btn = [this, right_container](const wxString &txt, int w, int h, bool active = false) {
@@ -754,11 +756,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
-    const int right_placeholder_width = FromDIP(170);
+    const int right_placeholder_width = FromDIP(207);
     const int right_placeholder_height = FromDIP(320);
-    const int right_placeholder_right_margin = FromDIP(12);
-    const int right_placeholder_min_x = FromDIP(460);
-    const int right_placeholder_x = std::max(right_placeholder_min_x, right_container_width - right_placeholder_width - right_placeholder_right_margin);
+    const int right_placeholder_right_margin = FromDIP(5);
+    const int right_placeholder_x = right_container_width - right_placeholder_width - right_placeholder_right_margin;
     right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(32)), wxSize(right_placeholder_width, right_placeholder_height)));
     right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
@@ -769,7 +770,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_placeholder_box->SetBackgroundColour(wxColour(28, 30, 34));
 
     right_container->SetSizer(right_sizer);
-    right_container->Fit();
+    right_container->Layout();
 
     auto *side_column = new wxBoxSizer(wxVERTICAL);
     side_column->Add(right_container, 0, wxEXPAND);
