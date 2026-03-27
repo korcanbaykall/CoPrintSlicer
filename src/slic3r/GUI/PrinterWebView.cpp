@@ -778,9 +778,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         line->SetBackgroundColour(wxColour(55, 58, 64));
     };
 
-    add_placeholder_line(70);
-    add_placeholder_line(140);
-    add_placeholder_line(210);
+    add_placeholder_line(64);
+    add_placeholder_line(128);
+    add_placeholder_line(192);
+    add_placeholder_line(right_placeholder_height - FromDIP(62));
 
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
