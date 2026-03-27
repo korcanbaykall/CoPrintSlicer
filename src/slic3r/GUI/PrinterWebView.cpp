@@ -311,6 +311,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int right_shell_width = FromDIP(136);
     const int tool_row_gap = FromDIP(16);
     const int arrow_column_width = FromDIP(24);
+    const int color_strip_vertical_inset = FromDIP(1);
 
     auto *model_colors_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Model Colors");
     model_colors_label->SetForegroundColour(wxColour(151, 151, 151));
@@ -369,7 +370,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         left_color->SetBorderWidth(0);
         left_color->SetBackgroundColorNormal(filament_colors[i]);
         left_color->SetBackgroundColour(filament_colors[i]);
-        left_shell_sizer->Add(left_color, 0, wxEXPAND);
+        left_shell_sizer->Add(left_color, 0, wxEXPAND | wxTOP | wxBOTTOM, color_strip_vertical_inset);
         left_shell_sizer->AddSpacer(FromDIP(14));
 
         auto *material_label = new wxStaticText(left_shell, wxID_ANY, "PLA");
@@ -411,7 +412,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         right_color->SetBorderWidth(0);
         right_color->SetBackgroundColorNormal(filament_colors[i]);
         right_color->SetBackgroundColour(filament_colors[i]);
-        right_shell_sizer->Add(right_color, 0, wxEXPAND);
+        right_shell_sizer->Add(right_color, 0, wxEXPAND | wxTOP | wxBOTTOM, color_strip_vertical_inset);
         right_shell_sizer->AddSpacer(FromDIP(16));
 
         auto *tool_label = new wxStaticText(right_shell, wxID_ANY, wxString::Format("T%d", i + 1));
