@@ -567,8 +567,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
-    right_container->SetMinSize(wxSize(FromDIP(520), -1));
-    right_container->SetMaxSize(wxSize(FromDIP(520), FromDIP(360)));
+    const int right_container_width = FromDIP(760);
+    right_container->SetMinSize(wxSize(right_container_width, -1));
+    right_container->SetMaxSize(wxSize(right_container_width, FromDIP(360)));
     auto *right_sizer = new wxBoxSizer(wxVERTICAL);
 
     auto make_btn = [this, right_container](const wxString &txt, int w, int h, bool active = false) {
@@ -756,8 +757,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int right_placeholder_width = FromDIP(220);
     const int right_placeholder_height = FromDIP(240);
     const int right_placeholder_right_margin = FromDIP(12);
-    const int right_placeholder_min_x = FromDIP(330);
-    const int right_placeholder_x = std::max(right_placeholder_min_x, FromDIP(520) - right_placeholder_width - right_placeholder_right_margin);
+    const int right_placeholder_min_x = FromDIP(510);
+    const int right_placeholder_x = std::max(right_placeholder_min_x, right_container_width - right_placeholder_width - right_placeholder_right_margin);
     right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(92)), wxSize(right_placeholder_width, right_placeholder_height)));
     right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
