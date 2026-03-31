@@ -754,8 +754,14 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *z_col = new wxBoxSizer(wxVERTICAL);
     auto *top_btn = make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true);
     z_col->Add(top_btn, 0, wxLEFT | wxBOTTOM, FromDIP(10));
-    top_btn->SetLabel("+Z");
-    top_btn->SetForegroundColour(wxColour(45, 48, 55));
+    auto *top_z_label = new wxStaticText(right_container, wxID_ANY, "+Z");
+    top_z_label->SetForegroundColour(wxColour(45, 48, 55));
+    top_z_label->SetBackgroundColour(wxColour(28, 30, 34));
+    const wxSize top_btn_size = top_btn->GetSize();
+    const wxSize top_z_label_size = top_z_label->GetBestSize();
+    top_z_label->SetPosition(wxPoint(
+        top_btn->GetPosition().x + (top_btn_size.GetWidth() - top_z_label_size.GetWidth()) / 2,
+        top_btn->GetPosition().y + (top_btn_size.GetHeight() - top_z_label_size.GetHeight()) / 2));
 
     auto *center_home_box = new Button(right_container, "", "home", 0, 40);
     center_home_box->SetMinSize(wxSize(FromDIP(80), FromDIP(75)));
@@ -781,6 +787,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bottom_divider->SetBackgroundColour(wxColour(70, 74, 82));
     auto *bottom_z_label = new wxStaticText(bottom_split_host, wxID_ANY, "-Z");
     bottom_z_label->SetForegroundColour(wxColour(45, 48, 55));
+    bottom_z_label->SetBackgroundColour(wxColour(28, 30, 34));
     const wxSize bottom_z_label_size = bottom_z_label->GetBestSize();
     bottom_z_label->SetPosition(wxPoint(
         (bottom_split_host->GetMinSize().GetWidth() - bottom_z_label_size.GetWidth()) / 2,
