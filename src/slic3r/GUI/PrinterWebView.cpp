@@ -382,9 +382,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     controls_col->Add(m_active_file_name_value, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
     
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(520), FromDIP(12)), wxGA_SMOOTH);
+    auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(570), FromDIP(12)), wxGA_SMOOTH);
     progress_bar->SetValue(0);
-    progress_controls_row->Add(progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(45));
+    progress_controls_row->Add(progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(95));
     auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
     progress_controls_row->Add(pause_icon, 0, wxALIGN_CENTER_VERTICAL);
     progress_controls_row->AddSpacer(FromDIP(10));
@@ -405,7 +405,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     layer_info_row->Add(m_layer_printer_value, 0, wxALIGN_CENTER_VERTICAL);
     layer_info_row->AddSpacer(FromDIP(30));
     layer_info_row->Add(m_layer_file_value, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddSpacer(FromDIP(285));
+    layer_info_row->AddSpacer(FromDIP(355));
     m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Tahmini biti\xC5\x9F s\xC3\xBCresi:"));
     m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
     m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
