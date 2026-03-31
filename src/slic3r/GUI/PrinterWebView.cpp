@@ -656,47 +656,52 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int xy_square = FromDIP(261);
     const int center_size = FromDIP(70);
     const int center_pos = (xy_square - center_size) / 2;
-    const int card_gap = FromDIP(10);
-    const wxColour axis_card_color(217, 217, 217);
+    const int axis_gap = FromDIP(8);
+    const int horizontal_icon_width = FromDIP(170);
+    const int horizontal_icon_height = FromDIP(66);
+    const int vertical_icon_width = FromDIP(66);
+    const int vertical_icon_height = FromDIP(170);
 
     auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
     xy_area->SetMinSize(wxSize(xy_square, xy_square));
     xy_area->SetMaxSize(wxSize(xy_square, xy_square));
     xy_area->SetBackgroundColour(wxColour(28, 30, 34));
 
-    auto make_axis_card = [this, xy_area, axis_card_color](const wxPoint &pos, const wxSize &size, int radius) {
-        auto *card = new StaticBox(xy_area, wxID_ANY);
-        card->SetSize(wxRect(pos, size));
-        card->SetMinSize(size);
-        card->SetMaxSize(size);
-        card->SetCornerRadius(this->FromDIP(radius));
-        card->SetBorderWidth(0);
-        card->SetBackgroundColorNormal(axis_card_color);
-        card->SetBackgroundColour(axis_card_color);
-        return card;
+    auto add_axis_bitmap = [this, xy_area](const std::string &icon_name, const wxPoint &pos, const wxSize &size) {
+        wxBitmap bitmap;
+        const std::string png_path = Slic3r::var(icon_name + ".png");
+        const std::string svg_path = Slic3r::var(icon_name + ".svg");
+
+        if (wxFileName::FileExists(from_u8(png_path))) {
+            wxImage image(from_u8(png_path), wxBITMAP_TYPE_PNG);
+            if (image.IsOk())
+                bitmap = wxBitmap(image.Scale(size.GetWidth(), size.GetHeight(), wxIMAGE_QUALITY_HIGH));
+        } else if (wxFileName::FileExists(from_u8(svg_path))) {
+            const int icon_px = this->ToDIP(wxSize(0, size.GetHeight())).GetHeight();
+            bitmap = create_scaled_bitmap(icon_name, this, icon_px > 0 ? icon_px : 1);
+        }
+
+        auto *icon = new wxStaticBitmap(xy_area, wxID_ANY, bitmap, pos, size);
+        icon->SetBackgroundColour(wxColour(28, 30, 34));
+        return icon;
     };
 
-    const int top_width = FromDIP(182);
-    const int top_height = FromDIP(56);
-    const int side_width = FromDIP(56);
-    const int side_height = FromDIP(182);
-
-    make_axis_card(
-        wxPoint((xy_square - top_width) / 2, center_pos - card_gap - top_height),
-        wxSize(top_width, top_height),
-        16);
-    make_axis_card(
-        wxPoint(center_pos - card_gap - side_width, (xy_square - side_height) / 2),
-        wxSize(side_width, side_height),
-        16);
-    make_axis_card(
-        wxPoint(center_pos + center_size + card_gap, (xy_square - side_height) / 2),
-        wxSize(side_width, side_height),
-        16);
-    make_axis_card(
-        wxPoint((xy_square - top_width) / 2, center_pos + center_size + card_gap),
-        wxSize(top_width, top_height),
-        16);
+    add_axis_bitmap(
+        "vector10",
+        wxPoint(center_pos - axis_gap - vertical_icon_width, (xy_square - vertical_icon_height) / 2),
+        wxSize(vertical_icon_width, vertical_icon_height));
+    add_axis_bitmap(
+        "vector11",
+        wxPoint((xy_square - horizontal_icon_width) / 2, center_pos - axis_gap - horizontal_icon_height),
+        wxSize(horizontal_icon_width, horizontal_icon_height));
+    add_axis_bitmap(
+        "vector12",
+        wxPoint(center_pos + center_size + axis_gap, (xy_square - vertical_icon_height) / 2),
+        wxSize(vertical_icon_width, vertical_icon_height));
+    add_axis_bitmap(
+        "vector13",
+        wxPoint((xy_square - horizontal_icon_width) / 2, center_pos + center_size + axis_gap),
+        wxSize(horizontal_icon_width, horizontal_icon_height));
 
     auto *center_btn = new Button(xy_area, "", "home", 0, 34);
     center_btn->SetSize(wxRect(wxPoint(center_pos, center_pos), wxSize(center_size, center_size)));
