@@ -68,41 +68,87 @@ private:
         const double w = static_cast<double>(sz.GetWidth());
         const double h = static_cast<double>(sz.GetHeight());
         wxGraphicsPath path = gc->CreatePath();
+        auto add_scaled_polygon = [&path](const std::vector<wxPoint2DDouble> &pts, double src_w, double src_h, double dst_w, double dst_h) {
+            if (pts.empty())
+                return;
+
+            path.MoveToPoint((pts.front().m_x / src_w) * dst_w, (pts.front().m_y / src_h) * dst_h);
+            for (size_t i = 1; i < pts.size(); ++i)
+                path.AddLineToPoint((pts[i].m_x / src_w) * dst_w, (pts[i].m_y / src_h) * dst_h);
+            path.CloseSubpath();
+        };
+
         switch (m_direction) {
         case AxisShapeDirection::Left:
-            path.MoveToPoint(w, h * 0.18);
-            path.AddLineToPoint(w * 0.34, 0.0);
-            path.AddLineToPoint(0.0, h * 0.08);
-            path.AddLineToPoint(0.0, h * 0.92);
-            path.AddLineToPoint(w * 0.34, h);
-            path.AddLineToPoint(w, h * 0.82);
+            add_scaled_polygon(
+                {
+                    {75.5348, 49.9954},
+                    {29.9627, 4.42324},
+                    {4.35614, 14.9999},
+                    {4.00003, 193.411},
+                    {29.5362, 204.118},
+                    {75.4643, 158.794},
+                    {79.9282, 148.117},
+                    {79.9282, 60.602}
+                },
+                84.0,
+                217.0,
+                w,
+                h);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Up:
-            path.MoveToPoint(w * 0.18, h);
-            path.AddLineToPoint(0.0, h * 0.34);
-            path.AddLineToPoint(w * 0.08, 0.0);
-            path.AddLineToPoint(w * 0.92, 0.0);
-            path.AddLineToPoint(w, h * 0.34);
-            path.AddLineToPoint(w * 0.82, h);
+            add_scaled_polygon(
+                {
+                    {162.476, 71.5348},
+                    {208.048, 25.9627},
+                    {197.471, 0.356158},
+                    {19.0602, 0.0000399},
+                    {8.35362, 25.5362},
+                    {53.6775, 71.4644},
+                    {64.3541, 75.9282},
+                    {151.869, 75.9282}
+                },
+                217.0,
+                84.0,
+                w,
+                h);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Right:
-            path.MoveToPoint(0.0, h * 0.18);
-            path.AddLineToPoint(w * 0.66, 0.0);
-            path.AddLineToPoint(w, h * 0.08);
-            path.AddLineToPoint(w, h * 0.92);
-            path.AddLineToPoint(w * 0.66, h);
-            path.AddLineToPoint(0.0, h * 0.82);
+            add_scaled_polygon(
+                {
+                    {8.3934, 158.476},
+                    {53.9655, 204.048},
+                    {79.5721, 193.472},
+                    {79.9282, 15.0602},
+                    {54.3921, 4.35365},
+                    {8.46389, 49.6775},
+                    {4.00001, 60.3541},
+                    {4.00001, 147.869}
+                },
+                84.0,
+                217.0,
+                w,
+                h);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Down:
-            path.MoveToPoint(w * 0.18, 0.0);
-            path.AddLineToPoint(0.0, h * 0.66);
-            path.AddLineToPoint(w * 0.08, h);
-            path.AddLineToPoint(w * 0.92, h);
-            path.AddLineToPoint(w, h * 0.66);
-            path.AddLineToPoint(w * 0.82, 0.0);
+            add_scaled_polygon(
+                {
+                    {53.9953, 4.39339},
+                    {8.42323, 49.9655},
+                    {18.9999, 75.5721},
+                    {197.411, 75.9282},
+                    {208.118, 50.3921},
+                    {162.794, 4.46387},
+                    {152.117, 0.0},
+                    {64.6019, 0.0}
+                },
+                217.0,
+                84.0,
+                w,
+                h);
             path.CloseSubpath();
             break;
         }
