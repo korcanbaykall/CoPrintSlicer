@@ -56,53 +56,54 @@ private:
         wxAutoBufferedPaintDC dc(this);
         dc.SetBackground(wxBrush(GetBackgroundColour()));
         dc.Clear();
+        std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
+        if (!gc)
+            return;
 
-        dc.SetPen(*wxTRANSPARENT_PEN);
-        dc.SetBrush(wxBrush(wxColour(217, 217, 217)));
+        gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+        gc->SetPen(*wxTRANSPARENT_PEN);
+        gc->SetBrush(wxBrush(wxColour(217, 217, 217)));
 
         const wxSize sz = GetClientSize();
-        const int w = sz.GetWidth();
-        const int h = sz.GetHeight();
-        const int cut = std::min(w, h) / 4;
-        const int radius = std::max(6, std::min(w, h) / 6);
+        const double w = static_cast<double>(sz.GetWidth());
+        const double h = static_cast<double>(sz.GetHeight());
+        const double radius = std::max(8.0, std::min(w, h) * 0.18);
+        const double tip = std::min(w, h) * 0.34;
+        const double base = std::min(w, h) * 0.42;
 
-        wxPoint pts[6];
+        wxGraphicsPath path = gc->CreatePath();
         switch (m_direction) {
         case AxisShapeDirection::Left:
-            pts[0] = wxPoint(w, radius);
-            pts[1] = wxPoint(cut, radius);
-            pts[2] = wxPoint(0, h / 2);
-            pts[3] = wxPoint(cut, h - radius);
-            pts[4] = wxPoint(w, h - radius);
-            pts[5] = wxPoint(w, radius);
+            path.AddRoundedRectangle(0.0, 0.0, w - tip, h, radius);
+            path.MoveToPoint(w - tip, (h - base) / 2.0);
+            path.AddLineToPoint(w, h / 2.0);
+            path.AddLineToPoint(w - tip, (h + base) / 2.0);
+            path.CloseSubpath();
             break;
         case AxisShapeDirection::Up:
-            pts[0] = wxPoint(radius, h);
-            pts[1] = wxPoint(radius, cut);
-            pts[2] = wxPoint(w / 2, 0);
-            pts[3] = wxPoint(w - radius, cut);
-            pts[4] = wxPoint(w - radius, h);
-            pts[5] = wxPoint(radius, h);
+            path.AddRoundedRectangle(0.0, 0.0, w, h - tip, radius);
+            path.MoveToPoint((w - base) / 2.0, h - tip);
+            path.AddLineToPoint(w / 2.0, h);
+            path.AddLineToPoint((w + base) / 2.0, h - tip);
+            path.CloseSubpath();
             break;
         case AxisShapeDirection::Right:
-            pts[0] = wxPoint(0, radius);
-            pts[1] = wxPoint(w - cut, radius);
-            pts[2] = wxPoint(w, h / 2);
-            pts[3] = wxPoint(w - cut, h - radius);
-            pts[4] = wxPoint(0, h - radius);
-            pts[5] = wxPoint(0, radius);
+            path.AddRoundedRectangle(tip, 0.0, w - tip, h, radius);
+            path.MoveToPoint(tip, (h - base) / 2.0);
+            path.AddLineToPoint(0.0, h / 2.0);
+            path.AddLineToPoint(tip, (h + base) / 2.0);
+            path.CloseSubpath();
             break;
         case AxisShapeDirection::Down:
-            pts[0] = wxPoint(radius, 0);
-            pts[1] = wxPoint(radius, h - cut);
-            pts[2] = wxPoint(w / 2, h);
-            pts[3] = wxPoint(w - radius, h - cut);
-            pts[4] = wxPoint(w - radius, 0);
-            pts[5] = wxPoint(radius, 0);
+            path.AddRoundedRectangle(0.0, tip, w, h - tip, radius);
+            path.MoveToPoint((w - base) / 2.0, tip);
+            path.AddLineToPoint(w / 2.0, 0.0);
+            path.AddLineToPoint((w + base) / 2.0, tip);
+            path.CloseSubpath();
             break;
         }
 
-        dc.DrawPolygon(5, pts);
+        gc->FillPath(path);
     }
 
     AxisShapeDirection m_direction;
