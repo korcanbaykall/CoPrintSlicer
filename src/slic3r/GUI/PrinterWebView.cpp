@@ -930,19 +930,22 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int bottom_left_icon_y = FromDIP(240) + (bottom_cell_height - bottom_left_icon_size.GetHeight()) / 2;
     bottom_left_placeholder_icon->SetPosition(wxPoint(bottom_left_icon_x, bottom_left_icon_y));
 
-    auto *clear_all_button = new Button(right_placeholder_box, "Clear All");
-    clear_all_button->SetMinSize(wxSize(FromDIP(82), FromDIP(30)));
-    clear_all_button->SetMaxSize(wxSize(FromDIP(82), FromDIP(30)));
-    clear_all_button->SetCornerRadius(FromDIP(8));
-    clear_all_button->SetBorderWidth(1);
-    clear_all_button->SetBorderColorNormal(wxColour(70, 74, 82));
-    clear_all_button->SetBackgroundColorNormal(wxColour(28, 30, 34));
-    clear_all_button->SetTextColorNormal(wxColour(220, 220, 220));
+    auto *clear_all_button = new wxButton(
+        right_placeholder_box,
+        wxID_ANY,
+        "Clear All",
+        wxDefaultPosition,
+        wxSize(FromDIP(84), FromDIP(32)));
+    clear_all_button->SetMinSize(wxSize(FromDIP(84), FromDIP(32)));
+    clear_all_button->SetMaxSize(wxSize(FromDIP(84), FromDIP(32)));
+    clear_all_button->SetBackgroundColour(wxColour(28, 30, 34));
+    clear_all_button->SetForegroundColour(wxColour(220, 220, 220));
+    clear_all_button->SetWindowStyleFlag(wxBORDER_SIMPLE);
     const int bottom_right_cell_x = bottom_cell_width;
     const int clear_all_x = bottom_right_cell_x + (bottom_cell_width - clear_all_button->GetMinSize().GetWidth()) / 2;
     const int clear_all_y = FromDIP(240) + (bottom_cell_height - clear_all_button->GetMinSize().GetHeight()) / 2;
     clear_all_button->SetPosition(wxPoint(clear_all_x, clear_all_y));
-    clear_all_button->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { reset_placeholder_selections(); });
+    clear_all_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { reset_placeholder_selections(); });
 
     right_container->SetSizer(right_sizer);
     right_container->Layout();
