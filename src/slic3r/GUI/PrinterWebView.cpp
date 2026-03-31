@@ -833,12 +833,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_label->SetCursor(wxCursor(wxCURSOR_HAND));
     m_fan_display_label = fan_label;
 
-    auto *fan_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
+    auto *fan_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__");
     fan_value->SetPosition(wxPoint(FromDIP(99), FromDIP(140)));
     fan_value->SetForegroundColour(wxColour(220, 220, 220));
     fan_value->SetCursor(wxCursor(wxCURSOR_HAND));
 
-    auto *fan_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
+    auto *fan_unit = new wxStaticText(right_placeholder_box, wxID_ANY, "%");
     fan_unit->SetPosition(wxPoint(FromDIP(152), FromDIP(140)));
     fan_unit->SetForegroundColour(wxColour(220, 220, 220));
     fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
