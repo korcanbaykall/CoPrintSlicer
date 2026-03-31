@@ -807,6 +807,14 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     add_placeholder_line(180);
     add_placeholder_line(240);
 
+    auto *bottom_row_center_divider = new wxPanel(right_placeholder_box, wxID_ANY);
+    bottom_row_center_divider->SetSize(wxRect(
+        wxPoint(right_placeholder_width / 2, FromDIP(240)),
+        wxSize(FromDIP(1), right_placeholder_height - FromDIP(240))));
+    bottom_row_center_divider->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(240)));
+    bottom_row_center_divider->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(240)));
+    bottom_row_center_divider->SetBackgroundColour(wxColour(55, 58, 64));
+
     auto *bed_label = new wxStaticText(right_placeholder_box, wxID_ANY, "Bed");
     bed_label->SetPosition(wxPoint(FromDIP(12), FromDIP(20)));
     bed_label->SetForegroundColour(wxColour(220, 220, 220));
@@ -845,9 +853,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_label->SetCursor(wxCursor(wxCURSOR_HAND));
     m_fan_display_label = fan_label;
 
-    auto *fan_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__");
+    auto *fan_value = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_fan_value);
     fan_value->SetForegroundColour(wxColour(220, 220, 220));
     fan_value->SetCursor(wxCursor(wxCURSOR_HAND));
+    m_fan_value_label = fan_value;
 
     auto *fan_unit = new wxStaticText(right_placeholder_box, wxID_ANY, "%");
     fan_unit->SetForegroundColour(wxColour(220, 220, 220));
@@ -876,8 +885,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     m_fan_popup_button = fan_label;
     auto fan_popup_handler = [this](wxMouseEvent &) { toggle_fan_popup(); };
+    auto fan_value_handler = [this](wxMouseEvent &) { prompt_fan_value(); };
     fan_label->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
-    fan_value->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
+    fan_value->Bind(wxEVT_LEFT_DOWN, fan_value_handler);
     fan_unit->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
 
     auto *speed_label = new wxStaticText(right_placeholder_box, wxID_ANY, "Speed");
@@ -1100,6 +1110,40 @@ void PrinterWebView::dismiss_fan_popup()
 {
     if (m_fan_popup != nullptr && m_fan_popup->IsShown())
         m_fan_popup->Dismiss();
+}
+
+void PrinterWebView::prompt_fan_value()
+{
+    const long current_value = m_selected_fan_value == "__" ? 0 : wxAtoi(m_selected_fan_value);
+    const long entered_value = wxGetNumberFromUser(
+        "0 ile 100 arasinda bir fan degeri girin.",
+        "%",
+        "Fan",
+        current_value,
+        0,
+        100,
+        this);
+
+    if (entered_value < 0)
+        return;
+
+    m_selected_fan_value = wxString::Format("%ld", entered_value);
+    if (m_fan_value_label != nullptr) {
+        m_fan_value_label->SetLabelText(m_selected_fan_value);
+        const int right_placeholder_width = FromDIP(190);
+        const int right_value_margin = FromDIP(5);
+        const int inter_value_gap = FromDIP(5);
+        const int value_right_edge = right_placeholder_width - right_value_margin;
+        wxClientDC dc(m_fan_value_label);
+        dc.SetFont(m_fan_value_label->GetFont());
+        wxCoord fan_unit_width = 0;
+        wxCoord fan_unit_height = 0;
+        dc.GetTextExtent("%", &fan_unit_width, &fan_unit_height);
+        const int fan_unit_x = value_right_edge - fan_unit_width;
+        const int fan_value_x = fan_unit_x - inter_value_gap - m_fan_value_label->GetBestSize().GetWidth();
+        m_fan_value_label->SetPosition(wxPoint(fan_value_x, FromDIP(140)));
+    }
+    Layout();
 }
 
 void PrinterWebView::toggle_speed_popup()

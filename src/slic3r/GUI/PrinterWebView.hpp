@@ -88,6 +88,7 @@ private:
     void select_tab(PrinterWebViewTab tab);
     void update_sidebar_selection();
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
+    void prompt_fan_value();
     void rebuild_printers_popup();
     void rebuild_extruder_popup();
     void rebuild_fan_popup();
@@ -118,7 +119,9 @@ private:
     wxPopupTransientWindow *m_fan_popup { nullptr };
     wxPanel *m_fan_popup_panel { nullptr };
     wxStaticText *m_fan_display_label { nullptr };
+    wxStaticText *m_fan_value_label { nullptr };
     wxString m_selected_fan { "Fan" };
+    wxString m_selected_fan_value { "__" };
     wxWindow *m_speed_popup_button { nullptr };
     wxPopupTransientWindow *m_speed_popup { nullptr };
     wxPanel *m_speed_popup_panel { nullptr };
