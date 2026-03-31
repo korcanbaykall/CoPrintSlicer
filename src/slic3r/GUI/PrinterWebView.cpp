@@ -697,18 +697,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     lower_placeholder_sizer->AddStretchSpacer(1);
     lower_placeholder_box->SetSizer(lower_placeholder_sizer);
 
-    auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *progress_box_col = new wxBoxSizer(wxVERTICAL);
-    progress_box_col->AddSpacer(FromDIP(0));
-    progress_box_col->Add(progress_box, 0, wxEXPAND);
-    progress_row->Add(progress_box_col, 0, wxEXPAND);
-    progress_row->AddSpacer(FromDIP(20));
-
-    auto *lower_placeholder_col = new wxBoxSizer(wxVERTICAL);
-    lower_placeholder_col->AddSpacer(FromDIP(40));
-    lower_placeholder_col->Add(lower_placeholder_box, 0, wxEXPAND);
-    progress_row->Add(lower_placeholder_col, 0, wxRIGHT | wxALIGN_TOP, FromDIP(20));
-
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
     const int right_container_width = FromDIP(760);
@@ -1068,15 +1056,25 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_container->SetSizer(right_sizer);
     right_container->Layout();
 
-    auto *side_column = new wxBoxSizer(wxVERTICAL);
-    side_column->Add(right_container, 0, wxEXPAND);
-    side_column->AddSpacer(FromDIP(20));
-    side_column->Add(upper_placeholder_box, 0, wxEXPAND);
+    auto *content_columns = new wxBoxSizer(wxHORIZONTAL);
 
-    top_row->AddSpacer(FromDIP(20));
-    top_row->Add(side_column, 0, wxTOP | wxBOTTOM | wxRIGHT, FromDIP(5));
-    left_sizer->Add(top_row, 0, wxEXPAND);
-    left_sizer->Add(progress_row, 0, wxEXPAND);
+    auto *left_main_column = new wxBoxSizer(wxVERTICAL);
+    left_main_column->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
+    left_main_column->AddSpacer(FromDIP(8));
+    left_main_column->Add(progress_box, 0, wxEXPAND);
+
+    auto *right_main_column = new wxBoxSizer(wxVERTICAL);
+    right_main_column->Add(right_container, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
+    right_main_column->AddSpacer(FromDIP(20));
+    right_main_column->Add(upper_placeholder_box, 0, wxEXPAND);
+    right_main_column->AddSpacer(FromDIP(20));
+    right_main_column->Add(lower_placeholder_box, 0, wxEXPAND);
+
+    content_columns->Add(left_main_column, 0, wxEXPAND);
+    content_columns->AddSpacer(FromDIP(20));
+    content_columns->Add(right_main_column, 0, wxRIGHT, FromDIP(5));
+
+    left_sizer->Add(content_columns, 0, wxEXPAND);
     left_sizer->AddSpacer(FromDIP(52));
 
     left_container->SetSizer(left_sizer);
