@@ -699,7 +699,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
     auto *progress_box_col = new wxBoxSizer(wxVERTICAL);
-    progress_box_col->AddSpacer(FromDIP(15));
+    progress_box_col->AddSpacer(FromDIP(4));
     progress_box_col->Add(progress_box, 0, wxEXPAND);
     progress_row->Add(progress_box_col, 0, wxEXPAND);
     progress_row->AddSpacer(FromDIP(20));
