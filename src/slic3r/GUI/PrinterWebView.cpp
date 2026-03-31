@@ -682,7 +682,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     xy_cross_horizontal->SetCornerRadius(FromDIP(18));
     xy_cross_horizontal->SetBorderWidth(0);
     xy_cross_horizontal->SetBackgroundColorNormal(wxColour(217, 217, 217));
-    xy_cross_horizontal->SetBackgroundColour(wxColour(28, 30, 34));
+    xy_cross_horizontal->SetBackgroundColour(wxColour(217, 217, 217));
 
     auto *xy_cross_vertical = new StaticBox(xy_area, wxID_ANY);
     xy_cross_vertical->SetSize(wxRect(wxPoint(center_pos + (center_size - FromDIP(84)) / 2, FromDIP(10)), wxSize(FromDIP(84), xy_square - FromDIP(20))));
@@ -691,7 +691,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     xy_cross_vertical->SetCornerRadius(FromDIP(18));
     xy_cross_vertical->SetBorderWidth(0);
     xy_cross_vertical->SetBackgroundColorNormal(wxColour(217, 217, 217));
-    xy_cross_vertical->SetBackgroundColour(wxColour(28, 30, 34));
+    xy_cross_vertical->SetBackgroundColour(wxColour(217, 217, 217));
 
     auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h, const wxColour &holder_bg = wxColour(28, 30, 34), bool snug_to_bitmap = false) {
         if (icon_key.empty())
@@ -726,10 +726,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         holder->SetSizer(sizer);
     };
 
-    add_axis_icon(xy_area, resolve_icon("vector10", ""), side_left_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(28, 30, 34), true);
-    add_axis_icon(xy_area, resolve_icon("vector12", ""), side_right_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(28, 30, 34), true);
-    add_axis_icon(xy_area, resolve_icon("vector11", ""), top_center_x, center_pos - gap - top_h, top_w, top_h);
-    add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h);
+    add_axis_icon(xy_area, resolve_icon("vector10", ""), side_left_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(217, 217, 217), true);
+    add_axis_icon(xy_area, resolve_icon("vector12", ""), side_right_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(217, 217, 217), true);
+    add_axis_icon(xy_area, resolve_icon("vector11", ""), top_center_x, center_pos - gap - top_h, top_w, top_h, wxColour(217, 217, 217));
+    add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h, wxColour(217, 217, 217));
 
     std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
     auto *center_btn = new Button(xy_area, "", center_icon.empty() ? wxString() : from_u8(center_icon), 0, 38);
