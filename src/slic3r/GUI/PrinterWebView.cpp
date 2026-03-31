@@ -405,7 +405,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     layer_info_row->Add(m_layer_printer_value, 0, wxALIGN_CENTER_VERTICAL);
     layer_info_row->AddSpacer(FromDIP(30));
     layer_info_row->Add(m_layer_file_value, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddSpacer(FromDIP(355));
+    layer_info_row->AddSpacer(FromDIP(325));
     m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Tahmini biti\xC5\x9F s\xC3\xBCresi:"));
     m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
     m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
