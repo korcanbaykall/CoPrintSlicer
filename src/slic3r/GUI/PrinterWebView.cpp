@@ -700,7 +700,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
     const int right_container_width = FromDIP(760);
-    const int right_container_height = FromDIP(360);
+    const int right_container_height = FromDIP(390);
     right_container->SetSize(wxSize(right_container_width, right_container_height));
     right_container->SetMinSize(wxSize(right_container_width, -1));
     right_container->SetMaxSize(wxSize(right_container_width, right_container_height));
