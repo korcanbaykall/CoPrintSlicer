@@ -742,7 +742,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto make_tool_btn = [this](wxWindow *parent, const wxString &txt, bool active = false) {
         auto *btn = new Button(parent, txt);
-        btn->SetMinSize(wxSize(this->FromDIP(92), this->FromDIP(58)));
+        const wxSize button_size(this->FromDIP(92), this->FromDIP(58));
+        btn->SetMinSize(button_size);
+        btn->SetMaxSize(button_size);
+        btn->SetSize(button_size);
         btn->SetCornerRadius(this->FromDIP(10));
         btn->SetBorderWidth(0);
         btn->SetBackgroundColorNormal(active ? wxColour(210, 210, 210) : wxColour(61, 64, 68));
