@@ -919,13 +919,27 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *bottom_left_placeholder_icon = new wxStaticBitmap(
         right_placeholder_box,
         wxID_ANY,
-        create_scaled_bitmap("idea", this, 20));
+        create_scaled_bitmap("idea", this, 40));
     const wxSize bottom_left_icon_size = bottom_left_placeholder_icon->GetBestSize();
     const int bottom_cell_width = right_placeholder_width / 2;
     const int bottom_cell_height = right_placeholder_height - FromDIP(240);
     const int bottom_left_icon_x = (bottom_cell_width - bottom_left_icon_size.GetWidth()) / 2;
     const int bottom_left_icon_y = FromDIP(240) + (bottom_cell_height - bottom_left_icon_size.GetHeight()) / 2;
     bottom_left_placeholder_icon->SetPosition(wxPoint(bottom_left_icon_x, bottom_left_icon_y));
+
+    auto *clear_all_button = new Button(right_placeholder_box, "Clear All");
+    clear_all_button->SetMinSize(wxSize(FromDIP(72), FromDIP(30)));
+    clear_all_button->SetMaxSize(wxSize(FromDIP(72), FromDIP(30)));
+    clear_all_button->SetCornerRadius(FromDIP(8));
+    clear_all_button->SetBorderWidth(1);
+    clear_all_button->SetBorderColorNormal(wxColour(70, 74, 82));
+    clear_all_button->SetBackgroundColorNormal(wxColour(28, 30, 34));
+    clear_all_button->SetTextColorNormal(wxColour(220, 220, 220));
+    const int bottom_right_cell_x = bottom_cell_width;
+    const int clear_all_x = bottom_right_cell_x + (bottom_cell_width - clear_all_button->GetMinSize().GetWidth()) / 2;
+    const int clear_all_y = FromDIP(240) + (bottom_cell_height - clear_all_button->GetMinSize().GetHeight()) / 2;
+    clear_all_button->SetPosition(wxPoint(clear_all_x, clear_all_y));
+    clear_all_button->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { reset_placeholder_selections(); });
 
     right_container->SetSizer(right_sizer);
     right_container->Layout();
@@ -1166,6 +1180,48 @@ void PrinterWebView::refresh_fan_value_display()
         const int fan_value_x = fan_unit_x - inter_value_gap - m_fan_value_label->GetBestSize().GetWidth();
         m_fan_value_label->SetPosition(wxPoint(fan_value_x, FromDIP(140)));
     }
+    Layout();
+}
+
+void PrinterWebView::reset_placeholder_selections()
+{
+    m_selected_extruder = "Extruder";
+    if (m_extruder_display_label != nullptr)
+        m_extruder_display_label->SetLabelText(m_selected_extruder);
+
+    m_selected_fan = "Fan";
+    if (m_fan_display_label != nullptr)
+        m_fan_display_label->SetLabelText(m_selected_fan);
+
+    for (auto &entry : m_fan_values)
+        entry.second = "__";
+    m_selected_fan_value = "__";
+    refresh_fan_value_display();
+
+    m_selected_speed = "--";
+    if (m_speed_display_label != nullptr) {
+        m_speed_display_label->SetLabelText(m_selected_speed);
+        const int right_placeholder_width = FromDIP(190);
+        const int right_value_margin = FromDIP(5);
+        const int inter_value_gap = FromDIP(5);
+        const int value_right_edge = right_placeholder_width - right_value_margin;
+        wxClientDC dc(m_speed_display_label);
+        dc.SetFont(m_speed_display_label->GetFont());
+        wxCoord fan_unit_width = 0;
+        wxCoord fan_unit_height = 0;
+        wxCoord fan_value_width = 0;
+        wxCoord fan_value_height = 0;
+        dc.GetTextExtent("%", &fan_unit_width, &fan_unit_height);
+        dc.GetTextExtent("__", &fan_value_width, &fan_value_height);
+        const int fan_unit_x = value_right_edge - fan_unit_width;
+        const int aligned_speed_x = fan_unit_x - inter_value_gap - fan_value_width;
+        const int speed_value_x = std::min(aligned_speed_x, value_right_edge - m_speed_display_label->GetBestSize().GetWidth());
+        m_speed_display_label->SetPosition(wxPoint(speed_value_x, FromDIP(200)));
+    }
+
+    dismiss_extruder_popup();
+    dismiss_fan_popup();
+    dismiss_speed_popup();
     Layout();
 }
 

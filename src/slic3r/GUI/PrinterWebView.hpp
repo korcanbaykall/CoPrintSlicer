@@ -91,6 +91,7 @@ private:
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
     void prompt_fan_value();
     void refresh_fan_value_display();
+    void reset_placeholder_selections();
     void rebuild_printers_popup();
     void rebuild_extruder_popup();
     void rebuild_fan_popup();
