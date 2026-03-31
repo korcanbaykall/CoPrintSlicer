@@ -764,17 +764,20 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_home_box->SetBackgroundColour(wxColour(28, 30, 34));
 
     z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(15));
-    auto *bottom_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *bottom_left_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 44, 75, true);
-    auto *bottom_right_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 44, 75, true);
-    auto *bottom_divider = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(1), FromDIP(75)));
+    auto *bottom_split_host = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(89), FromDIP(75)));
+    bottom_split_host->SetMinSize(wxSize(FromDIP(89), FromDIP(75)));
+    bottom_split_host->SetMaxSize(wxSize(FromDIP(89), FromDIP(75)));
+    bottom_split_host->SetBackgroundColour(wxColour(28, 30, 34));
+    auto *bottom_split_bitmap = new wxStaticBitmap(bottom_split_host, wxID_ANY, create_scaled_bitmap("rectangle_12", this, 75));
+    const wxSize bottom_split_bitmap_size = bottom_split_bitmap->GetBestSize();
+    bottom_split_bitmap->SetPosition(wxPoint(
+        (bottom_split_host->GetMinSize().GetWidth() - bottom_split_bitmap_size.GetWidth()) / 2,
+        (bottom_split_host->GetMinSize().GetHeight() - bottom_split_bitmap_size.GetHeight()) / 2));
+    auto *bottom_divider = new wxPanel(bottom_split_host, wxID_ANY, wxPoint(FromDIP(44), 0), wxSize(FromDIP(1), FromDIP(75)));
     bottom_divider->SetMinSize(wxSize(FromDIP(1), FromDIP(75)));
     bottom_divider->SetMaxSize(wxSize(FromDIP(1), FromDIP(75)));
     bottom_divider->SetBackgroundColour(wxColour(70, 74, 82));
-    bottom_row->Add(bottom_left_btn, 0);
-    bottom_row->Add(bottom_divider, 0, wxEXPAND);
-    bottom_row->Add(bottom_right_btn, 0);
-    z_col->Add(bottom_row, 0, wxLEFT, FromDIP(10));
+    z_col->Add(bottom_split_host, 0, wxLEFT, FromDIP(10));
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
@@ -928,8 +931,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bottom_left_placeholder_icon->SetPosition(wxPoint(bottom_left_icon_x, bottom_left_icon_y));
 
     auto *clear_all_button = new Button(right_placeholder_box, "Clear All");
-    clear_all_button->SetMinSize(wxSize(FromDIP(72), FromDIP(30)));
-    clear_all_button->SetMaxSize(wxSize(FromDIP(72), FromDIP(30)));
+    clear_all_button->SetMinSize(wxSize(FromDIP(82), FromDIP(30)));
+    clear_all_button->SetMaxSize(wxSize(FromDIP(82), FromDIP(30)));
     clear_all_button->SetCornerRadius(FromDIP(8));
     clear_all_button->SetBorderWidth(1);
     clear_all_button->SetBorderColorNormal(wxColour(70, 74, 82));
