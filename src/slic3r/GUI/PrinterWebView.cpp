@@ -1128,6 +1128,18 @@ void PrinterWebView::prompt_fan_value()
         return;
 
     m_selected_fan_value = wxString::Format("%ld", entered_value);
+    if (m_selected_fan.StartsWith("T"))
+        m_fan_values[m_selected_fan] = m_selected_fan_value;
+    refresh_fan_value_display();
+}
+
+void PrinterWebView::refresh_fan_value_display()
+{
+    if (m_selected_fan.StartsWith("T")) {
+        const auto it = m_fan_values.find(m_selected_fan);
+        m_selected_fan_value = it != m_fan_values.end() ? it->second : "__";
+    }
+
     if (m_fan_value_label != nullptr) {
         m_fan_value_label->SetLabelText(m_selected_fan_value);
         const int right_placeholder_width = FromDIP(190);
@@ -1433,8 +1445,8 @@ void PrinterWebView::rebuild_fan_popup()
             m_selected_fan = choice;
             if (m_fan_display_label != nullptr)
                 m_fan_display_label->SetLabelText(m_selected_fan);
+            refresh_fan_value_display();
             dismiss_fan_popup();
-            Layout();
         });
     }
 

@@ -28,6 +28,7 @@
 #include <wx/tbarbase.h>
 #include "wx/textctrl.h"
 #include <wx/timer.h>
+#include <map>
 #include <vector>
 
 
@@ -89,6 +90,7 @@ private:
     void update_sidebar_selection();
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
     void prompt_fan_value();
+    void refresh_fan_value_display();
     void rebuild_printers_popup();
     void rebuild_extruder_popup();
     void rebuild_fan_popup();
@@ -122,6 +124,12 @@ private:
     wxStaticText *m_fan_value_label { nullptr };
     wxString m_selected_fan { "Fan" };
     wxString m_selected_fan_value { "__" };
+    std::map<wxString, wxString> m_fan_values {
+        { "T1", "__" },
+        { "T2", "__" },
+        { "T3", "__" },
+        { "T4", "__" }
+    };
     wxWindow *m_speed_popup_button { nullptr };
     wxPopupTransientWindow *m_speed_popup { nullptr };
     wxPanel *m_speed_popup_panel { nullptr };
