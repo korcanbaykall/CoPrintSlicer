@@ -888,7 +888,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     speed_value->SetForegroundColour(wxColour(220, 220, 220));
     speed_value->SetCursor(wxCursor(wxCURSOR_HAND));
     const int speed_row_y = FromDIP(200);
-    speed_value->SetPosition(wxPoint(fan_value_x, speed_row_y));
+    const int speed_value_x = std::min(fan_value_x, value_right_edge - speed_value->GetBestSize().GetWidth());
+    speed_value->SetPosition(wxPoint(speed_value_x, speed_row_y));
     m_speed_display_label = speed_value;
     m_speed_popup_button = speed_value;
 
@@ -1474,7 +1475,8 @@ void PrinterWebView::rebuild_speed_popup()
                 dc.GetTextExtent("%", &fan_unit_width, &fan_unit_height);
                 dc.GetTextExtent("__", &fan_value_width, &fan_value_height);
                 const int fan_unit_x = value_right_edge - fan_unit_width;
-                const int speed_value_x = fan_unit_x - inter_value_gap - fan_value_width;
+                const int aligned_speed_x = fan_unit_x - inter_value_gap - fan_value_width;
+                const int speed_value_x = std::min(aligned_speed_x, value_right_edge - m_speed_display_label->GetBestSize().GetWidth());
                 m_speed_display_label->SetPosition(wxPoint(speed_value_x, FromDIP(200)));
             }
             dismiss_speed_popup();
