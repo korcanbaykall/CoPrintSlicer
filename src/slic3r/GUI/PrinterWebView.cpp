@@ -842,16 +842,24 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
 
     const int fan_row_y = FromDIP(140);
-    const int fan_value_x = FromDIP(120);
+    const int fan_unit_x = FromDIP(152);
     const int fan_value_width = fan_value->GetBestSize().GetWidth();
-    fan_value->SetPosition(wxPoint(fan_value_x, fan_row_y));
-    fan_unit->SetPosition(wxPoint(fan_value_x + fan_value_width + FromDIP(5), fan_row_y));
+    fan_unit->SetPosition(wxPoint(fan_unit_x, fan_row_y));
+    fan_value->SetPosition(wxPoint(fan_unit_x - FromDIP(5) - fan_value_width, fan_row_y));
 
     m_fan_popup_button = fan_label;
     auto fan_popup_handler = [this](wxMouseEvent &) { toggle_fan_popup(); };
     fan_label->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
     fan_value->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
     fan_unit->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
+
+    auto *speed_label = new wxStaticText(right_placeholder_box, wxID_ANY, "Speed");
+    speed_label->SetPosition(wxPoint(FromDIP(12), FromDIP(200)));
+    speed_label->SetForegroundColour(wxColour(220, 220, 220));
+
+    auto *speed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "--");
+    speed_value->SetPosition(wxPoint(FromDIP(162), FromDIP(200)));
+    speed_value->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
