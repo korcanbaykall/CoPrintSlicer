@@ -765,7 +765,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(15));
     auto *bottom_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *bottom_left_btn = make_icon_btn(resolve_icon("idea", "rectangle_12"), 44, 75, true, 20, 20);
+    auto *bottom_left_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 44, 75, true);
     auto *bottom_right_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 44, 75, true);
     auto *bottom_divider = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(1), FromDIP(75)));
     bottom_divider->SetMinSize(wxSize(FromDIP(1), FromDIP(75)));
@@ -915,6 +915,17 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_placeholder_right_border->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(24)));
     right_placeholder_right_border->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(24)));
     right_placeholder_right_border->SetBackgroundColour(wxColour(70, 74, 82));
+
+    auto *bottom_left_placeholder_icon = new wxStaticBitmap(
+        right_placeholder_box,
+        wxID_ANY,
+        create_scaled_bitmap("idea", this, 20));
+    const wxSize bottom_left_icon_size = bottom_left_placeholder_icon->GetBestSize();
+    const int bottom_cell_width = right_placeholder_width / 2;
+    const int bottom_cell_height = right_placeholder_height - FromDIP(240);
+    const int bottom_left_icon_x = (bottom_cell_width - bottom_left_icon_size.GetWidth()) / 2;
+    const int bottom_left_icon_y = FromDIP(240) + (bottom_cell_height - bottom_left_icon_size.GetHeight()) / 2;
+    bottom_left_placeholder_icon->SetPosition(wxPoint(bottom_left_icon_x, bottom_left_icon_y));
 
     right_container->SetSizer(right_sizer);
     right_container->Layout();
