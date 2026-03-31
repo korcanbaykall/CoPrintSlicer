@@ -12,6 +12,7 @@
 #include "libslic3r_version.h"
 
 #include <wx/filename.h>
+#include <wx/dcbuffer.h>
 #include <wx/gauge.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
@@ -30,6 +31,83 @@ namespace Slic3r {
 namespace GUI {
 
 namespace {
+enum class AxisShapeDirection {
+    Left,
+    Up,
+    Right,
+    Down
+};
+
+class AxisShapePanel : public wxPanel
+{
+public:
+    AxisShapePanel(wxWindow *parent, AxisShapeDirection direction, const wxPoint &pos, const wxSize &size)
+        : wxPanel(parent, wxID_ANY, pos, size)
+        , m_direction(direction)
+    {
+        SetBackgroundStyle(wxBG_STYLE_PAINT);
+        SetBackgroundColour(wxColour(28, 30, 34));
+        Bind(wxEVT_PAINT, &AxisShapePanel::on_paint, this);
+    }
+
+private:
+    void on_paint(wxPaintEvent &)
+    {
+        wxAutoBufferedPaintDC dc(this);
+        dc.SetBackground(wxBrush(GetBackgroundColour()));
+        dc.Clear();
+
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.SetBrush(wxBrush(wxColour(217, 217, 217)));
+
+        const wxSize sz = GetClientSize();
+        const int w = sz.GetWidth();
+        const int h = sz.GetHeight();
+        const int cut = std::min(w, h) / 4;
+        const int radius = std::max(6, std::min(w, h) / 6);
+
+        wxPoint pts[6];
+        switch (m_direction) {
+        case AxisShapeDirection::Left:
+            pts[0] = wxPoint(w, radius);
+            pts[1] = wxPoint(cut, radius);
+            pts[2] = wxPoint(0, h / 2);
+            pts[3] = wxPoint(cut, h - radius);
+            pts[4] = wxPoint(w, h - radius);
+            pts[5] = wxPoint(w, radius);
+            break;
+        case AxisShapeDirection::Up:
+            pts[0] = wxPoint(radius, h);
+            pts[1] = wxPoint(radius, cut);
+            pts[2] = wxPoint(w / 2, 0);
+            pts[3] = wxPoint(w - radius, cut);
+            pts[4] = wxPoint(w - radius, h);
+            pts[5] = wxPoint(radius, h);
+            break;
+        case AxisShapeDirection::Right:
+            pts[0] = wxPoint(0, radius);
+            pts[1] = wxPoint(w - cut, radius);
+            pts[2] = wxPoint(w, h / 2);
+            pts[3] = wxPoint(w - cut, h - radius);
+            pts[4] = wxPoint(0, h - radius);
+            pts[5] = wxPoint(0, radius);
+            break;
+        case AxisShapeDirection::Down:
+            pts[0] = wxPoint(radius, 0);
+            pts[1] = wxPoint(radius, h - cut);
+            pts[2] = wxPoint(w / 2, h);
+            pts[3] = wxPoint(w - radius, h - cut);
+            pts[4] = wxPoint(w - radius, 0);
+            pts[5] = wxPoint(radius, 0);
+            break;
+        }
+
+        dc.DrawPolygon(5, pts);
+    }
+
+    AxisShapeDirection m_direction;
+};
+
 wxString layer_value_text(int layer)
 {
     return layer < 0 ? wxString("N/A") : wxString::Format("%d", layer);
@@ -667,39 +745,24 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     xy_area->SetMaxSize(wxSize(xy_square, xy_square));
     xy_area->SetBackgroundColour(wxColour(28, 30, 34));
 
-    auto add_axis_bitmap = [this, xy_area](const std::string &icon_name, const wxPoint &pos, const wxSize &size) {
-        wxBitmap bitmap;
-        const std::string png_path = Slic3r::var(icon_name + ".png");
-        const std::string svg_path = Slic3r::var(icon_name + ".svg");
-
-        if (wxFileName::FileExists(from_u8(png_path))) {
-            wxImage image(from_u8(png_path), wxBITMAP_TYPE_PNG);
-            if (image.IsOk())
-                bitmap = wxBitmap(image.Scale(size.GetWidth(), size.GetHeight(), wxIMAGE_QUALITY_HIGH));
-        } else if (wxFileName::FileExists(from_u8(svg_path))) {
-            const int icon_px = this->ToDIP(wxSize(0, size.GetHeight())).GetHeight();
-            bitmap = create_scaled_bitmap(icon_name, this, icon_px > 0 ? icon_px : 1);
-        }
-
-        auto *icon = new wxStaticBitmap(xy_area, wxID_ANY, bitmap, pos, size);
-        icon->SetBackgroundColour(wxColour(28, 30, 34));
-        return icon;
-    };
-
-    add_axis_bitmap(
-        "vector10",
+    new AxisShapePanel(
+        xy_area,
+        AxisShapeDirection::Left,
         wxPoint(center_pos - axis_gap - vertical_icon_width, (xy_square - vertical_icon_height) / 2),
         wxSize(vertical_icon_width, vertical_icon_height));
-    add_axis_bitmap(
-        "vector11",
+    new AxisShapePanel(
+        xy_area,
+        AxisShapeDirection::Up,
         wxPoint((xy_square - horizontal_icon_width) / 2, center_pos - axis_gap - horizontal_icon_height),
         wxSize(horizontal_icon_width, horizontal_icon_height));
-    add_axis_bitmap(
-        "vector12",
+    new AxisShapePanel(
+        xy_area,
+        AxisShapeDirection::Right,
         wxPoint(center_pos + center_size + axis_gap, (xy_square - vertical_icon_height) / 2),
         wxSize(vertical_icon_width, vertical_icon_height));
-    add_axis_bitmap(
-        "vector13",
+    new AxisShapePanel(
+        xy_area,
+        AxisShapeDirection::Down,
         wxPoint((xy_square - horizontal_icon_width) / 2, center_pos + center_size + axis_gap),
         wxSize(horizontal_icon_width, horizontal_icon_height));
 
