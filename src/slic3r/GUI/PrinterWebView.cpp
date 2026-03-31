@@ -807,7 +807,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bed_label->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *bed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
-    bed_value->SetPosition(wxPoint(FromDIP(99), FromDIP(20)));
+    bed_value->SetPosition(wxPoint(FromDIP(107), FromDIP(20)));
     bed_value->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *bed_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
@@ -821,7 +821,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_extruder_display_label = extruder_label;
 
     auto *extruder_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
-    extruder_value->SetPosition(wxPoint(FromDIP(99), FromDIP(80)));
+    extruder_value->SetPosition(wxPoint(FromDIP(107), FromDIP(80)));
     extruder_value->SetForegroundColour(wxColour(220, 220, 220));
     extruder_value->SetCursor(wxCursor(wxCURSOR_HAND));
 
@@ -851,10 +851,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
 
     const int fan_row_y = FromDIP(140);
-    const int fan_value_x = FromDIP(99);
+    const int fan_value_x = FromDIP(107);
     const int fan_value_width = fan_value->GetBestSize().GetWidth();
     fan_value->SetPosition(wxPoint(fan_value_x, fan_row_y));
-    fan_unit->SetPosition(wxPoint(fan_value_x + fan_value_width + FromDIP(5), fan_row_y));
+    fan_unit->SetPosition(wxPoint(FromDIP(152), fan_row_y));
 
     m_fan_popup_button = fan_label;
     auto fan_popup_handler = [this](wxMouseEvent &) { toggle_fan_popup(); };
@@ -867,7 +867,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     speed_label->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *speed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "--");
-    speed_value->SetPosition(wxPoint(FromDIP(99), FromDIP(200)));
+    speed_value->SetPosition(wxPoint(FromDIP(107), FromDIP(200)));
     speed_value->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
