@@ -67,38 +67,46 @@ private:
         const wxSize sz = GetClientSize();
         const double w = static_cast<double>(sz.GetWidth());
         const double h = static_cast<double>(sz.GetHeight());
-        const double radius = std::max(8.0, std::min(w, h) * 0.18);
-        const double tip = std::min(w, h) * 0.34;
-        const double base = std::min(w, h) * 0.42;
-
         wxGraphicsPath path = gc->CreatePath();
         switch (m_direction) {
         case AxisShapeDirection::Left:
-            path.AddRoundedRectangle(0.0, 0.0, w - tip, h, radius);
-            path.MoveToPoint(w - tip, (h - base) / 2.0);
-            path.AddLineToPoint(w, h / 2.0);
-            path.AddLineToPoint(w - tip, (h + base) / 2.0);
+            path.MoveToPoint(w * 0.90, h * 0.23);
+            path.AddLineToPoint(w * 0.36, h * 0.02);
+            path.AddLineToPoint(w * 0.05, h * 0.07);
+            path.AddLineToPoint(0.0, h * 0.50);
+            path.AddLineToPoint(w * 0.05, h * 0.93);
+            path.AddLineToPoint(w * 0.36, h * 0.98);
+            path.AddLineToPoint(w * 0.90, h * 0.77);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Up:
-            path.AddRoundedRectangle(0.0, 0.0, w, h - tip, radius);
-            path.MoveToPoint((w - base) / 2.0, h - tip);
-            path.AddLineToPoint(w / 2.0, h);
-            path.AddLineToPoint((w + base) / 2.0, h - tip);
+            path.MoveToPoint(w * 0.23, h * 0.90);
+            path.AddLineToPoint(w * 0.02, h * 0.36);
+            path.AddLineToPoint(w * 0.07, h * 0.05);
+            path.AddLineToPoint(w * 0.50, 0.0);
+            path.AddLineToPoint(w * 0.93, h * 0.05);
+            path.AddLineToPoint(w * 0.98, h * 0.36);
+            path.AddLineToPoint(w * 0.77, h * 0.90);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Right:
-            path.AddRoundedRectangle(tip, 0.0, w - tip, h, radius);
-            path.MoveToPoint(tip, (h - base) / 2.0);
-            path.AddLineToPoint(0.0, h / 2.0);
-            path.AddLineToPoint(tip, (h + base) / 2.0);
+            path.MoveToPoint(w * 0.10, h * 0.23);
+            path.AddLineToPoint(w * 0.64, h * 0.02);
+            path.AddLineToPoint(w * 0.95, h * 0.07);
+            path.AddLineToPoint(w, h * 0.50);
+            path.AddLineToPoint(w * 0.95, h * 0.93);
+            path.AddLineToPoint(w * 0.64, h * 0.98);
+            path.AddLineToPoint(w * 0.10, h * 0.77);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Down:
-            path.AddRoundedRectangle(0.0, tip, w, h - tip, radius);
-            path.MoveToPoint((w - base) / 2.0, tip);
-            path.AddLineToPoint(w / 2.0, 0.0);
-            path.AddLineToPoint((w + base) / 2.0, tip);
+            path.MoveToPoint(w * 0.23, h * 0.10);
+            path.AddLineToPoint(w * 0.02, h * 0.64);
+            path.AddLineToPoint(w * 0.07, h * 0.95);
+            path.AddLineToPoint(w * 0.50, h);
+            path.AddLineToPoint(w * 0.93, h * 0.95);
+            path.AddLineToPoint(w * 0.98, h * 0.64);
+            path.AddLineToPoint(w * 0.77, h * 0.10);
             path.CloseSubpath();
             break;
         }
