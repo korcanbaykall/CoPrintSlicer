@@ -859,9 +859,13 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     const int bed_unit_x = value_right_edge - bed_unit->GetBestSize().GetWidth();
     bed_unit->SetPosition(wxPoint(bed_unit_x, FromDIP(20)));
+    const int bed_value_x = bed_unit_x - inter_value_gap - bed_value->GetBestSize().GetWidth();
+    bed_value->SetPosition(wxPoint(bed_value_x, FromDIP(20)));
 
     const int extruder_unit_x = value_right_edge - extruder_unit->GetBestSize().GetWidth();
     extruder_unit->SetPosition(wxPoint(extruder_unit_x, FromDIP(80)));
+    const int extruder_value_x = extruder_unit_x - inter_value_gap - extruder_value->GetBestSize().GetWidth();
+    extruder_value->SetPosition(wxPoint(extruder_value_x, FromDIP(80)));
 
     const int fan_row_y = FromDIP(140);
     const int fan_unit_x = value_right_edge - fan_unit->GetBestSize().GetWidth();
@@ -883,7 +887,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *speed_value = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_speed);
     speed_value->SetForegroundColour(wxColour(220, 220, 220));
     speed_value->SetCursor(wxCursor(wxCURSOR_HAND));
-    speed_value->SetPosition(wxPoint(value_right_edge - speed_value->GetBestSize().GetWidth(), FromDIP(200)));
+    const int speed_row_y = FromDIP(200);
+    speed_value->SetPosition(wxPoint(fan_value_x, speed_row_y));
     m_speed_display_label = speed_value;
     m_speed_popup_button = speed_value;
 
@@ -1457,9 +1462,20 @@ void PrinterWebView::rebuild_speed_popup()
             if (m_speed_display_label != nullptr) {
                 m_speed_display_label->SetLabelText(m_selected_speed);
                 const int right_value_margin = FromDIP(5);
+                const int inter_value_gap = FromDIP(5);
                 const int right_placeholder_width = FromDIP(190);
                 const int value_right_edge = right_placeholder_width - right_value_margin;
-                m_speed_display_label->SetPosition(wxPoint(value_right_edge - m_speed_display_label->GetBestSize().GetWidth(), FromDIP(200)));
+                wxClientDC dc(m_speed_display_label);
+                dc.SetFont(m_speed_display_label->GetFont());
+                wxCoord fan_unit_width = 0;
+                wxCoord fan_unit_height = 0;
+                wxCoord fan_value_width = 0;
+                wxCoord fan_value_height = 0;
+                dc.GetTextExtent("%", &fan_unit_width, &fan_unit_height);
+                dc.GetTextExtent("__", &fan_value_width, &fan_value_height);
+                const int fan_unit_x = value_right_edge - fan_unit_width;
+                const int speed_value_x = fan_unit_x - inter_value_gap - fan_value_width;
+                m_speed_display_label->SetPosition(wxPoint(speed_value_x, FromDIP(200)));
             }
             dismiss_speed_popup();
             Layout();
