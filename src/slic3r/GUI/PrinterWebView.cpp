@@ -675,6 +675,24 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     xy_area->SetMaxSize(wxSize(xy_square, xy_square));
     xy_area->SetBackgroundColour(wxColour(28, 30, 34));
 
+    auto *xy_cross_horizontal = new StaticBox(xy_area, wxID_ANY);
+    xy_cross_horizontal->SetSize(wxRect(wxPoint(FromDIP(10), center_pos + (center_size - FromDIP(84)) / 2), wxSize(xy_square - FromDIP(20), FromDIP(84))));
+    xy_cross_horizontal->SetMinSize(wxSize(xy_square - FromDIP(20), FromDIP(84)));
+    xy_cross_horizontal->SetMaxSize(wxSize(xy_square - FromDIP(20), FromDIP(84)));
+    xy_cross_horizontal->SetCornerRadius(FromDIP(18));
+    xy_cross_horizontal->SetBorderWidth(0);
+    xy_cross_horizontal->SetBackgroundColorNormal(wxColour(217, 217, 217));
+    xy_cross_horizontal->SetBackgroundColour(wxColour(28, 30, 34));
+
+    auto *xy_cross_vertical = new StaticBox(xy_area, wxID_ANY);
+    xy_cross_vertical->SetSize(wxRect(wxPoint(center_pos + (center_size - FromDIP(84)) / 2, FromDIP(10)), wxSize(FromDIP(84), xy_square - FromDIP(20))));
+    xy_cross_vertical->SetMinSize(wxSize(FromDIP(84), xy_square - FromDIP(20)));
+    xy_cross_vertical->SetMaxSize(wxSize(FromDIP(84), xy_square - FromDIP(20)));
+    xy_cross_vertical->SetCornerRadius(FromDIP(18));
+    xy_cross_vertical->SetBorderWidth(0);
+    xy_cross_vertical->SetBackgroundColorNormal(wxColour(217, 217, 217));
+    xy_cross_vertical->SetBackgroundColour(wxColour(28, 30, 34));
+
     auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h, const wxColour &holder_bg = wxColour(28, 30, 34), bool snug_to_bitmap = false) {
         if (icon_key.empty())
             return;
@@ -756,7 +774,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     z_col->Add(top_btn, 0, wxLEFT | wxBOTTOM, FromDIP(10));
     auto *top_z_label = new wxStaticText(top_btn, wxID_ANY, "+Z");
     top_z_label->SetForegroundColour(wxColour(45, 48, 55));
-    top_z_label->SetBackgroundColour(wxColour(255, 255, 255));
+    top_z_label->SetBackgroundColour(wxColour(214, 214, 214));
     const wxSize top_btn_size = top_btn->GetSize();
     const wxSize top_z_label_size = top_z_label->GetBestSize();
     top_z_label->SetPosition(wxPoint(
@@ -787,7 +805,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bottom_divider->SetBackgroundColour(wxColour(70, 74, 82));
     auto *bottom_z_label = new wxStaticText(bottom_split_host, wxID_ANY, "-Z");
     bottom_z_label->SetForegroundColour(wxColour(45, 48, 55));
-    bottom_z_label->SetBackgroundColour(wxColour(255, 255, 255));
+    bottom_z_label->SetBackgroundColour(wxColour(214, 214, 214));
     const wxSize bottom_z_label_size = bottom_z_label->GetBestSize();
     bottom_z_label->SetPosition(wxPoint(
         (bottom_split_host->GetMinSize().GetWidth() - bottom_z_label_size.GetWidth()) / 2,
