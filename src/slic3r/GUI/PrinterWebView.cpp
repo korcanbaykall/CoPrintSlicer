@@ -654,92 +654,58 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     };
 
     const int xy_square = FromDIP(261);
-    const int center_size = FromDIP(80);
+    const int center_size = FromDIP(70);
     const int center_pos = (xy_square - center_size) / 2;
-    const int gap = FromDIP(2);
-
-    const int top_w = FromDIP(220);
-    const int top_h = FromDIP(75);
-    const int side_w = FromDIP(90);
-    const int side_h = FromDIP(210);
-    const int left_side_inset_x = FromDIP(0);
-    const int top_center_x = center_pos + (center_size - top_w) / 2;
-    const int side_shift_y = FromDIP(8);
-    const int side_left_x_raw = center_pos - gap - side_w + left_side_inset_x;
-    const int side_left_x = side_left_x_raw < 0 ? 0 : side_left_x_raw;
-    const int side_right_x_raw = center_pos + center_size + gap;
-    const int side_right_x = (side_right_x_raw + side_w > xy_square) ? (xy_square - side_w) : side_right_x_raw;
+    const int card_gap = FromDIP(10);
+    const wxColour axis_card_color(217, 217, 217);
 
     auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
     xy_area->SetMinSize(wxSize(xy_square, xy_square));
     xy_area->SetMaxSize(wxSize(xy_square, xy_square));
     xy_area->SetBackgroundColour(wxColour(28, 30, 34));
 
-    auto *xy_cross_horizontal = new StaticBox(xy_area, wxID_ANY);
-    xy_cross_horizontal->SetSize(wxRect(wxPoint(FromDIP(10), center_pos + (center_size - FromDIP(84)) / 2), wxSize(xy_square - FromDIP(20), FromDIP(84))));
-    xy_cross_horizontal->SetMinSize(wxSize(xy_square - FromDIP(20), FromDIP(84)));
-    xy_cross_horizontal->SetMaxSize(wxSize(xy_square - FromDIP(20), FromDIP(84)));
-    xy_cross_horizontal->SetCornerRadius(FromDIP(18));
-    xy_cross_horizontal->SetBorderWidth(0);
-    xy_cross_horizontal->SetBackgroundColorNormal(wxColour(217, 217, 217));
-    xy_cross_horizontal->SetBackgroundColour(wxColour(217, 217, 217));
-
-    auto *xy_cross_vertical = new StaticBox(xy_area, wxID_ANY);
-    xy_cross_vertical->SetSize(wxRect(wxPoint(center_pos + (center_size - FromDIP(84)) / 2, FromDIP(10)), wxSize(FromDIP(84), xy_square - FromDIP(20))));
-    xy_cross_vertical->SetMinSize(wxSize(FromDIP(84), xy_square - FromDIP(20)));
-    xy_cross_vertical->SetMaxSize(wxSize(FromDIP(84), xy_square - FromDIP(20)));
-    xy_cross_vertical->SetCornerRadius(FromDIP(18));
-    xy_cross_vertical->SetBorderWidth(0);
-    xy_cross_vertical->SetBackgroundColorNormal(wxColour(217, 217, 217));
-    xy_cross_vertical->SetBackgroundColour(wxColour(217, 217, 217));
-
-    auto add_axis_icon = [this](wxWindow *parent, const std::string &icon_key, int x, int y, int box_w, int box_h, const wxColour &holder_bg = wxColour(28, 30, 34), bool snug_to_bitmap = false) {
-        if (icon_key.empty())
-            return;
-        const int pad = this->FromDIP(0);
-        int holder_w = box_w - pad * 2;
-        int holder_h = box_h - pad * 2;
-        if (holder_w < this->FromDIP(1)) holder_w = this->FromDIP(1);
-        if (holder_h < this->FromDIP(1)) holder_h = this->FromDIP(1);
-
-        const int icon_target = holder_h;
-        const int icon_px = this->ToDIP(wxSize(0, icon_target)).GetHeight();
-        auto bmp = create_scaled_bitmap(icon_key, this, icon_px > 0 ? icon_px : 1);
-
-        wxPoint holder_pos(x + pad, y + pad);
-        if (snug_to_bitmap && bmp.IsOk()) {
-            const wxSize bmp_sz = bmp.GetScaledSize();
-            holder_w = std::max(this->FromDIP(1), std::min(holder_w, bmp_sz.GetWidth()));
-            holder_h = std::max(this->FromDIP(1), std::min(holder_h, bmp_sz.GetHeight()));
-            holder_pos.x = x + (box_w - holder_w) / 2;
-            holder_pos.y = y + (box_h - holder_h) / 2;
-        }
-
-        auto *holder = new wxPanel(parent, wxID_ANY, holder_pos, wxSize(holder_w, holder_h));
-        holder->SetBackgroundColour(holder_bg);
-
-        auto *sizer = new wxBoxSizer(wxVERTICAL);
-        sizer->AddStretchSpacer(1);
-        auto *icon = new wxStaticBitmap(holder, wxID_ANY, bmp);
-        sizer->Add(icon, 0, wxALIGN_CENTER);
-        sizer->AddStretchSpacer(1);
-        holder->SetSizer(sizer);
+    auto make_axis_card = [this, xy_area, axis_card_color](const wxPoint &pos, const wxSize &size, int radius) {
+        auto *card = new StaticBox(xy_area, wxID_ANY);
+        card->SetSize(wxRect(pos, size));
+        card->SetMinSize(size);
+        card->SetMaxSize(size);
+        card->SetCornerRadius(this->FromDIP(radius));
+        card->SetBorderWidth(0);
+        card->SetBackgroundColorNormal(axis_card_color);
+        card->SetBackgroundColour(axis_card_color);
+        return card;
     };
 
-    add_axis_icon(xy_area, resolve_icon("vector10", ""), side_left_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(217, 217, 217), true);
-    add_axis_icon(xy_area, resolve_icon("vector12", ""), side_right_x, (xy_square - side_h) / 2 + side_shift_y, side_w, side_h, wxColour(217, 217, 217), true);
-    add_axis_icon(xy_area, resolve_icon("vector11", ""), top_center_x, center_pos - gap - top_h, top_w, top_h, wxColour(217, 217, 217));
-    add_axis_icon(xy_area, resolve_icon("vector13", ""), top_center_x, center_pos + center_size + gap, top_w, top_h, wxColour(217, 217, 217));
+    const int top_width = FromDIP(182);
+    const int top_height = FromDIP(56);
+    const int side_width = FromDIP(56);
+    const int side_height = FromDIP(182);
 
-    std::string center_icon = resolve_icon("monitor_axis_home_icon", "monitor_axis_home");
-    auto *center_btn = new Button(xy_area, "", center_icon.empty() ? wxString() : from_u8(center_icon), 0, 38);
+    make_axis_card(
+        wxPoint((xy_square - top_width) / 2, center_pos - card_gap - top_height),
+        wxSize(top_width, top_height),
+        16);
+    make_axis_card(
+        wxPoint(center_pos - card_gap - side_width, (xy_square - side_height) / 2),
+        wxSize(side_width, side_height),
+        16);
+    make_axis_card(
+        wxPoint(center_pos + center_size + card_gap, (xy_square - side_height) / 2),
+        wxSize(side_width, side_height),
+        16);
+    make_axis_card(
+        wxPoint((xy_square - top_width) / 2, center_pos + center_size + card_gap),
+        wxSize(top_width, top_height),
+        16);
+
+    auto *center_btn = new Button(xy_area, "", "home", 0, 34);
     center_btn->SetSize(wxRect(wxPoint(center_pos, center_pos), wxSize(center_size, center_size)));
     center_btn->SetMinSize(wxSize(center_size, center_size));
     center_btn->SetMaxSize(wxSize(center_size, center_size));
-    center_btn->SetCornerRadius(FromDIP(7));
+    center_btn->SetCornerRadius(FromDIP(10));
     center_btn->SetBorderWidth(0);
     center_btn->SetBackgroundColorNormal(wxColour(255, 255, 255));
-    center_btn->SetBackgroundColour(wxColour(28, 30, 34));
+    center_btn->SetBackgroundColour(wxColour(255, 255, 255));
 
     content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
 
