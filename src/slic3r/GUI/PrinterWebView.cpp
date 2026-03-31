@@ -759,8 +759,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_home_box->SetBackgroundColour(wxColour(28, 30, 34));
 
     z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(15));
-    auto *bottom_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 90, 75, true);
-    z_col->Add(bottom_btn, 0, wxLEFT, FromDIP(10));
+    auto *bottom_row = new wxBoxSizer(wxHORIZONTAL);
+    auto *bottom_left_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 45, 75, true);
+    auto *bottom_right_btn = make_icon_btn(resolve_icon("rectangle_12", ""), 45, 75, true);
+    bottom_row->Add(bottom_left_btn, 0);
+    bottom_row->Add(bottom_right_btn, 0);
+    z_col->Add(bottom_row, 0, wxLEFT, FromDIP(10));
     content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
 
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
