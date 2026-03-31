@@ -69,6 +69,8 @@ public:
     void dismiss_extruder_popup();
     void toggle_fan_popup();
     void dismiss_fan_popup();
+    void toggle_speed_popup();
+    void dismiss_speed_popup();
 
     bool Show(bool show = true) override;
 
@@ -89,6 +91,7 @@ private:
     void rebuild_printers_popup();
     void rebuild_extruder_popup();
     void rebuild_fan_popup();
+    void rebuild_speed_popup();
 
     wxWebView* m_browser;
     long m_zoomFactor;
@@ -116,6 +119,11 @@ private:
     wxPanel *m_fan_popup_panel { nullptr };
     wxStaticText *m_fan_display_label { nullptr };
     wxString m_selected_fan { "Fan" };
+    wxWindow *m_speed_popup_button { nullptr };
+    wxPopupTransientWindow *m_speed_popup { nullptr };
+    wxPanel *m_speed_popup_panel { nullptr };
+    wxStaticText *m_speed_display_label { nullptr };
+    wxString m_selected_speed { "--" };
     wxPanel *m_status_page { nullptr };
     wxPanel *m_storage_page { nullptr };
     wxPanel *m_update_page { nullptr };

@@ -135,6 +135,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_fan_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
     rebuild_fan_popup();
 
+    m_speed_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
+    m_speed_popup_panel = new wxPanel(m_speed_popup, wxID_ANY);
+    m_speed_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
+    rebuild_speed_popup();
+
     auto *content_host = new wxPanel(this, wxID_ANY);
     content_host->SetBackgroundColour(wxColour(28, 30, 34));
     auto *content_host_sizer = new wxBoxSizer(wxVERTICAL);
@@ -875,9 +880,17 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     speed_label->SetPosition(wxPoint(FromDIP(12), FromDIP(200)));
     speed_label->SetForegroundColour(wxColour(220, 220, 220));
 
-    auto *speed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "--");
+    auto *speed_value = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_speed);
     speed_value->SetForegroundColour(wxColour(220, 220, 220));
+    speed_value->SetCursor(wxCursor(wxCURSOR_HAND));
     speed_value->SetPosition(wxPoint(value_right_edge - speed_value->GetBestSize().GetWidth(), FromDIP(200)));
+    m_speed_display_label = speed_value;
+    m_speed_popup_button = speed_value;
+
+    auto speed_popup_handler = [this](wxMouseEvent &) { toggle_speed_popup(); };
+    speed_label->SetCursor(wxCursor(wxCURSOR_HAND));
+    speed_label->Bind(wxEVT_LEFT_DOWN, speed_popup_handler);
+    speed_value->Bind(wxEVT_LEFT_DOWN, speed_popup_handler);
 
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
@@ -937,6 +950,7 @@ PrinterWebView::~PrinterWebView()
     dismiss_printers_popup();
     dismiss_extruder_popup();
     dismiss_fan_popup();
+    dismiss_speed_popup();
     if (m_thumbnail_web_request.IsOk())
         m_thumbnail_web_request.Cancel();
     if (m_layer_refresh_timer != nullptr) {
@@ -1080,6 +1094,29 @@ void PrinterWebView::dismiss_fan_popup()
 {
     if (m_fan_popup != nullptr && m_fan_popup->IsShown())
         m_fan_popup->Dismiss();
+}
+
+void PrinterWebView::toggle_speed_popup()
+{
+    if (m_speed_popup == nullptr || m_speed_popup_button == nullptr)
+        return;
+
+    rebuild_speed_popup();
+
+    if (m_speed_popup->IsShown()) {
+        m_speed_popup->Dismiss();
+        return;
+    }
+
+    const wxPoint screen_pos = m_speed_popup_button->ClientToScreen(wxPoint(0, m_speed_popup_button->GetSize().GetHeight() + FromDIP(8)));
+    m_speed_popup->Position(screen_pos, wxSize(0, 0));
+    m_speed_popup->Popup(m_speed_popup_button);
+}
+
+void PrinterWebView::dismiss_speed_popup()
+{
+    if (m_speed_popup != nullptr && m_speed_popup->IsShown())
+        m_speed_popup->Dismiss();
 }
 
 void PrinterWebView::rebuild_printers_popup()
@@ -1361,6 +1398,84 @@ void PrinterWebView::rebuild_fan_popup()
     m_fan_popup->SetClientSize(popup_size);
     m_fan_popup->SetSize(popup_size);
     m_fan_popup->Layout();
+}
+
+void PrinterWebView::rebuild_speed_popup()
+{
+    if (m_speed_popup == nullptr || m_speed_popup_panel == nullptr)
+        return;
+
+    if (auto *old_sizer = m_speed_popup_panel->GetSizer()) {
+        m_speed_popup_panel->SetSizer(nullptr, false);
+        delete old_sizer;
+    }
+    m_speed_popup_panel->DestroyChildren();
+
+    const int popup_width = FromDIP(120);
+    const int popup_height = FromDIP(180);
+
+    m_speed_popup_panel->SetMinSize(wxSize(popup_width, popup_height));
+    m_speed_popup_panel->SetMaxSize(wxSize(popup_width, popup_height));
+    m_speed_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
+
+    auto *popup_sizer = new wxBoxSizer(wxVERTICAL);
+    auto *popup_box = new StaticBox(m_speed_popup_panel, wxID_ANY);
+    popup_box->SetMinSize(wxSize(popup_width, popup_height));
+    popup_box->SetMaxSize(wxSize(popup_width, popup_height));
+    popup_box->SetCornerRadius(FromDIP(12));
+    popup_box->SetBorderWidth(1);
+    popup_box->SetBorderColorNormal(wxColour(55, 58, 64));
+    popup_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+    popup_box->SetBackgroundColour(wxColour(22, 24, 29));
+
+    auto add_popup_line = [this, popup_box, popup_width](int top_offset) {
+        auto *line = new wxPanel(popup_box, wxID_ANY);
+        line->SetSize(wxRect(
+            wxPoint(FromDIP(0), FromDIP(top_offset)),
+            wxSize(popup_width, FromDIP(1))));
+        line->SetMinSize(wxSize(popup_width, FromDIP(1)));
+        line->SetMaxSize(wxSize(popup_width, FromDIP(1)));
+        line->SetBackgroundColour(wxColour(55, 58, 64));
+    };
+
+    add_popup_line(45);
+    add_popup_line(90);
+    add_popup_line(135);
+
+    const std::array<wxString, 4> speed_labels = { "slow", "normal", "fast", "very fast" };
+    for (int i = 0; i < 4; ++i) {
+        auto *label = new wxStaticText(popup_box, wxID_ANY, speed_labels[i]);
+        label->SetForegroundColour(wxColour(220, 220, 220));
+        label->SetCursor(wxCursor(wxCURSOR_HAND));
+        const wxSize label_size = label->GetBestSize();
+        const int row_height = FromDIP(45);
+        const int label_x = (popup_width - label_size.GetWidth()) / 2;
+        const int label_y = i * row_height + (row_height - label_size.GetHeight()) / 2;
+        label->SetPosition(wxPoint(label_x, label_y));
+        label->Bind(wxEVT_LEFT_DOWN, [this, choice = speed_labels[i]](wxMouseEvent &) {
+            m_selected_speed = choice;
+            if (m_speed_display_label != nullptr) {
+                m_speed_display_label->SetLabelText(m_selected_speed);
+                const int right_value_margin = FromDIP(5);
+                const int right_placeholder_width = FromDIP(190);
+                const int value_right_edge = right_placeholder_width - right_value_margin;
+                m_speed_display_label->SetPosition(wxPoint(value_right_edge - m_speed_display_label->GetBestSize().GetWidth(), FromDIP(200)));
+            }
+            dismiss_speed_popup();
+            Layout();
+        });
+    }
+
+    popup_sizer->Add(popup_box, 0, wxEXPAND);
+    m_speed_popup_panel->SetSizer(popup_sizer);
+    popup_sizer->Fit(m_speed_popup_panel);
+    m_speed_popup_panel->Layout();
+
+    const wxSize popup_size = m_speed_popup_panel->GetBestSize();
+    m_speed_popup_panel->SetSize(popup_size);
+    m_speed_popup->SetClientSize(popup_size);
+    m_speed_popup->SetSize(popup_size);
+    m_speed_popup->Layout();
 }
 
 void PrinterWebView::select_tab(PrinterWebViewTab tab)
