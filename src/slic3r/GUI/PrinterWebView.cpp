@@ -70,43 +70,39 @@ private:
         wxGraphicsPath path = gc->CreatePath();
         switch (m_direction) {
         case AxisShapeDirection::Left:
-            path.MoveToPoint(w * 0.90, h * 0.23);
-            path.AddLineToPoint(w * 0.36, h * 0.02);
-            path.AddLineToPoint(w * 0.05, h * 0.07);
-            path.AddLineToPoint(0.0, h * 0.50);
-            path.AddLineToPoint(w * 0.05, h * 0.93);
-            path.AddLineToPoint(w * 0.36, h * 0.98);
-            path.AddLineToPoint(w * 0.90, h * 0.77);
+            path.MoveToPoint(w, h * 0.18);
+            path.AddLineToPoint(w * 0.34, 0.0);
+            path.AddLineToPoint(0.0, h * 0.08);
+            path.AddLineToPoint(0.0, h * 0.92);
+            path.AddLineToPoint(w * 0.34, h);
+            path.AddLineToPoint(w, h * 0.82);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Up:
-            path.MoveToPoint(w * 0.23, h * 0.90);
-            path.AddLineToPoint(w * 0.02, h * 0.36);
-            path.AddLineToPoint(w * 0.07, h * 0.05);
-            path.AddLineToPoint(w * 0.50, 0.0);
-            path.AddLineToPoint(w * 0.93, h * 0.05);
-            path.AddLineToPoint(w * 0.98, h * 0.36);
-            path.AddLineToPoint(w * 0.77, h * 0.90);
+            path.MoveToPoint(w * 0.18, h);
+            path.AddLineToPoint(0.0, h * 0.34);
+            path.AddLineToPoint(w * 0.08, 0.0);
+            path.AddLineToPoint(w * 0.92, 0.0);
+            path.AddLineToPoint(w, h * 0.34);
+            path.AddLineToPoint(w * 0.82, h);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Right:
-            path.MoveToPoint(w * 0.10, h * 0.23);
-            path.AddLineToPoint(w * 0.64, h * 0.02);
-            path.AddLineToPoint(w * 0.95, h * 0.07);
-            path.AddLineToPoint(w, h * 0.50);
-            path.AddLineToPoint(w * 0.95, h * 0.93);
-            path.AddLineToPoint(w * 0.64, h * 0.98);
-            path.AddLineToPoint(w * 0.10, h * 0.77);
+            path.MoveToPoint(0.0, h * 0.18);
+            path.AddLineToPoint(w * 0.66, 0.0);
+            path.AddLineToPoint(w, h * 0.08);
+            path.AddLineToPoint(w, h * 0.92);
+            path.AddLineToPoint(w * 0.66, h);
+            path.AddLineToPoint(0.0, h * 0.82);
             path.CloseSubpath();
             break;
         case AxisShapeDirection::Down:
-            path.MoveToPoint(w * 0.23, h * 0.10);
-            path.AddLineToPoint(w * 0.02, h * 0.64);
-            path.AddLineToPoint(w * 0.07, h * 0.95);
-            path.AddLineToPoint(w * 0.50, h);
-            path.AddLineToPoint(w * 0.93, h * 0.95);
-            path.AddLineToPoint(w * 0.98, h * 0.64);
-            path.AddLineToPoint(w * 0.77, h * 0.10);
+            path.MoveToPoint(w * 0.18, 0.0);
+            path.AddLineToPoint(0.0, h * 0.66);
+            path.AddLineToPoint(w * 0.08, h);
+            path.AddLineToPoint(w * 0.92, h);
+            path.AddLineToPoint(w, h * 0.66);
+            path.AddLineToPoint(w * 0.82, 0.0);
             path.CloseSubpath();
             break;
         }
