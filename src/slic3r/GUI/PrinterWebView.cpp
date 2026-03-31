@@ -811,7 +811,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bed_value->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *bed_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
-    bed_unit->SetPosition(wxPoint(FromDIP(152), FromDIP(20)));
     bed_unit->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *extruder_label = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_extruder);
@@ -826,7 +825,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     extruder_value->SetCursor(wxCursor(wxCURSOR_HAND));
 
     auto *extruder_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
-    extruder_unit->SetPosition(wxPoint(FromDIP(152), FromDIP(80)));
     extruder_unit->SetForegroundColour(wxColour(220, 220, 220));
     extruder_unit->SetCursor(wxCursor(wxCURSOR_HAND));
 
@@ -850,11 +848,22 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_unit->SetForegroundColour(wxColour(220, 220, 220));
     fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
 
+    const int right_value_margin = FromDIP(5);
+    const int inter_value_gap = FromDIP(5);
+    const int value_right_edge = right_placeholder_width - right_value_margin;
+
+    const int bed_unit_x = value_right_edge - bed_unit->GetBestSize().GetWidth();
+    bed_unit->SetPosition(wxPoint(bed_unit_x, FromDIP(20)));
+
+    const int extruder_unit_x = value_right_edge - extruder_unit->GetBestSize().GetWidth();
+    extruder_unit->SetPosition(wxPoint(extruder_unit_x, FromDIP(80)));
+
     const int fan_row_y = FromDIP(140);
-    const int fan_value_x = FromDIP(107);
+    const int fan_unit_x = value_right_edge - fan_unit->GetBestSize().GetWidth();
     const int fan_value_width = fan_value->GetBestSize().GetWidth();
+    const int fan_value_x = fan_unit_x - inter_value_gap - fan_value_width;
     fan_value->SetPosition(wxPoint(fan_value_x, fan_row_y));
-    fan_unit->SetPosition(wxPoint(FromDIP(152), fan_row_y));
+    fan_unit->SetPosition(wxPoint(fan_unit_x, fan_row_y));
 
     m_fan_popup_button = fan_label;
     auto fan_popup_handler = [this](wxMouseEvent &) { toggle_fan_popup(); };
@@ -867,8 +876,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     speed_label->SetForegroundColour(wxColour(220, 220, 220));
 
     auto *speed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "--");
-    speed_value->SetPosition(wxPoint(FromDIP(107), FromDIP(200)));
     speed_value->SetForegroundColour(wxColour(220, 220, 220));
+    speed_value->SetPosition(wxPoint(value_right_edge - speed_value->GetBestSize().GetWidth(), FromDIP(200)));
 
     auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
