@@ -46,6 +46,7 @@
 #include "slic3r/GUI/StatusPanel.hpp"
 #include "slic3r/GUI/UpgradePanel.hpp"
 #include "slic3r/GUI/HMSPanel.hpp"
+#include "slic3r/GUI/MultiTaskManagerPage.hpp"
 #include "slic3r/GUI/AmsWidgets.hpp"
 #include "Widgets/SideTools.hpp"
 #include "SelectMachinePop.hpp"
@@ -81,6 +82,7 @@ private:
     AddMachinePanel*    m_status_add_machine_panel;
     StatusPanel*        m_status_info_panel;
     MediaFilePanel*     m_media_file_panel;
+    CloudTaskManagerPage* m_print_history_panel;
     UpgradePanel*       m_upgrade_panel;
     HMSPanel*           m_hms_panel;
 
@@ -114,10 +116,11 @@ public:
     enum PrinterTab {
         PT_STATUS  = 0,
         PT_MEDIA   = 1,
-        PT_UPDATE  = 2,
-        PT_HMS     = 3,
-        PT_DEBUG   = 4,
-        PT_MAX_NUM = 5
+        PT_HISTORY = 2,
+        PT_UPDATE  = 3,
+        PT_HMS     = 4,
+        PT_DEBUG   = 5,
+        PT_MAX_NUM = 6
     };
 
 	void init_bitmap();

@@ -192,6 +192,9 @@ void MonitorPanel::init_tabpanel()
     m_tabpanel->AddPage(m_media_file_panel, _L("Storage"), "", false);
     //m_tabpanel->AddPage(m_media_file_panel, _L("Internal Storage"), "", false);
 
+    m_print_history_panel = new CloudTaskManagerPage(m_tabpanel);
+    m_tabpanel->AddPage(m_print_history_panel, _L("Print History"), "", false);
+
     m_upgrade_panel = new UpgradePanel(m_tabpanel);
     m_tabpanel->AddPage(m_upgrade_panel, _CTX(L_CONTEXT("Update", "Firmware"), "Firmware"), "", false);
 
@@ -238,6 +241,7 @@ void MonitorPanel::on_sys_color_changed()
     m_status_info_panel->on_sys_color_changed();
     m_upgrade_panel->on_sys_color_changed();
     m_media_file_panel->Rescale();
+    m_print_history_panel->msw_rescale();
 }
 
 void MonitorPanel::msw_rescale()
@@ -250,6 +254,7 @@ void MonitorPanel::msw_rescale()
     //m_status_add_machine_panel->msw_rescale();
     m_status_info_panel->msw_rescale();
     m_media_file_panel->Rescale();
+    m_print_history_panel->msw_rescale();
     m_upgrade_panel->msw_rescale();
     m_hms_panel->msw_rescale();
 
@@ -342,7 +347,7 @@ void MonitorPanel::update_all()
     if (!obj) {
         show_status((int)MONITOR_NO_PRINTER);
         m_hms_panel->clear_hms_tag();
-        m_tabpanel->GetBtnsListCtrl()->showNewTag(3, false);
+        m_tabpanel->GetBtnsListCtrl()->showNewTag(PT_HMS, false);
         if (m_status_info_panel->IsShown()) {
             m_status_info_panel->m_media_play_ctrl->SetMachineObject(obj);
             m_status_info_panel->update(obj);
@@ -382,6 +387,9 @@ void MonitorPanel::update_all()
         m_upgrade_panel->update(obj);
     } else if (current_page == m_media_file_panel) {
         m_media_file_panel->UpdateByObj(obj);
+    } else if (current_page == m_print_history_panel) {
+        m_print_history_panel->refresh_user_device();
+        m_print_history_panel->update_page();
     }
 
     if (current_page == m_hms_panel || (obj->GetHMS()->GetHMSItems().size() != m_hms_panel->temp_hms_list.size())) {
@@ -402,12 +410,12 @@ void MonitorPanel::update_hms_tag()
 
         if (!hmsitem.second.has_read()) {
             //show HMS new tag
-            m_tabpanel->GetBtnsListCtrl()->showNewTag(3, true);
+            m_tabpanel->GetBtnsListCtrl()->showNewTag(PT_HMS, true);
             return;
         }
     }
 
-    m_tabpanel->GetBtnsListCtrl()->showNewTag(3, false);
+    m_tabpanel->GetBtnsListCtrl()->showNewTag(PT_HMS, false);
 }
 
 bool MonitorPanel::Show(bool show)
@@ -497,6 +505,8 @@ std::string MonitorPanel::get_string_from_tab(PrinterTab tab)
         return "status";
     case PT_MEDIA:
         return "sd_card";
+    case PT_HISTORY:
+        return "print_history";
     case PT_UPDATE:
         return "update";
     case PT_HMS:
