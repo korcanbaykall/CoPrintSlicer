@@ -86,9 +86,11 @@ private:
 
     void SendAPIKey();
     void refresh_layer_info_from_selected_machine();
+    void refresh_update_page_from_selected_machine();
     void select_tab(PrinterWebViewTab tab);
     void update_sidebar_selection();
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
+    wxPanel *create_update_page(wxWindow *parent);
     void prompt_fan_value();
     void refresh_fan_value_display();
     void reset_placeholder_selections();
@@ -140,6 +142,15 @@ private:
     wxPanel *m_storage_page { nullptr };
     wxPanel *m_update_page { nullptr };
     wxPanel *m_assistant_page { nullptr };
+    wxStaticBitmap *m_update_printer_bitmap { nullptr };
+    wxStaticText *m_update_header_title { nullptr };
+    wxStaticText *m_update_model_value { nullptr };
+    wxStaticText *m_update_serial_value { nullptr };
+    wxStaticText *m_update_version_value { nullptr };
+    wxStaticText *m_update_status_value { nullptr };
+    wxStaticText *m_update_percent_value { nullptr };
+    wxStaticText *m_update_release_note_link { nullptr };
+    wxGauge *m_update_progress_gauge { nullptr };
     wxStaticText *m_active_file_name_value { nullptr };
     wxStaticText *m_estimated_finish_label { nullptr };
     wxStaticText *m_estimated_finish_value { nullptr };

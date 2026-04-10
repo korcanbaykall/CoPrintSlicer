@@ -1086,7 +1086,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_status_page->SetSizer(status_page_sizer);
 
     m_storage_page = create_placeholder_page(content_host, "Depolama", "Bu alan simdilik hazirlaniyor.");
-    m_update_page = create_placeholder_page(content_host, "Guncelle", "Guncelleme icerigi daha sonra baglanacak.");
+    m_update_page = create_update_page(content_host);
     m_assistant_page = create_placeholder_page(content_host, "Asistan", "Asistan paneli icin gecici yer tutucu.");
 
     content_host_sizer->Add(m_status_page, 1, wxEXPAND);
@@ -1817,6 +1817,112 @@ wxPanel *PrinterWebView::create_placeholder_page(wxWindow *parent, const wxStrin
     return page;
 }
 
+wxPanel *PrinterWebView::create_update_page(wxWindow *parent)
+{
+    auto *page = new wxPanel(parent, wxID_ANY);
+    page->SetBackgroundColour(wxColour(28, 30, 34));
+
+    auto *page_sizer = new wxBoxSizer(wxVERTICAL);
+    page_sizer->AddSpacer(FromDIP(40));
+
+    auto *card = new StaticBox(page, wxID_ANY);
+    card->SetCornerRadius(FromDIP(8));
+    card->SetBorderWidth(1);
+    card->SetBorderColorNormal(wxColour(72, 78, 86));
+    card->SetBackgroundColorNormal(wxColour(247, 247, 247));
+    card->SetBackgroundColour(wxColour(28, 30, 34));
+    card->SetMinSize(wxSize(FromDIP(920), FromDIP(245)));
+
+    auto *card_sizer = new wxBoxSizer(wxVERTICAL);
+
+    auto *header = new wxPanel(card, wxID_ANY);
+    header->SetBackgroundColour(wxColour(239, 239, 239));
+    header->SetMinSize(wxSize(-1, FromDIP(34)));
+    auto *header_sizer = new wxBoxSizer(wxHORIZONTAL);
+    m_update_header_title = new wxStaticText(header, wxID_ANY, "P1P(Bosta)");
+    m_update_header_title->SetForegroundColour(wxColour(40, 40, 40));
+    header_sizer->Add(m_update_header_title, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(18));
+    header->SetSizer(header_sizer);
+    card_sizer->Add(header, 0, wxEXPAND);
+
+    auto *body = new wxPanel(card, wxID_ANY);
+    body->SetBackgroundColour(wxColour(252, 252, 252));
+    auto *body_sizer = new wxBoxSizer(wxHORIZONTAL);
+    body_sizer->AddSpacer(FromDIP(28));
+
+    m_update_printer_bitmap = new wxStaticBitmap(body, wxID_ANY, create_scaled_bitmap("printer_thumbnail", this, 150));
+    m_update_printer_bitmap->SetMinSize(wxSize(FromDIP(170), FromDIP(170)));
+    body_sizer->Add(m_update_printer_bitmap, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(34));
+
+    auto *info_col = new wxBoxSizer(wxVERTICAL);
+    info_col->AddStretchSpacer(1);
+
+    auto make_info_row = [body, this](const wxString &label_text, wxStaticText **value_out) {
+        auto *row = new wxBoxSizer(wxHORIZONTAL);
+        auto *label = new wxStaticText(body, wxID_ANY, label_text);
+        wxFont label_font = label->GetFont();
+        label_font.SetWeight(wxFONTWEIGHT_BOLD);
+        label->SetFont(label_font);
+        label->SetForegroundColour(wxColour(18, 18, 18));
+        row->Add(label, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, FromDIP(10));
+
+        auto *value = new wxStaticText(body, wxID_ANY, "-");
+        value->SetForegroundColour(wxColour(18, 18, 18));
+        row->Add(value, 0, wxALIGN_CENTER_VERTICAL);
+        *value_out = value;
+        return row;
+    };
+
+    info_col->Add(make_info_row("Model:", &m_update_model_value), 0, wxBOTTOM, FromDIP(12));
+    info_col->Add(make_info_row("Seri:", &m_update_serial_value), 0, wxBOTTOM, FromDIP(12));
+    info_col->Add(make_info_row("Surum:", &m_update_version_value), 0, wxBOTTOM, FromDIP(12));
+    info_col->AddStretchSpacer(1);
+    body_sizer->Add(info_col, 0, wxEXPAND | wxRIGHT, FromDIP(30));
+
+    body_sizer->AddStretchSpacer(1);
+
+    auto *right_col = new wxBoxSizer(wxVERTICAL);
+    right_col->AddSpacer(FromDIP(18));
+
+    auto *update_button = new Button(body, "Urun yazilimini guncelle");
+    update_button->SetMinSize(wxSize(FromDIP(138), FromDIP(30)));
+    update_button->SetCornerRadius(FromDIP(15));
+    update_button->SetBackgroundColor(StateColor(std::pair<wxColour, int>(wxColour("#FFFFFF"), StateColor::Normal)));
+    update_button->SetBorderColor(StateColor(std::pair<wxColour, int>(wxColour("#C5CCD3"), StateColor::Normal)));
+    update_button->SetTextColor(StateColor(std::pair<wxColour, int>(wxColour("#7C848C"), StateColor::Normal)));
+    update_button->Disable();
+    right_col->Add(update_button, 0, wxALIGN_RIGHT | wxBOTTOM, FromDIP(14));
+
+    m_update_status_value = new wxStaticText(body, wxID_ANY, "Guncelleme bilgisi bekleniyor");
+    m_update_status_value->SetForegroundColour(wxColour(0, 166, 76));
+    right_col->Add(m_update_status_value, 0, wxALIGN_RIGHT | wxBOTTOM, FromDIP(12));
+
+    auto *progress_row = new wxBoxSizer(wxHORIZONTAL);
+    m_update_progress_gauge = new wxGauge(body, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(88), FromDIP(12)), wxGA_SMOOTH);
+    m_update_progress_gauge->SetValue(0);
+    progress_row->Add(m_update_progress_gauge, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
+    m_update_percent_value = new wxStaticText(body, wxID_ANY, "0%");
+    m_update_percent_value->SetForegroundColour(wxColour(0, 166, 76));
+    progress_row->Add(m_update_percent_value, 0, wxALIGN_CENTER_VERTICAL);
+    right_col->Add(progress_row, 0, wxALIGN_RIGHT | wxBOTTOM, FromDIP(12));
+
+    m_update_release_note_link = new wxStaticText(body, wxID_ANY, "Surum notu");
+    m_update_release_note_link->SetForegroundColour(wxColour(36, 125, 255));
+    right_col->Add(m_update_release_note_link, 0, wxALIGN_RIGHT);
+
+    right_col->AddStretchSpacer(1);
+    body_sizer->Add(right_col, 0, wxEXPAND | wxRIGHT, FromDIP(24));
+    body->SetSizer(body_sizer);
+
+    card_sizer->Add(body, 1, wxEXPAND);
+    card->SetSizer(card_sizer);
+
+    page_sizer->Add(card, 0, wxLEFT | wxRIGHT, FromDIP(24));
+    page_sizer->AddStretchSpacer(1);
+    page->SetSizer(page_sizer);
+    return page;
+}
+
 void PrinterWebView::set_fallback_preview_thumbnail()
 {
     if (m_preview_thumbnail == nullptr)
@@ -1920,6 +2026,109 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
         }
     }
     set_estimated_remaining_seconds(remaining_seconds);
+    refresh_update_page_from_selected_machine();
+}
+
+void PrinterWebView::refresh_update_page_from_selected_machine()
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+    if (m_update_page == nullptr)
+        return;
+
+    if (obj == nullptr) {
+        if (m_update_header_title != nullptr) m_update_header_title->SetLabelText("Yazici secili degil");
+        if (m_update_model_value != nullptr) m_update_model_value->SetLabelText("-");
+        if (m_update_serial_value != nullptr) m_update_serial_value->SetLabelText("-");
+        if (m_update_version_value != nullptr) m_update_version_value->SetLabelText("-");
+        if (m_update_status_value != nullptr) m_update_status_value->SetLabelText("Yazici baglantisi bekleniyor");
+        if (m_update_percent_value != nullptr) m_update_percent_value->SetLabelText("0%");
+        if (m_update_progress_gauge != nullptr) m_update_progress_gauge->SetValue(0);
+        return;
+    }
+
+    if (m_update_header_title != nullptr) {
+        const wxString header_title = wxString::Format("%s(%s)", from_u8(obj->get_dev_name()), obj->is_connected() ? "Hazir" : "Cevrimdisi");
+        m_update_header_title->SetLabelText(header_title);
+    }
+
+    if (m_update_model_value != nullptr)
+        m_update_model_value->SetLabelText(obj->get_printer_type_display_str());
+
+    if (m_update_serial_value != nullptr) {
+        wxString serial = from_u8(obj->get_dev_id());
+        m_update_serial_value->SetLabelText(serial.MakeUpper());
+    }
+
+    wxString current_version = "-";
+    wxString next_version;
+    auto ota_it = obj->module_vers.find("ota");
+    if (ota_it != obj->module_vers.end())
+        current_version = ota_it->second.sw_ver;
+
+    if (!obj->ota_new_version_number.empty())
+        next_version = from_u8(obj->ota_new_version_number);
+    else if (ota_it != obj->module_vers.end())
+        next_version = ota_it->second.sw_new_ver;
+
+    if (m_update_version_value != nullptr) {
+        if (!next_version.empty() && next_version != current_version && current_version != "-")
+            m_update_version_value->SetLabelText(wxString::Format("%s -> %s", current_version, next_version));
+        else if (current_version != "-")
+            m_update_version_value->SetLabelText(wxString::Format("%s (Son surum)", current_version));
+        else
+            m_update_version_value->SetLabelText("-");
+    }
+
+    int progress = 0;
+    wxString status = obj->is_connected() ? "Guncelleme basarili" : "Yazici cevrimdisi";
+    wxColour status_colour(0, 166, 76);
+
+    if (!obj->is_connected()) {
+        progress = 0;
+        status_colour = wxColour(180, 180, 180);
+    } else if (obj->upgrade_display_state == DevFirmwareUpgradingState::UpgradingInProgress) {
+        progress = std::max(0, std::min(100, obj->get_upgrade_percent()));
+        status = "Guncelleniyor";
+    } else if (obj->upgrade_display_state == DevFirmwareUpgradingState::UpgradingFinished) {
+        progress = std::max(0, std::min(100, obj->get_upgrade_percent()));
+        if (obj->upgrade_status == "UPGRADE_FAIL" || obj->upgrade_err_code != UpgradeNoError) {
+            status = "Guncelleme basarisiz";
+            status_colour = wxColour(231, 111, 81);
+        } else {
+            status = "Guncelleme basarili";
+            if (progress <= 0)
+                progress = 100;
+        }
+    } else if (!next_version.empty() && next_version != current_version && current_version != "-") {
+        progress = 100;
+        status = "Guncelleme hazir";
+    } else if (current_version != "-") {
+        progress = 100;
+        status = "Guncelleme basarili";
+    }
+
+    if (m_update_status_value != nullptr) {
+        m_update_status_value->SetLabelText(status);
+        m_update_status_value->SetForegroundColour(status_colour);
+    }
+    if (m_update_percent_value != nullptr) {
+        m_update_percent_value->SetLabelText(wxString::Format("%d%%", progress));
+        m_update_percent_value->SetForegroundColour(status_colour);
+    }
+    if (m_update_progress_gauge != nullptr)
+        m_update_progress_gauge->SetValue(progress);
+
+    if (m_update_printer_bitmap != nullptr) {
+        try {
+            const wxBitmap bmp = create_scaled_bitmap(obj->get_printer_thumbnail_img_str(), this, 150);
+            if (bmp.IsOk())
+                m_update_printer_bitmap->SetBitmap(bmp);
+        } catch (...) {
+        }
+    }
+
+    m_update_page->Layout();
 }
 
 /**
