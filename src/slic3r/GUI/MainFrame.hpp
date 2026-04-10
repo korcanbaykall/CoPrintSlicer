@@ -51,7 +51,6 @@ class Tab;
 class PrintHostQueueDialog;
 class Plater;
 class MainFrame;
-class ParamsDialog;
 
 enum QuickSlice
 {
