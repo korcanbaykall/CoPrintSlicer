@@ -28,6 +28,7 @@ class MachineObject;
 namespace GUI {
 
 class ImageGrid;
+class CloudTaskManagerPage;
 
 class MediaFilePanel : public wxPanel
 {
@@ -67,6 +68,7 @@ private:
     ::Button *      m_button_video   = nullptr;
     ::Button *      m_button_timelapse = nullptr;
     ::Button *      m_button_model = nullptr;
+    ::Button *      m_button_history = nullptr;
 
     ::StaticBox *m_manage_panel        = nullptr;
     ::Button *   m_button_delete     = nullptr;
@@ -75,6 +77,7 @@ private:
     ::Button *m_button_management = nullptr;
 
     ImageGrid * m_image_grid   = nullptr;
+    CloudTaskManagerPage* m_history_panel = nullptr;
 
     bool m_external = true;
 
@@ -94,6 +97,7 @@ private:
 
     int m_last_mode = 0;
     int m_last_type = 0;
+    int m_last_file_type = 0;
     std::set<int> m_last_errors;
 };
 

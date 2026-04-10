@@ -9,6 +9,7 @@
 #include "Printer/PrinterFileSystem.h"
 #include "MsgDialog.hpp"
 #include "Widgets/ProgressDialog.hpp"
+#include "MultiTaskManagerPage.hpp"
 #include <libslic3r/Model.hpp>
 #include <libslic3r/Format/bbs_3mf.hpp>
 #include "DeviceCore/DevStorage.h"
@@ -22,6 +23,8 @@
 
 namespace Slic3r {
 namespace GUI {
+
+static constexpr int MEDIA_HISTORY_VIEW = 3;
 
 MediaFilePanel::MediaFilePanel(wxWindow * parent)
     : wxPanel(parent, wxID_ANY)
@@ -84,7 +87,9 @@ MediaFilePanel::MediaFilePanel(wxWindow * parent)
     m_button_video->SetToolTip(_L("Switch to video files."));
     m_button_model = new ::Button(m_type_panel, _L("Model"), "", wxBORDER_NONE);
     m_button_video->SetToolTip(_L("Switch to 3MF model files."));
-    for (auto b : {m_button_timelapse, m_button_video, m_button_model}) {
+    m_button_history = new ::Button(m_type_panel, _L("History"), "", wxBORDER_NONE);
+    m_button_history->SetToolTip(_L("Switch to print history."));
+    for (auto b : {m_button_timelapse, m_button_video, m_button_model, m_button_history}) {
         b->SetBackgroundColor(background);
         b->SetCanFocus(false);
     }
@@ -94,6 +99,7 @@ MediaFilePanel::MediaFilePanel(wxWindow * parent)
     //type_sizer->Add(m_button_video, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 24);
     m_button_video->Hide();
     type_sizer->Add(m_button_model, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 24);
+    type_sizer->Add(m_button_history, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 24);
     m_type_panel->SetSizer(type_sizer);
     top_sizer->Add(m_type_panel, 0, wxALIGN_CENTER_VERTICAL);
 
@@ -141,6 +147,10 @@ MediaFilePanel::MediaFilePanel(wxWindow * parent)
     m_image_grid->SetStatus(m_bmp_failed, _L("No printers."));
     sizer->Add(m_image_grid, 1, wxEXPAND);
 
+    m_history_panel = new CloudTaskManagerPage(this);
+    m_history_panel->Hide();
+    sizer->Add(m_history_panel, 1, wxEXPAND);
+
     SetSizer(sizer);
 
     // Time group
@@ -159,20 +169,34 @@ MediaFilePanel::MediaFilePanel(wxWindow * parent)
 
     // File type
     auto type_button_clicked = [this](wxEvent &e) {
-        Button *buttons[]{m_button_timelapse, m_button_video, m_button_model};
+        Button *buttons[]{m_button_timelapse, m_button_video, m_button_model, m_button_history};
         auto    type = std::find(buttons, buttons + sizeof(buttons) / sizeof(buttons[0]), e.GetEventObject()) - buttons;
         if (m_last_type == type)
             return;
-        m_image_grid->SetFileType(type, m_external ? "" : "internal");
         buttons[m_last_type]->SetValue(!buttons[m_last_type]->GetValue());
         m_last_type = type;
         buttons[m_last_type]->SetValue(!buttons[m_last_type]->GetValue());
-        if (type == PrinterFileSystem::F_MODEL)
-            m_image_grid->SetGroupMode(PrinterFileSystem::G_NONE);
+        const bool history_mode = (type == MEDIA_HISTORY_VIEW);
+        m_history_panel->Show(history_mode);
+        m_image_grid->Show(!history_mode);
+        m_time_panel->Show(!history_mode && m_last_file_type < PrinterFileSystem::F_MODEL);
+        m_manage_panel->Show(!history_mode);
+
+        if (history_mode) {
+            m_history_panel->refresh_user_device();
+            m_history_panel->update_page();
+        } else {
+            m_last_file_type = type;
+            m_image_grid->SetFileType(type, m_external ? "" : "internal");
+            if (type == PrinterFileSystem::F_MODEL)
+                m_image_grid->SetGroupMode(PrinterFileSystem::G_NONE);
+        }
+        Layout();
     };
     m_button_timelapse->Bind(wxEVT_COMMAND_BUTTON_CLICKED, type_button_clicked);
     m_button_video->Bind(wxEVT_COMMAND_BUTTON_CLICKED, type_button_clicked);
     m_button_model->Bind(wxEVT_COMMAND_BUTTON_CLICKED, type_button_clicked);
+    m_button_history->Bind(wxEVT_COMMAND_BUTTON_CLICKED, type_button_clicked);
     m_button_timelapse->SetValue(true);
 
     // File management
@@ -273,13 +297,13 @@ void MediaFilePanel::UpdateByObj(MachineObject* obj)
         boost::shared_ptr<PrinterFileSystem> fs(new PrinterFileSystem);
         fs->Attached();
         m_image_grid->SetFileSystem(fs);
-        m_image_grid->SetFileType(m_last_type, m_external ? "" : "internal");
+        m_image_grid->SetFileType(m_last_file_type, m_external ? "" : "internal");
         fs->Bind(EVT_FILE_CHANGED, [this, wfs = boost::weak_ptr(fs)](auto &e) {
             e.Skip();
             boost::shared_ptr fs(wfs.lock());
             if (fs == nullptr || m_image_grid->GetFileSystem() != fs) // canceled
                 return;
-            m_time_panel->Show(fs->GetFileType() < PrinterFileSystem::F_MODEL);
+            m_time_panel->Show(m_last_type != MEDIA_HISTORY_VIEW && fs->GetFileType() < PrinterFileSystem::F_MODEL);
             //m_manage_panel->Show(fs->GetFileType() < PrinterFileSystem::F_MODEL);
             m_button_refresh->Enable(fs->GetStatus() == PrinterFileSystem::ListReady);
             m_button_management->Enable(fs->GetCount() > 0);
@@ -363,6 +387,10 @@ void MediaFilePanel::UpdateByObj(MachineObject* obj)
         });
         if (IsShown()) fs->Start();
     }
+    if (m_last_type == MEDIA_HISTORY_VIEW) {
+        m_history_panel->refresh_user_device();
+        m_history_panel->update_page();
+    }
     wxCommandEvent e(EVT_MODE_CHANGED);
     modeChanged(e);
 }
@@ -372,15 +400,15 @@ void MediaFilePanel::SwitchStorage(bool external)
     if (m_external == external)
         return;
     m_external = external;
-    m_type_panel->Show(external);
+    m_type_panel->Show(external || m_last_type == MEDIA_HISTORY_VIEW);
     if (!external) {
-        Button *buttons[]{m_button_timelapse, m_button_video, m_button_model};
+        Button *buttons[]{m_button_timelapse, m_button_video, m_button_model, m_button_history};
         auto button = buttons[PrinterFileSystem::F_MODEL];
         wxCommandEvent event(wxEVT_COMMAND_BUTTON_CLICKED, button->GetId());
         event.SetEventObject(button);
         wxPostEvent(button, event);
     }
-    m_image_grid->SetFileType(m_last_type, m_external ? "" : "internal");
+    m_image_grid->SetFileType(m_last_file_type, m_external ? "" : "internal");
 }
 
 void MediaFilePanel::Rescale()
@@ -398,6 +426,7 @@ void MediaFilePanel::Rescale()
     m_button_video->Rescale();
     m_button_timelapse->Rescale();
     m_button_model->Rescale();
+    m_button_history->Rescale();
     m_type_panel->SetMinSize({-1, 48 * em_unit(this) / 10});
 
     m_button_download->Rescale();
@@ -406,6 +435,7 @@ void MediaFilePanel::Rescale()
     m_button_management->Rescale();
 
     m_image_grid->Rescale();
+    m_history_panel->msw_rescale();
 }
 
 void MediaFilePanel::SetSelecting(bool selecting)
