@@ -66,6 +66,8 @@ void uiDeviceUpdateVersion::SetVersion(const wxString& cur_version, const wxStri
 
 void uiDeviceUpdateVersion::CreateWidgets()
 {
+    SetBackgroundColour(wxColour(255, 255, 255));
+
     m_dev_name = new wxStaticText(this, wxID_ANY, "-");
     m_dev_snl = new wxStaticText(this, wxID_ANY, "-");
     m_dev_version = new wxStaticText(this, wxID_ANY, "-");
@@ -81,33 +83,40 @@ void uiDeviceUpdateVersion::CreateWidgets()
     serial_text->SetFont(font);
     version_text->SetFont(font);
     model_text->SetFont(font);
+    m_dev_name->SetForegroundColour("#111111");
+    m_dev_snl->SetForegroundColour("#111111");
+    m_dev_version->SetForegroundColour("#111111");
+    serial_text->SetForegroundColour("#111111");
+    version_text->SetForegroundColour("#111111");
+    model_text->SetForegroundColour("#111111");
 
     // The grid sizer
     wxFlexGridSizer* grid_sizer = new wxFlexGridSizer(0, 2, 0, 0);
-    //grid_sizer->AddGrowableCol(1);
+    grid_sizer->AddGrowableCol(1);
     grid_sizer->SetFlexibleDirection(wxHORIZONTAL);
     grid_sizer->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
 
-    grid_sizer->Add(model_text, 0, wxALIGN_RIGHT | wxALL, FromDIP(5));
-    grid_sizer->Add(m_dev_name, 0, wxALL | wxEXPAND, FromDIP(5));
-    grid_sizer->Add(serial_text, 0, wxALIGN_RIGHT | wxALL, FromDIP(5));
-    grid_sizer->Add(m_dev_snl, 0, wxALL | wxEXPAND, FromDIP(5));
+    grid_sizer->Add(model_text, 0, wxALIGN_RIGHT | wxTOP | wxBOTTOM | wxRIGHT, FromDIP(6));
+    grid_sizer->Add(m_dev_name, 0, wxTOP | wxBOTTOM | wxEXPAND, FromDIP(6));
+    grid_sizer->Add(serial_text, 0, wxALIGN_RIGHT | wxTOP | wxBOTTOM | wxRIGHT, FromDIP(6));
+    grid_sizer->Add(m_dev_snl, 0, wxTOP | wxBOTTOM | wxEXPAND, FromDIP(6));
 
     m_dev_upgrade_indicator = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(5), FromDIP(5)));
     m_dev_upgrade_indicator->SetBitmap(ScalableBitmap(this, "monitor_upgrade_online", 5).bmp());
+    m_dev_upgrade_indicator->Hide();
 
     wxBoxSizer* version_hsizer = new wxBoxSizer(wxHORIZONTAL);
-    version_hsizer->Add(0, 0, 1, wxEXPAND, 0);
-    version_hsizer->Add(m_dev_upgrade_indicator, 0, wxALIGN_CENTER_VERTICAL | wxALL, FromDIP(5));
-    version_hsizer->Add(version_text, 0, wxALL, FromDIP(5));
+    version_hsizer->Add(m_dev_upgrade_indicator, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    version_hsizer->Add(version_text, 0, wxALIGN_CENTER_VERTICAL, 0);
 
-    grid_sizer->Add(version_hsizer, 0, wxEXPAND, 0);
-    grid_sizer->Add(m_dev_version, 0, wxEXPAND | wxALL, FromDIP(5));
+    grid_sizer->Add(version_hsizer, 0, wxTOP | wxBOTTOM | wxRIGHT | wxEXPAND, FromDIP(6));
+    grid_sizer->Add(m_dev_version, 0, wxTOP | wxBOTTOM | wxEXPAND, FromDIP(6));
    
     // Updating
     wxSizer* main_sizer = new wxBoxSizer(wxVERTICAL);
-    main_sizer->AddSpacer(FromDIP(40));
+    main_sizer->AddStretchSpacer();
     main_sizer->Add(grid_sizer, 0, wxALIGN_LEFT, FromDIP(5));
+    main_sizer->AddStretchSpacer();
 
     SetSizer(main_sizer);
     Layout();

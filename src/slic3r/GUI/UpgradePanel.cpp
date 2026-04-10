@@ -41,31 +41,33 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
     :wxPanel(parent, id, pos, size, style)
 {
     this->SetBackgroundColour(wxColour(255, 255, 255));
+    SetMinSize(wxSize(FromDIP(920), wxDefaultCoord));
 
     init_bitmaps();
 
-    wxBoxSizer *m_top_sizer = new wxBoxSizer(wxVERTICAL);
+    m_top_sizer = new wxBoxSizer(wxVERTICAL);
 
     m_panel_caption = create_caption_panel(this);
 
-    m_top_sizer->Add(m_panel_caption, 0, wxEXPAND | wxALL, 0);
+    m_top_sizer->Add(m_panel_caption, 0, wxEXPAND, 0);
+    m_top_sizer->AddSpacer(FromDIP(18));
 
-    wxBoxSizer *m_main_sizer = new wxBoxSizer(wxHORIZONTAL);
+    m_main_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-    wxBoxSizer *m_main_left_sizer = new wxBoxSizer(wxVERTICAL);
+    m_main_left_sizer = new wxBoxSizer(wxVERTICAL);
 
 
     // ota
     wxBoxSizer *m_ota_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-    m_printer_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(200), FromDIP(200)));
+    m_printer_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(190), FromDIP(190)));
 
     m_printer_img->SetBitmap(m_img_printer.bmp());
-    m_ota_sizer->Add(m_printer_img, 0, wxALIGN_TOP | wxALL, FromDIP(5));
+    m_ota_sizer->Add(m_printer_img, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(30));
 
     wxBoxSizer *m_ota_content_sizer = new wxBoxSizer(wxVERTICAL);
 
-    m_ota_content_sizer->Add(0, 0, 1, wxEXPAND, 0);
+    m_ota_content_sizer->AddStretchSpacer();
 
     wxFlexGridSizer *m_ota_info_sizer = new wxFlexGridSizer(0, 2, 0, 0);
     m_ota_info_sizer->AddGrowableCol(1);
@@ -75,38 +77,44 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
     m_staticText_model_id = new wxStaticText(this, wxID_ANY, _L("Model:"), wxDefaultPosition, wxDefaultSize, 0);
     m_staticText_model_id->Wrap(-1);
     m_staticText_model_id->SetFont(Label::Head_14);
-    m_ota_info_sizer->Add(m_staticText_model_id, 0, wxALIGN_RIGHT | wxALL, FromDIP(5));
+    m_staticText_model_id->SetForegroundColour("#111111");
+    m_ota_info_sizer->Add(m_staticText_model_id, 0, wxALIGN_RIGHT | wxTOP | wxBOTTOM | wxRIGHT, FromDIP(6));
 
     m_staticText_model_id_val = new wxStaticText(this, wxID_ANY, "-", wxDefaultPosition, wxDefaultSize, 0);
     m_staticText_model_id_val->Wrap(-1);
-    m_ota_info_sizer->Add(m_staticText_model_id_val, 0, wxALL | wxEXPAND, FromDIP(5));
+    m_staticText_model_id_val->SetForegroundColour("#111111");
+    m_staticText_model_id_val->SetFont(Label::Head_14);
+    m_ota_info_sizer->Add(m_staticText_model_id_val, 0, wxTOP | wxBOTTOM | wxEXPAND, FromDIP(6));
 
     m_staticText_sn = new wxStaticText(this, wxID_ANY, _L("Serial:"), wxDefaultPosition, wxDefaultSize, 0);
     m_staticText_sn->Wrap(-1);
     m_staticText_sn->SetFont(Label::Head_14);
-    m_ota_info_sizer->Add(m_staticText_sn, 0, wxALIGN_RIGHT | wxALL | wxEXPAND, FromDIP(5));
+    m_staticText_sn->SetForegroundColour("#111111");
+    m_ota_info_sizer->Add(m_staticText_sn, 0, wxALIGN_RIGHT | wxTOP | wxBOTTOM | wxRIGHT | wxEXPAND, FromDIP(6));
 
     m_staticText_sn_val = new wxStaticText(this, wxID_ANY, "-", wxDefaultPosition, wxDefaultSize, 0);
     m_staticText_sn_val->Wrap(-1);
-    m_ota_info_sizer->Add(m_staticText_sn_val, 0, wxALL | wxEXPAND, FromDIP(5));
+    m_staticText_sn_val->SetForegroundColour("#111111");
+    m_ota_info_sizer->Add(m_staticText_sn_val, 0, wxTOP | wxBOTTOM | wxEXPAND, FromDIP(6));
 
     wxBoxSizer *m_ota_ver_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-    m_ota_ver_sizer->Add(0, 0, 1, wxEXPAND, 0);
-
     m_ota_new_version_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(5), FromDIP(5)));
     m_ota_new_version_img->SetBitmap(upgrade_green_icon.bmp());
-    m_ota_ver_sizer->Add(m_ota_new_version_img, 0, wxALIGN_CENTER_VERTICAL | wxALL, FromDIP(5));
+    m_ota_ver_sizer->Add(m_ota_new_version_img, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    m_ota_new_version_img->Hide();
 
     m_staticText_ver = new wxStaticText(this, wxID_ANY, _L("Version:"), wxDefaultPosition, wxDefaultSize, 0);
     m_staticText_ver->Wrap(-1);
     m_staticText_ver->SetFont(Label::Head_14);
-    m_ota_ver_sizer->Add(m_staticText_ver, 0, wxALL, FromDIP(5));
+    m_staticText_ver->SetForegroundColour("#111111");
+    m_ota_ver_sizer->Add(m_staticText_ver, 0, wxALIGN_CENTER_VERTICAL, 0);
 
     wxBoxSizer* m_ota_content_sizer2 = new wxBoxSizer(wxHORIZONTAL);
 
     m_staticText_ver_val = new wxStaticText(this, wxID_ANY, "-", wxDefaultPosition, wxDefaultSize, 0);
     m_staticText_ver_val->Wrap(-1);
+    m_staticText_ver_val->SetForegroundColour("#111111");
 
 
     m_staticText_beta_version = new wxStaticText(this, wxID_ANY, "Beta", wxDefaultPosition, wxDefaultSize, 0);
@@ -114,15 +122,15 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
     m_staticText_beta_version->Wrap(-1);
     m_staticText_beta_version->Hide();
 
-    m_ota_content_sizer2->Add(m_staticText_ver_val, 0, wxALL|wxEXPAND, FromDIP(5));
-    m_ota_content_sizer2->Add(m_staticText_beta_version, 0, wxALL | wxEXPAND, FromDIP(5));
+    m_ota_content_sizer2->Add(m_staticText_ver_val, 0, wxRIGHT | wxEXPAND, FromDIP(8));
+    m_ota_content_sizer2->Add(m_staticText_beta_version, 0, wxEXPAND, 0);
 
-    m_ota_info_sizer->Add(m_ota_ver_sizer, 0, wxEXPAND, 0);
-    m_ota_info_sizer->Add(m_ota_content_sizer2, 0,  wxEXPAND, 0);
+    m_ota_info_sizer->Add(m_ota_ver_sizer, 0, wxTOP | wxBOTTOM | wxRIGHT | wxEXPAND, FromDIP(6));
+    m_ota_info_sizer->Add(m_ota_content_sizer2, 0, wxTOP | wxBOTTOM | wxEXPAND, FromDIP(6));
 
     m_ota_content_sizer->Add(m_ota_info_sizer, 0, wxEXPAND, 0);
 
-    m_ota_content_sizer->Add(0, 0, 1, wxEXPAND, 0);
+    m_ota_content_sizer->AddStretchSpacer();
 
     m_ota_sizer->Add(m_ota_content_sizer, 1, wxEXPAND, 0);
 
@@ -131,14 +139,14 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
     m_staticline = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL);
     m_staticline->SetBackgroundColour(wxColour(206,206,206));
     m_staticline->Show(false);
-    m_main_left_sizer->Add(m_staticline, 0, wxEXPAND | wxLEFT, FromDIP(40));
+    m_main_left_sizer->Add(m_staticline, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(18));
 
 
     // ams
     m_ams_sizer = new wxBoxSizer(wxHORIZONTAL);
     m_ams_img   = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(200), FromDIP(200)));
     m_ams_img->SetBitmap(m_img_monitor_ams.bmp());
-    m_ams_sizer->Add(m_ams_img, 0, wxALIGN_TOP | wxALL, FromDIP(5));
+    m_ams_sizer->Add(m_ams_img, 0, wxALIGN_TOP | wxRIGHT, FromDIP(30));
 
     wxBoxSizer *m_ams_content_sizer = new wxBoxSizer(wxVERTICAL);
     m_ams_content_sizer->Add(0, 40, 0, wxEXPAND, FromDIP(5));
@@ -177,7 +185,7 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
     m_extra_ams_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(200), FromDIP(200)));
     m_extra_ams_img->SetBitmap(m_img_extra_ams.bmp());
 
-    m_extra_ams_sizer->Add(m_extra_ams_img, 0, wxALIGN_TOP | wxALL, FromDIP(5));
+    m_extra_ams_sizer->Add(m_extra_ams_img, 0, wxALIGN_TOP | wxRIGHT, FromDIP(30));
 
     wxBoxSizer* extra_ams_content_sizer = new wxBoxSizer(wxVERTICAL);
     extra_ams_content_sizer->Add(0, 40, 0, wxEXPAND, FromDIP(5));
@@ -192,7 +200,7 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
 
     m_staticline2 = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL);
     m_staticline2->SetBackgroundColour(wxColour(206, 206, 206));
-    m_main_left_sizer->Add(m_staticline2, 0, wxEXPAND | wxLEFT, FromDIP(40));
+    m_main_left_sizer->Add(m_staticline2, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(18));
 
     // ext
     m_ext_sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -200,7 +208,7 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
     m_ext_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(200), FromDIP(200)));
     m_ext_img->SetBitmap(m_img_ext.bmp());
 
-    m_ext_sizer->Add(m_ext_img, 0, wxALIGN_TOP | wxALL, FromDIP(5));
+    m_ext_sizer->Add(m_ext_img, 0, wxALIGN_TOP | wxRIGHT, FromDIP(30));
 
     wxBoxSizer* ext_content_sizer = new wxBoxSizer(wxVERTICAL);
     ext_content_sizer->Add(0, 40, 0, wxEXPAND, FromDIP(5));
@@ -217,42 +225,60 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
     createAirPumpWidgets(m_main_left_sizer);
     createExtinguishWidgets(m_main_left_sizer);
 
-    m_main_sizer->Add(m_main_left_sizer, 1, wxEXPAND, 0);
+    m_main_sizer->Add(m_main_left_sizer, 1, wxEXPAND | wxRIGHT, FromDIP(32));
 
-    wxBoxSizer *m_main_right_sizer = new wxBoxSizer(wxVERTICAL);
+    m_main_right_sizer = new wxBoxSizer(wxVERTICAL);
 
-    m_main_right_sizer->SetMinSize(wxSize(FromDIP(137), -1));
+    m_main_right_sizer->SetMinSize(wxSize(FromDIP(180), -1));
 
-    m_main_right_sizer->Add(0, FromDIP(50), 0, wxEXPAND, FromDIP(5));
+    m_main_right_sizer->AddSpacer(FromDIP(18));
 
     m_button_upgrade_firmware = new Button(this, _L("Update firmware"));
     m_button_upgrade_firmware->SetStyle(ButtonStyle::Confirm, ButtonType::Choice);
-    m_main_right_sizer->Add(m_button_upgrade_firmware, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, FromDIP(5));
+    StateColor button_bg(
+        std::pair<wxColour, int>(wxColour("#FFFFFF"), StateColor::Pressed),
+        std::pair<wxColour, int>(wxColour("#FFFFFF"), StateColor::Hovered),
+        std::pair<wxColour, int>(wxColour("#FFFFFF"), StateColor::Normal)
+    );
+    StateColor button_bd(
+        std::pair<wxColour, int>(wxColour("#C9CFD3"), StateColor::Pressed),
+        std::pair<wxColour, int>(wxColour("#C9CFD3"), StateColor::Hovered),
+        std::pair<wxColour, int>(wxColour("#C9CFD3"), StateColor::Normal)
+    );
+    StateColor button_text(
+        std::pair<wxColour, int>(wxColour("#6C747A"), StateColor::Pressed),
+        std::pair<wxColour, int>(wxColour("#6C747A"), StateColor::Hovered),
+        std::pair<wxColour, int>(wxColour("#6C747A"), StateColor::Normal)
+    );
+    m_button_upgrade_firmware->SetBackgroundColor(button_bg);
+    m_button_upgrade_firmware->SetBorderColor(button_bd);
+    m_button_upgrade_firmware->SetTextColor(button_text);
+    m_button_upgrade_firmware->SetCornerRadius(FromDIP(14));
+    m_button_upgrade_firmware->SetMinSize(wxSize(FromDIP(150), FromDIP(32)));
+    m_main_right_sizer->Add(m_button_upgrade_firmware, 0, wxALIGN_RIGHT | wxBOTTOM, FromDIP(10));
 
     m_staticText_upgrading_info = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0);
     m_staticText_upgrading_info->Wrap(-1);
-    m_main_right_sizer->Add(m_staticText_upgrading_info, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, FromDIP(5));
+    m_staticText_upgrading_info->SetForegroundColour(TEXT_NORMAL_CLR);
+    m_main_right_sizer->Add(m_staticText_upgrading_info, 0, wxALIGN_RIGHT | wxBOTTOM, FromDIP(6));
 
     m_upgrading_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-    m_upgrading_sizer->Add(0, 0, 1, wxEXPAND, 0);
-
     m_upgrade_progress = new ProgressBar(this, wxID_ANY, 100, wxDefaultPosition, wxDefaultSize);
     m_upgrade_progress->SetValue(0);
-    m_upgrade_progress->SetSize(wxSize(FromDIP(54), FromDIP(14)));
-    m_upgrade_progress->SetMinSize(wxSize(FromDIP(54), FromDIP(14)));
-    m_upgrading_sizer->Add(m_upgrade_progress, 0, wxALIGN_CENTER_VERTICAL | wxALL, FromDIP(5));
+    m_upgrade_progress->SetSize(wxSize(FromDIP(86), FromDIP(14)));
+    m_upgrade_progress->SetMinSize(wxSize(FromDIP(86), FromDIP(14)));
+    m_upgrading_sizer->Add(m_upgrade_progress, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
 
     m_staticText_upgrading_percent = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize);
     m_staticText_upgrading_percent->Wrap(-1);
-    m_upgrading_sizer->Add(m_staticText_upgrading_percent, 0, wxALIGN_CENTER_VERTICAL | wxALL, FromDIP(5));
+    m_staticText_upgrading_percent->SetForegroundColour(TEXT_NORMAL_CLR);
+    m_upgrading_sizer->Add(m_staticText_upgrading_percent, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(6));
 
     m_upgrade_retry_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize);
-    m_upgrading_sizer->Add(m_upgrade_retry_img, 0, wxALIGN_CENTER_VERTICAL | wxALL, FromDIP(5));
+    m_upgrading_sizer->Add(m_upgrade_retry_img, 0, wxALIGN_CENTER_VERTICAL, 0);
 
-    m_upgrading_sizer->Add(0, 0, 1, wxEXPAND, 0);
-
-    m_main_right_sizer->Add(m_upgrading_sizer, 0, wxEXPAND, 0);
+    m_main_right_sizer->Add(m_upgrading_sizer, 0, wxALIGN_RIGHT | wxBOTTOM, FromDIP(10));
 
     wxBoxSizer *sizer_release_note = new wxBoxSizer(wxVERTICAL);
 
@@ -267,13 +293,13 @@ MachineInfoPanel::MachineInfoPanel(wxWindow* parent, wxWindowID id, const wxPoin
     sizer_release_note->Add(m_staticText_release_note, 0, wxALL, 0);
     sizer_release_note->Add(line_release_note, 1, wxEXPAND | wxALL, 0);
 
-    m_main_right_sizer->Add(sizer_release_note, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 0);
+    m_main_right_sizer->Add(sizer_release_note, 0, wxALIGN_RIGHT, 0);
 
-    m_main_right_sizer->Add(0, 0, 1, wxEXPAND, 0);
+    m_main_right_sizer->AddStretchSpacer();
 
     m_main_sizer->Add(m_main_right_sizer, 0, wxEXPAND, 0);
 
-    m_top_sizer->Add(m_main_sizer, 1, wxEXPAND, 0);
+    m_top_sizer->Add(m_main_sizer, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(22));
 
     this->SetSizer(m_top_sizer);
     this->Layout();
@@ -320,7 +346,7 @@ void MachineInfoPanel::createAirPumpWidgets(wxBoxSizer* main_left_sizer)
 {
     m_air_pump_line_above = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL);
     m_air_pump_line_above->SetBackgroundColour(wxColour(206, 206, 206));
-    main_left_sizer->Add(m_air_pump_line_above, 0, wxEXPAND | wxLEFT, FromDIP(40));
+    main_left_sizer->Add(m_air_pump_line_above, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(18));
 
     m_air_pump_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(200), FromDIP(200)));
     m_air_pump_img->SetBitmap(m_img_air_pump.bmp());
@@ -331,7 +357,7 @@ void MachineInfoPanel::createAirPumpWidgets(wxBoxSizer* main_left_sizer)
     content_sizer->Add(m_air_pump_version, 0, wxEXPAND, 0);
 
     m_air_pump_sizer = new wxBoxSizer(wxHORIZONTAL);
-    m_air_pump_sizer->Add(m_air_pump_img, 0, wxALIGN_TOP | wxALL, FromDIP(5));
+    m_air_pump_sizer->Add(m_air_pump_img, 0, wxALIGN_TOP | wxRIGHT, FromDIP(30));
     m_air_pump_sizer->Add(content_sizer, 1, wxEXPAND, 0);
 
     main_left_sizer->Add(m_air_pump_sizer, 0, wxEXPAND, 0);
@@ -341,7 +367,7 @@ void MachineInfoPanel::createCuttingWidgets(wxBoxSizer* main_left_sizer)
 {
     m_cutting_line_above = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL);
     m_cutting_line_above->SetBackgroundColour(wxColour(206, 206, 206));
-    main_left_sizer->Add(m_cutting_line_above, 0, wxEXPAND | wxLEFT, FromDIP(40));
+    main_left_sizer->Add(m_cutting_line_above, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(18));
 
     m_cutting_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(200), FromDIP(200)));
     m_cutting_img->SetBitmap(m_img_cutting.bmp());
@@ -352,7 +378,7 @@ void MachineInfoPanel::createCuttingWidgets(wxBoxSizer* main_left_sizer)
     content_sizer->Add(m_cutting_version, 0, wxEXPAND, 0);
 
     m_cutting_sizer = new wxBoxSizer(wxHORIZONTAL);
-    m_cutting_sizer->Add(m_cutting_img, 0, wxALIGN_TOP | wxALL, FromDIP(5));
+    m_cutting_sizer->Add(m_cutting_img, 0, wxALIGN_TOP | wxRIGHT, FromDIP(30));
     m_cutting_sizer->Add(content_sizer, 1, wxEXPAND, 0);
 
     main_left_sizer->Add(m_cutting_sizer, 0, wxEXPAND, 0);
@@ -362,7 +388,7 @@ void MachineInfoPanel::createLaserWidgets(wxBoxSizer* main_left_sizer)
 {
     m_laser_line_above = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL);
     m_laser_line_above->SetBackgroundColour(wxColour(206, 206, 206));
-    main_left_sizer->Add(m_laser_line_above, 0, wxEXPAND | wxLEFT, FromDIP(40));
+    main_left_sizer->Add(m_laser_line_above, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(18));
 
     m_lazer_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(200), FromDIP(200)));
 
@@ -375,7 +401,7 @@ void MachineInfoPanel::createLaserWidgets(wxBoxSizer* main_left_sizer)
     content_sizer->Add(m_laser_version, 0, wxEXPAND, 0);
 
     m_laser_sizer = new wxBoxSizer(wxHORIZONTAL);
-    m_laser_sizer->Add(m_lazer_img, 0, wxALIGN_TOP | wxALL, FromDIP(5));
+    m_laser_sizer->Add(m_lazer_img, 0, wxALIGN_TOP | wxRIGHT, FromDIP(30));
     m_laser_sizer->Add(content_sizer, 1, wxEXPAND, 0);
 
     main_left_sizer->Add(m_laser_sizer, 0, wxEXPAND, 0);
@@ -385,7 +411,7 @@ void MachineInfoPanel::createExtinguishWidgets(wxBoxSizer* main_left_sizer)
 {
     m_extinguish_line_above = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL);
     m_extinguish_line_above->SetBackgroundColour(wxColour(206, 206, 206));
-    main_left_sizer->Add(m_extinguish_line_above, 0, wxEXPAND | wxLEFT, FromDIP(40));
+    main_left_sizer->Add(m_extinguish_line_above, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(18));
 
     m_extinguish_img = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize(FromDIP(200), FromDIP(200)));
     m_extinguish_img->SetBitmap(m_img_extinguish.bmp());
@@ -396,7 +422,7 @@ void MachineInfoPanel::createExtinguishWidgets(wxBoxSizer* main_left_sizer)
     content_sizer->Add(m_extinguish_version, 0, wxEXPAND, 0);
 
     m_extinguish_sizer = new wxBoxSizer(wxHORIZONTAL);
-    m_extinguish_sizer->Add(m_extinguish_img, 0, wxALIGN_TOP | wxALL, FromDIP(5));
+    m_extinguish_sizer->Add(m_extinguish_img, 0, wxALIGN_TOP | wxRIGHT, FromDIP(30));
     m_extinguish_sizer->Add(content_sizer, 1, wxEXPAND, 0);
 
     main_left_sizer->Add(m_extinguish_sizer, 0, wxEXPAND, 0);
@@ -405,10 +431,11 @@ void MachineInfoPanel::createExtinguishWidgets(wxBoxSizer* main_left_sizer)
 void MachineInfoPanel::msw_rescale()
 {
     rescale_bitmaps();
-    m_button_upgrade_firmware->SetSize(wxSize(FromDIP(-1), FromDIP(24)));
-    m_button_upgrade_firmware->SetMinSize(wxSize(FromDIP(-1), FromDIP(24)));
-    m_button_upgrade_firmware->SetMaxSize(wxSize(FromDIP(-1), FromDIP(24)));
-    m_button_upgrade_firmware->SetCornerRadius(FromDIP(12));
+    m_button_upgrade_firmware->SetSize(wxSize(FromDIP(150), FromDIP(32)));
+    m_button_upgrade_firmware->SetMinSize(wxSize(FromDIP(150), FromDIP(32)));
+    m_button_upgrade_firmware->SetMaxSize(wxSize(FromDIP(150), FromDIP(32)));
+    m_button_upgrade_firmware->SetCornerRadius(FromDIP(14));
+    m_upgrade_progress->SetMinSize(wxSize(FromDIP(86), FromDIP(14)));
     m_ahb_panel->msw_rescale();
     for (auto &amspanel : m_amspanel_list) {
         amspanel->msw_rescale();

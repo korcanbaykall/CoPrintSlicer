@@ -76,6 +76,10 @@ class MachineInfoPanel : public wxPanel
 {
 protected:
     wxPanel *       m_panel_caption;
+    wxBoxSizer*     m_top_sizer = nullptr;
+    wxBoxSizer*     m_main_sizer = nullptr;
+    wxBoxSizer*     m_main_left_sizer = nullptr;
+    wxBoxSizer*     m_main_right_sizer = nullptr;
     wxStaticBitmap *m_upgrade_status_img;
     wxStaticText *  m_caption_text;
     wxStaticBitmap *m_printer_img;
