@@ -20,6 +20,8 @@ class MachineObject;
 
 namespace GUI {
 
+class CloudTaskManagerPage;
+
 enum class PrinterWebViewTab {
     Status,
     Storage,
@@ -118,7 +120,7 @@ private:
     wxWindow *m_speed_popup_button{ nullptr };
     wxPanel *m_speed_popup_panel{ nullptr };
     wxPanel *m_status_page{ nullptr };
-    wxPanel *m_storage_page{ nullptr };
+    CloudTaskManagerPage *m_storage_page{ nullptr };
     wxImage m_thumbnail_image;
     wxWebRequest m_thumbnail_web_request;
     wxStaticText *m_update_header_title{ nullptr };

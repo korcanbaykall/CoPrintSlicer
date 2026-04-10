@@ -5,6 +5,7 @@
 #include "slic3r/GUI/wxExtensions.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
+#include "slic3r/GUI/MultiTaskManagerPage.hpp"
 #include "slic3r/GUI/DeviceCore/DevManager.h"
 #include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
@@ -1085,7 +1086,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     status_page_sizer->Add(left_container, 1, wxEXPAND | wxRIGHT, FromDIP(20));
     m_status_page->SetSizer(status_page_sizer);
 
-    m_storage_page = create_placeholder_page(content_host, "Depolama", "Bu alan simdilik hazirlaniyor.");
+    m_storage_page = new CloudTaskManagerPage(content_host);
+    m_storage_page->Hide();
     m_update_page = create_update_page(content_host);
     m_assistant_page = create_placeholder_page(content_host, "Asistan", "Asistan paneli icin gecici yer tutucu.");
 
@@ -1756,6 +1758,11 @@ void PrinterWebView::select_tab(PrinterWebViewTab tab)
         m_update_page->Show(tab == PrinterWebViewTab::Update);
     if (m_assistant_page != nullptr)
         m_assistant_page->Show(tab == PrinterWebViewTab::Assistant);
+
+    if (tab == PrinterWebViewTab::Storage && m_storage_page != nullptr) {
+        m_storage_page->refresh_user_device();
+        m_storage_page->update_page();
+    }
 
     update_sidebar_selection();
     Layout();
