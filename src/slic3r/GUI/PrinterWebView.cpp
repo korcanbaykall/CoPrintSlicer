@@ -15,6 +15,7 @@
 #include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/GUI/wxMediaCtrl2.h"
+#include "slic3r/Utils/NetworkAgentFactory.hpp"
 #include "libslic3r/Utils.hpp"
 #include "libslic3r_version.h"
 
@@ -1656,8 +1657,6 @@ void PrinterWebView::dismiss_speed_popup()
 
 void PrinterWebView::prompt_ip_connect()
 {
-    wxGetApp().switch_printer_agent();
-
     wxTextEntryDialog ip_dialog(this, "Yazicinin IP adresini veya host:port adresini girin.", "IP Adresi ile Baglan");
     if (ip_dialog.ShowModal() != wxID_OK)
         return;
@@ -1691,20 +1690,42 @@ void PrinterWebView::prompt_ip_connect()
         return;
     }
 
+    auto *agent = wxGetApp().getAgent();
+    if (agent == nullptr) {
+        wxMessageBox("Network agent hazir degil.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return;
+    }
+
+    const auto current_printer_agent = agent->get_printer_agent();
+    const bool needs_bambu_agent = current_printer_agent == nullptr ||
+        current_printer_agent->get_agent_info().id != BBL_PRINTER_AGENT_ID;
+    if (needs_bambu_agent) {
+        auto bambu_agent = NetworkAgentFactory::create_printer_agent_by_id(
+            BBL_PRINTER_AGENT_ID, agent->get_cloud_agent(), Slic3r::data_dir());
+        if (bambu_agent == nullptr) {
+            wxMessageBox("Bambu Lab network agent baslatilamadi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+            return;
+        }
+        agent->set_printer_agent(bambu_agent);
+    }
+
     detectResult detect_data;
     detect_data.dev_id = dev_ip;
     detect_data.dev_name = dev_ip;
     detect_data.connect_type = "lan";
     detect_data.bind_state = "free";
 
-    auto *agent = wxGetApp().getAgent();
-    if (agent != nullptr) {
-        const int detect_result = agent->bind_detect(dev_ip, "secure", detect_data);
-        if (detect_result < 0) {
-            wxMessageBox("Yaziciya IP ile ulasilamadi. IP adresini, LAN modunu ve access code bilgisini kontrol edin.",
-                         "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
-            return;
-        }
+    const int detect_result = agent->bind_detect(dev_ip, "secure", detect_data);
+    if (detect_result < 0) {
+        wxMessageBox("Yaziciya IP ile ulasilamadi. IP adresini, LAN modunu ve access code bilgisini kontrol edin.",
+                     "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return;
+    }
+
+    if (detect_data.dev_id.empty() || detect_data.dev_id == dev_ip) {
+        wxMessageBox("Yazicinin seri numarasi IP uzerinden alinamadi. Bambu network plugin veya LAN mode aktif olmayabilir.",
+                     "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return;
     }
 
     if (detect_data.bind_state == "occupied") {
@@ -1719,6 +1740,11 @@ void PrinterWebView::prompt_ip_connect()
     }
 
     const std::string dev_id = detect_data.dev_id.empty() ? dev_ip : detect_data.dev_id;
+    if (dev_id != dev_ip && dev_manager->get_local_machine(dev_ip) != nullptr) {
+        dev_manager->erase_local_machine(dev_ip);
+        if (wxGetApp().app_config != nullptr)
+            wxGetApp().app_config->erase_local_machine(dev_ip);
+    }
 
     BBLocalMachine machine;
     machine.dev_id = dev_id;
