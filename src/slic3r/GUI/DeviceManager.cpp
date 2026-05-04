@@ -1497,17 +1497,26 @@ int MachineObject::command_set_bed(int temp)
         j["print"]["command"] = "set_bed_temp";
         j["print"]["temp"] = temp;
         j["print"]["sequence_id"] = std::to_string(MachineObject::m_sequence_id++);
-        return this->publish_json(j);
+        const int ret = this->publish_json(j);
+        if (ret == 0 && m_bed)
+            m_bed->set_target_temp(static_cast<float>(temp));
+        return ret;
     }
 
     std::string gcode_str = (boost::format("M140 S%1%\n") % temp).str();
-    return this->publish_gcode(gcode_str);
+    const int   ret        = this->publish_gcode(gcode_str);
+    if (ret == 0 && m_bed)
+        m_bed->set_target_temp(static_cast<float>(temp));
+    return ret;
 }
 
 int MachineObject::command_set_nozzle(int temp)
 {
     std::string gcode_str = (boost::format("M104 S%1%\n") % temp).str();
-    return this->publish_gcode(gcode_str);
+    const int   ret       = this->publish_gcode(gcode_str);
+    if (ret == 0 && m_extder_system)
+        m_extder_system->set_extder_target_temp(MAIN_EXTRUDER_ID, temp);
+    return ret;
 }
 
 int MachineObject::command_set_nozzle_new(int nozzle_id, int temp)
@@ -1520,7 +1529,10 @@ int MachineObject::command_set_nozzle_new(int nozzle_id, int temp)
     j["print"]["extruder_index"] = nozzle_id;
     j["print"]["target_temp"]    = temp;
 
-    return this->publish_json(j, 1);
+    const int ret = this->publish_json(j, 1);
+    if (ret == 0 && m_extder_system)
+        m_extder_system->set_extder_target_temp(nozzle_id, temp);
+    return ret;
 }
 
 int MachineObject::command_refresh_nozzle(){

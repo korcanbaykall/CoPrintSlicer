@@ -199,7 +199,7 @@ private:
 
     // Throttling configuration for WebSocket updates
     // Critical changes (state transitions) dispatch immediately; telemetry is throttled
-    static constexpr uint64_t STATUS_UPDATE_INTERVAL_MS = 1000;  // 1 update/sec for telemetry
+    static constexpr uint64_t STATUS_UPDATE_INTERVAL_MS = 300;  // ~3 updates/sec for smoother temps/progress
     std::atomic<uint64_t> ws_last_dispatch_ms{0};
     std::string last_print_state;  // Track state for immediate dispatch on change
 

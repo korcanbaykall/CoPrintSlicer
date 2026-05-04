@@ -94,6 +94,7 @@ std::string sanitize_klipper_gcode(const std::string& gcode)
     std::stringstream input(gcode);
     std::string       line;
     std::string       sanitized;
+    bool              used_relative_positioning = false;
 
     while (std::getline(input, line)) {
         boost::trim(line);
@@ -103,8 +104,13 @@ std::string sanitize_klipper_gcode(const std::string& gcode)
             continue;
         if (boost::istarts_with(line, "M211"))
             continue;
+        if (boost::iequals(line, "G91"))
+            used_relative_positioning = true;
         sanitized += line + "\n";
     }
+
+    if (used_relative_positioning)
+        sanitized += "G90\n";
 
     return sanitized.empty() ? gcode : sanitized;
 }
@@ -1066,25 +1072,70 @@ int MoonrakerPrinterAgent::handle_request(const std::string& dev_id, const std::
 
         // Bed temperature - UI sends "temp" field
         if (cmd == "set_bed_temp") {
-            if (json["print"].contains("temp") && json["print"]["temp"].is_number()) {
-                int         temp  = json["print"]["temp"].get<int>();
+            int temp = -1;
+            if (json["print"].contains("temp")) {
+                const auto& tnode = json["print"]["temp"];
+                if (tnode.is_number()) {
+                    temp = tnode.get<int>();
+                } else if (tnode.is_string()) {
+                    try {
+                        temp = std::stoi(tnode.get<std::string>());
+                    } catch (...) {
+                        temp = -1;
+                    }
+                }
+            }
+            if (temp >= 0) {
                 std::string gcode = "SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=" + std::to_string(temp);
-                send_gcode(dev_id, gcode);
+                if (send_gcode(dev_id, gcode)) {
+                    nlohmann::json updates;
+                    updates["heater_bed"]["target"] = static_cast<double>(temp);
+                    update_status_cache(updates);
+                    nlohmann::json message;
+                    {
+                        std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                        message = build_print_payload_locked();
+                    }
+                    dispatch_message(dev_id, message.dump());
+                }
                 return BAMBU_NETWORK_SUCCESS;
             }
         }
 
         // Nozzle temperature - UI sends "target_temp" and "extruder_index" fields
         if (cmd == "set_nozzle_temp") {
-            if (json["print"].contains("target_temp") && json["print"]["target_temp"].is_number()) {
-                int temp         = json["print"]["target_temp"].get<int>();
+            int temp = -1;
+            if (json["print"].contains("target_temp")) {
+                const auto& tnode = json["print"]["target_temp"];
+                if (tnode.is_number()) {
+                    temp = tnode.get<int>();
+                } else if (tnode.is_string()) {
+                    try {
+                        temp = std::stoi(tnode.get<std::string>());
+                    } catch (...) {
+                        temp = -1;
+                    }
+                }
+            }
+            if (temp >= 0) {
                 int extruder_idx = 0; // Default to main extruder
                 if (json["print"].contains("extruder_index") && json["print"]["extruder_index"].is_number()) {
                     extruder_idx = json["print"]["extruder_index"].get<int>();
                 }
                 std::string heater = (extruder_idx == 0) ? "extruder" : "extruder" + std::to_string(extruder_idx);
                 std::string gcode  = "SET_HEATER_TEMPERATURE HEATER=" + heater + " TARGET=" + std::to_string(temp);
-                send_gcode(dev_id, gcode);
+                if (send_gcode(dev_id, gcode)) {
+                    nlohmann::json updates;
+                    const std::string heater_key = (extruder_idx == 0) ? std::string("extruder") : ("extruder" + std::to_string(extruder_idx));
+                    updates[heater_key]["target"] = static_cast<double>(temp);
+                    update_status_cache(updates);
+                    nlohmann::json message;
+                    {
+                        std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                        message = build_print_payload_locked();
+                    }
+                    dispatch_message(dev_id, message.dump());
+                }
                 return BAMBU_NETWORK_SUCCESS;
             }
         }
@@ -1112,7 +1163,10 @@ bool MoonrakerPrinterAgent::init_device_info(std::string dev_id, std::string dev
     device_info.api_key    = password;
     device_info.model_name = printer_cfg.opt_string("printer_model");
     device_info.model_id   = preset.get_printer_type(preset_bundle);
-    device_info.base_url   = use_ssl ? "https://" + dev_ip : "http://" + dev_ip;
+    device_info.base_url   = normalize_base_url(dev_ip, use_ssl ? "443" : "7125");
+    if (use_ssl) {
+        boost::replace_first(device_info.base_url, "http://", "https://");
+    }
     device_info.dev_id     = dev_id;
     device_info.version    = "";
     device_info.dev_name   = device_info.dev_id;
@@ -1184,7 +1238,7 @@ bool MoonrakerPrinterAgent::query_printer_status(const std::string& base_url,
                                                  nlohmann::json&    status,
                                                  std::string&       error) const
 {
-    std::string url = join_url(base_url, "/printer/objects/query?print_stats&virtual_sdcard&extruder&heater_bed&fan&toolhead");
+    std::string url = join_url(base_url, "/printer/objects/query?print_stats&virtual_sdcard&extruder&extruder1&extruder2&extruder3&heater_bed&fan&toolhead");
 
     std::string response_body;
     bool        success = false;
@@ -1374,15 +1428,17 @@ void MoonrakerPrinterAgent::announce_printhost_device()
         }
     }
 
-    // Try to fetch actual device name from Moonraker
-    // Priority: 1) Moonraker hostname, 2) Preset model name, 3) Generic fallback
-    std::string         dev_name;
-    MoonrakerDeviceInfo info;
-    std::string         fetch_error;
-    if (fetch_device_info(device_info.base_url, device_info.api_key, info, fetch_error) && !info.dev_name.empty()) {
-        dev_name = info.dev_name;
-    } else {
-        dev_name = device_info.model_name.empty() ? "Moonraker Printer" : device_info.model_name;
+    // Use already-fetched device name if available, otherwise fetch from Moonraker
+    // Priority: 1) already known dev_name, 2) Moonraker hostname, 3) model name, 4) generic fallback
+    std::string dev_name = device_info.dev_name;
+    if (dev_name.empty() || dev_name == device_info.dev_id) {
+        MoonrakerDeviceInfo info;
+        std::string         fetch_error;
+        if (fetch_device_info(device_info.base_url, device_info.api_key, info, fetch_error) && !info.dev_name.empty()) {
+            dev_name = info.dev_name;
+        } else {
+            dev_name = device_info.model_name.empty() ? "Moonraker Printer" : device_info.model_name;
+        }
     }
 
     const std::string model_id = device_info.model_id;
@@ -1564,9 +1620,6 @@ void MoonrakerPrinterAgent::run_status_stream(std::string dev_id, std::string ba
                 for (const auto& name : this->available_objects) {
                     if (name == "extruder" || name.rfind("extruder", 0) == 0) {
                         subscribe_objects.insert(name);
-                        if (name == "extruder") {
-                            break;
-                        }
                     }
                 }
             } else {
@@ -1912,8 +1965,31 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
             mc_percent = std::clamp(static_cast<int>(progress * 100.0 + 0.5), 0, 100);
         }
     }
+    if (mc_percent < 0 && status_cache.contains("display_status") && status_cache["display_status"].is_object()) {
+        const auto& ds = status_cache["display_status"];
+        if (ds.contains("progress") && ds["progress"].is_number()) {
+            const double progress = ds["progress"].get<double>();
+            if (progress >= 0.0) {
+                mc_percent = std::clamp(static_cast<int>(progress * 100.0 + 0.5), 0, 100);
+            }
+        }
+    }
     if (mc_percent >= 0) {
         payload["print"]["mc_percent"] = mc_percent;
+    }
+
+    // Layer counts from Klipper SET_PRINT_STATS_INFO (slicer macros), mapped to Bambu-style fields
+    if (status_cache.contains("print_stats") && status_cache["print_stats"].is_object()) {
+        const auto& ps = status_cache["print_stats"];
+        if (ps.contains("info") && ps["info"].is_object()) {
+            const auto& info = ps["info"];
+            if (info.contains("current_layer") && info["current_layer"].is_number()) {
+                payload["print"]["layer_num"] = static_cast<int>(info["current_layer"].get<double>());
+            }
+            if (info.contains("total_layer") && info["total_layer"].is_number()) {
+                payload["print"]["total_layer_num"] = static_cast<int>(info["total_layer"].get<double>());
+            }
+        }
     }
 
     if (status_cache.contains("print_stats") && status_cache["print_stats"].contains("total_duration") &&
@@ -2148,6 +2224,9 @@ void MoonrakerPrinterAgent::perform_connection_async(const std::string& dev_id, 
 
     // Only dispatch if this connection is still the current one
     if (result == BAMBU_NETWORK_SUCCESS && !is_stale()) {
+        // Announce via SSDP first so DevManager registers the machine as LAN mode
+        // before dispatch_local_connect fires (GUI callback checks is_lan_mode_printer())
+        announce_printhost_device();
         dispatch_local_connect(ConnectStatusOk, dev_id, "0");
         dispatch_printer_connected(dev_id);
         BOOST_LOG_TRIVIAL(info) << "MoonrakerPrinterAgent: connect_printer completed - dev_id=" << dev_id;

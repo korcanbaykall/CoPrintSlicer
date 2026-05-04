@@ -14,7 +14,8 @@ public:
     float GetBedTemp() { return bed_temp; };
     float GetBedTempTarget() { return bed_temp_target; };
 
-public:
+    /** Until the next push_status from the printer, keep UI aligned with the user's last set target. */
+    void set_target_temp(float t) { bed_temp_target = t; }
 
     static void ParseV1_0(const json &print_json, DevBed *system);
     static void ParseV2_0(const json &print_json, DevBed *system);

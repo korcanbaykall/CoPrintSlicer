@@ -58,6 +58,7 @@ public:
     // temperature
     int  GetCurrentTemp() const { return m_cur_temp; }
     int  GetTargetTemp() const { return m_target_temp; }
+    void set_target_temp(int t) { m_target_temp = t; }
 
     // filament
     bool             HasFilamentInExt() const { return m_ext_has_filament; }
@@ -145,6 +146,9 @@ public:
     float          GetNozzleDiameter(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetNozzleDiameter() : 0.0; }
     int            GetNozzleTempCurrent(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetCurrentTemp() : 0; }
     int            GetNozzleTempTarget(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetTargetTemp() : 0; }
+
+    /** Until the next push_status, mirror the user's last nozzle target in the UI. */
+    void set_extder_target_temp(int extder_id, int temp);
 
     // get slot info which is connected to the extruder
     std::string GetCurrentAmsId() const;

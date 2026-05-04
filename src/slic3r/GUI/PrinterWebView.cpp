@@ -1706,6 +1706,7 @@ void PrinterWebView::prompt_ip_connect()
     machine.dev_id = dev_id;
     machine.dev_ip = dev_ip;
     machine.dev_name = dev_ip;
+    machine.printer_type = "Moonraker";
 
     MachineObject *obj = dev_manager->insert_local_device(machine, "lan", "free", "", "");
     if (obj == nullptr) {
@@ -1714,10 +1715,10 @@ void PrinterWebView::prompt_ip_connect()
     }
 
     obj->local_use_ssl = host.rfind("https://", 0) == 0;
-    if (wxGetApp().mainframe != nullptr && wxGetApp().mainframe->m_monitor != nullptr)
-        wxGetApp().mainframe->m_monitor->select_machine(dev_id);
-    else
-        dev_manager->set_selected_machine(dev_id);
+    if (!dev_manager->set_selected_machine(dev_id)) {
+        wxMessageBox("Yazici secilemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return;
+    }
     obj->command_request_push_all(true);
 
     dismiss_printers_popup();

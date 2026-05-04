@@ -70,6 +70,13 @@ namespace Slic3r
         m_extders.emplace_back(ext);
     }
 
+    void DevExtderSystem::set_extder_target_temp(int extder_id, int temp)
+    {
+        if (extder_id < 0 || extder_id >= static_cast<int>(m_extders.size()))
+            return;
+        m_extders[extder_id].set_target_temp(temp);
+    }
+
     bool DevExtderSystem::CanQuitSwitching() const
     {
         if (!IsSwitchingFailed())
