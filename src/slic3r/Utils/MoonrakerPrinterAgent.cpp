@@ -1735,9 +1735,12 @@ void MoonrakerPrinterAgent::handle_ws_message(const std::string& dev_id, const s
     // Check for status update notifications
     if (json.contains("method") && json["method"].is_string()) {
         const std::string method = json["method"].get<std::string>();
-        if (method == "notify_status_update" && json.contains("params") && json["params"].is_array() && !json["params"].empty() &&
-            json["params"][0].is_object()) {
-            update_status_cache(json["params"][0]);
+        if (method == "notify_status_update" && json.contains("params") && json["params"].is_array() &&
+            !json["params"].empty()) {
+            for (const auto& p : json["params"]) {
+                if (p.is_object())
+                    update_status_cache(p);
+            }
             updated = true;
             // Note: is_critical stays false for regular status updates (telemetry)
         } else if (method == "notify_klippy_ready") {

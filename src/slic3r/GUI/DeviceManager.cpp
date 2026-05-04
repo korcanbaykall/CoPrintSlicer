@@ -11,6 +11,7 @@
 #include "Plater.hpp"
 #include "GUI_App.hpp"
 #include "ReleaseNote.hpp"
+#include <cstdio>
 #include <thread>
 #include <mutex>
 #include <codecvt>
@@ -1836,6 +1837,22 @@ int MachineObject::command_ams_air_print_detect(bool air_print_detect)
 
 int MachineObject::command_axis_control(std::string axis, double unit, double input_val, int speed)
 {
+    const bool moonraker_klipper_jog =
+        m_agent && m_agent->get_printer_agent() && m_agent->get_printer_agent()->get_agent_info().id == "moonraker" &&
+        !m_support_mqtt_axis_control;
+    if (moonraker_klipper_jog) {
+        if (axis != "X" && axis != "Y" && axis != "Z" && axis != "E")
+            return -1;
+        double value = input_val * unit;
+        if (!is_core_xy()) {
+            if (axis.compare("Y") == 0 || axis.compare("Z") == 0)
+                value = -1.0 * value;
+        }
+        char cmd[128];
+        std::snprintf(cmd, sizeof(cmd), "G91\nG1 %s%.3f F%d\nG90\n", axis.c_str(), value, speed);
+        return this->publish_gcode(std::string(cmd));
+    }
+
     if (m_support_mqtt_axis_control)
     {
         json j;

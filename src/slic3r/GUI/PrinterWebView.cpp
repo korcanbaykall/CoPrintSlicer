@@ -16,6 +16,7 @@
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/GUI/wxMediaCtrl2.h"
 #include "slic3r/Utils/NetworkAgentFactory.hpp"
+#include "slic3r/Utils/NetworkAgent.hpp"
 #include "libslic3r/Utils.hpp"
 #include "libslic3r_version.h"
 
@@ -40,6 +41,21 @@ namespace Slic3r {
 namespace GUI {
 
 namespace {
+
+bool allow_axis_jog_for_printer(const MachineObject *obj, const std::string &axis_letter)
+{
+    if (!obj || !obj->is_online())
+        return false;
+    if (obj->is_axis_at_home(axis_letter))
+        return true;
+    if (!obj->is_lan_mode_printer())
+        return false;
+    auto *agent = GUI::wxGetApp().getAgent();
+    if (!agent || !agent->get_printer_agent())
+        return false;
+    return agent->get_printer_agent()->get_agent_info().id == "moonraker";
+}
+
 enum class AxisControlAction {
     None,
     XMinus,
@@ -975,19 +991,19 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         const double step = m_axis_move_step;
         switch (action) {
         case AxisControlAction::XMinus:
-            if (obj->is_axis_at_home("X"))
+            if (allow_axis_jog_for_printer(obj, "X"))
                 obj->command_axis_control("X", 1.0, -step, 3000);
             break;
         case AxisControlAction::XPlus:
-            if (obj->is_axis_at_home("X"))
+            if (allow_axis_jog_for_printer(obj, "X"))
                 obj->command_axis_control("X", 1.0, step, 3000);
             break;
         case AxisControlAction::YMinus:
-            if (obj->is_axis_at_home("Y"))
+            if (allow_axis_jog_for_printer(obj, "Y"))
                 obj->command_axis_control("Y", 1.0, -step, 3000);
             break;
         case AxisControlAction::YPlus:
-            if (obj->is_axis_at_home("Y"))
+            if (allow_axis_jog_for_printer(obj, "Y"))
                 obj->command_axis_control("Y", 1.0, step, 3000);
             break;
         case AxisControlAction::None:
@@ -1095,7 +1111,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
             BOOST_LOG_TRIVIAL(warning) << "PrinterWebView Z control ignored: no online selected printer";
             return;
         }
-        if (!obj->is_axis_at_home("Z")) {
+        if (!allow_axis_jog_for_printer(obj, "Z")) {
             BOOST_LOG_TRIVIAL(warning) << "PrinterWebView Z control ignored: Z axis is not at home";
             return;
         }
@@ -1383,7 +1399,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     Bind(wxEVT_WEBREQUEST_STATE, &PrinterWebView::on_thumbnail_webrequest_state, this);
     m_layer_refresh_timer = new wxTimer(this);
     Bind(wxEVT_TIMER, [this](wxTimerEvent &) { refresh_layer_info_from_selected_machine(); }, m_layer_refresh_timer->GetId());
-    m_layer_refresh_timer->Start(1000);
+    m_layer_refresh_timer->Start(250);
     Bind(wxEVT_CLOSE_WINDOW, &PrinterWebView::OnClose, this);
  }
 
