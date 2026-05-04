@@ -1669,20 +1669,9 @@ void PrinterWebView::prompt_ip_connect()
         return;
     }
 
-    wxTextEntryDialog access_dialog(this, "LAN access code girin. Bos birakirsaniz 88888888 kullanilir.",
-                                    "LAN Access Code", "88888888");
-    if (access_dialog.ShowModal() != wxID_OK)
-        return;
-
-    wxString access_value = access_dialog.GetValue();
-    access_value.Trim(true);
-    access_value.Trim(false);
-    if (access_value.empty())
-        access_value = "88888888";
-
     const std::string host = into_u8(ip_value);
-    const std::string access_code = into_u8(access_value);
     const std::string dev_ip = MachineObject::dev_id_from_address(host);
+    const std::string dev_id = dev_ip;
 
     auto *dev_manager = wxGetApp().getDeviceManager();
     if (dev_manager == nullptr) {
@@ -1697,71 +1686,30 @@ void PrinterWebView::prompt_ip_connect()
     }
 
     const auto current_printer_agent = agent->get_printer_agent();
-    const bool needs_bambu_agent = current_printer_agent == nullptr ||
-        current_printer_agent->get_agent_info().id != BBL_PRINTER_AGENT_ID;
-    if (needs_bambu_agent) {
-        auto bambu_agent = NetworkAgentFactory::create_printer_agent_by_id(
-            BBL_PRINTER_AGENT_ID, agent->get_cloud_agent(), Slic3r::data_dir());
-        if (bambu_agent == nullptr) {
-            wxMessageBox("Bambu Lab network agent baslatilamadi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+    const bool needs_moonraker_agent = current_printer_agent == nullptr ||
+        current_printer_agent->get_agent_info().id != "moonraker";
+    if (needs_moonraker_agent) {
+        auto moonraker_agent = NetworkAgentFactory::create_printer_agent_by_id(
+            "moonraker", agent->get_cloud_agent(), Slic3r::data_dir());
+        if (moonraker_agent == nullptr) {
+            wxMessageBox("Moonraker network agent baslatilamadi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
             return;
         }
-        agent->set_printer_agent(bambu_agent);
-    }
-
-    detectResult detect_data;
-    detect_data.dev_id = dev_ip;
-    detect_data.dev_name = dev_ip;
-    detect_data.connect_type = "lan";
-    detect_data.bind_state = "free";
-
-    const int detect_result = agent->bind_detect(dev_ip, "secure", detect_data);
-    if (detect_result < 0) {
-        wxMessageBox("Yaziciya IP ile ulasilamadi. IP adresini, LAN modunu ve access code bilgisini kontrol edin.",
-                     "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
-        return;
-    }
-
-    if (detect_data.dev_id.empty() || detect_data.dev_id == dev_ip) {
-        wxMessageBox("Yazicinin seri numarasi IP uzerinden alinamadi. Bambu network plugin veya LAN mode aktif olmayabilir.",
-                     "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
-        return;
-    }
-
-    if (detect_data.bind_state == "occupied") {
-        wxMessageBox("Bu yazici zaten baska bir hesaba bagli gorunuyor.", "IP Adresi ile Baglan", wxOK | wxICON_WARNING, this);
-        return;
-    }
-
-    if (detect_data.connect_type == "cloud") {
-        wxMessageBox("Yazici LAN modunda degil. Yaziciyi LAN Only moda alip tekrar deneyin.",
-                     "IP Adresi ile Baglan", wxOK | wxICON_WARNING, this);
-        return;
-    }
-
-    const std::string dev_id = detect_data.dev_id.empty() ? dev_ip : detect_data.dev_id;
-    if (dev_id != dev_ip && dev_manager->get_local_machine(dev_ip) != nullptr) {
-        dev_manager->erase_local_machine(dev_ip);
-        if (wxGetApp().app_config != nullptr)
-            wxGetApp().app_config->erase_local_machine(dev_ip);
+        agent->set_printer_agent(moonraker_agent);
     }
 
     BBLocalMachine machine;
     machine.dev_id = dev_id;
     machine.dev_ip = dev_ip;
-    machine.dev_name = detect_data.dev_name.empty() ? dev_ip : detect_data.dev_name;
-    machine.printer_type = detect_data.model_id;
+    machine.dev_name = dev_ip;
 
-    MachineObject *obj = dev_manager->insert_local_device(machine, detect_data.connect_type.empty() ? "lan" : detect_data.connect_type,
-                                                          detect_data.bind_state.empty() ? "free" : detect_data.bind_state,
-                                                          detect_data.version, access_code);
+    MachineObject *obj = dev_manager->insert_local_device(machine, "lan", "free", "", "");
     if (obj == nullptr) {
         wxMessageBox("Yazici yerel cihaz listesine eklenemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
         return;
     }
 
-    obj->set_user_access_code(access_code);
-    obj->local_use_ssl = host.rfind("http://", 0) != 0;
+    obj->local_use_ssl = host.rfind("https://", 0) == 0;
     if (wxGetApp().mainframe != nullptr && wxGetApp().mainframe->m_monitor != nullptr)
         wxGetApp().mainframe->m_monitor->select_machine(dev_id);
     else

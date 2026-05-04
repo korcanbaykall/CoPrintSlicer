@@ -36,12 +36,7 @@ namespace Slic3r
                 obj->last_alive          = Slic3r::Utils::get_current_time_utc();
                 obj->set_access_code(config->get("access_code", m.dev_id), false);
                 obj->set_user_access_code(config->get("user_access_code", m.dev_id), false);
-                if (obj->has_access_right()) {
-                    localMachineList.insert(std::make_pair(m.dev_id, obj));
-                } else {
-                    config->erase_local_machine(m.dev_id);
-                    delete obj;
-                }
+                localMachineList.insert(std::make_pair(m.dev_id, obj));
             }
         }
     }
@@ -51,14 +46,12 @@ namespace Slic3r
         AppConfig* config = GUI::wxGetApp().app_config;
         if (config) {
             if (m.is_lan_mode_printer()) {
-                if (m.has_access_right()) {
-                    BBLocalMachine local_machine;
-                    local_machine.dev_id       = m.get_dev_id();
-                    local_machine.dev_name     = m.get_dev_name();
-                    local_machine.dev_ip       = m.get_dev_ip();
-                    local_machine.printer_type = m.printer_type;
-                    config->update_local_machine(local_machine);
-                }
+                BBLocalMachine local_machine;
+                local_machine.dev_id       = m.get_dev_id();
+                local_machine.dev_name     = m.get_dev_name();
+                local_machine.dev_ip       = m.get_dev_ip();
+                local_machine.printer_type = m.printer_type;
+                config->update_local_machine(local_machine);
             } else {
                 config->erase_local_machine(m.get_dev_id());
             }
@@ -574,8 +567,7 @@ namespace Slic3r
         auto it = localMachineList.find(selected_machine);
         if (it != localMachineList.end())
         {
-            if (it->second->has_access_right())
-                return it->second;
+            return it->second;
         }
         return nullptr;
     }
