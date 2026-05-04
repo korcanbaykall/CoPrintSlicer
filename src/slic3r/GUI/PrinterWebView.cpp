@@ -6,6 +6,7 @@
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
 #include "slic3r/GUI/MediaPlayCtrl.h"
+#include "slic3r/GUI/Monitor.hpp"
 #include "slic3r/GUI/MultiTaskManagerPage.hpp"
 #include "slic3r/GUI/DeviceCore/DevManager.h"
 #include "slic3r/GUI/DeviceCore/DevBed.h"
@@ -1655,6 +1656,8 @@ void PrinterWebView::dismiss_speed_popup()
 
 void PrinterWebView::prompt_ip_connect()
 {
+    wxGetApp().switch_printer_agent();
+
     wxTextEntryDialog ip_dialog(this, "Yazicinin IP adresini veya host:port adresini girin.", "IP Adresi ile Baglan");
     if (ip_dialog.ShowModal() != wxID_OK)
         return;
@@ -1680,7 +1683,7 @@ void PrinterWebView::prompt_ip_connect()
 
     const std::string host = into_u8(ip_value);
     const std::string access_code = into_u8(access_value);
-    const std::string dev_id = MachineObject::dev_id_from_address(host);
+    const std::string dev_ip = MachineObject::dev_id_from_address(host);
 
     auto *dev_manager = wxGetApp().getDeviceManager();
     if (dev_manager == nullptr) {
@@ -1688,19 +1691,55 @@ void PrinterWebView::prompt_ip_connect()
         return;
     }
 
+    detectResult detect_data;
+    detect_data.dev_id = dev_ip;
+    detect_data.dev_name = dev_ip;
+    detect_data.connect_type = "lan";
+    detect_data.bind_state = "free";
+
+    auto *agent = wxGetApp().getAgent();
+    if (agent != nullptr) {
+        const int detect_result = agent->bind_detect(dev_ip, "secure", detect_data);
+        if (detect_result < 0) {
+            wxMessageBox("Yaziciya IP ile ulasilamadi. IP adresini, LAN modunu ve access code bilgisini kontrol edin.",
+                         "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+            return;
+        }
+    }
+
+    if (detect_data.bind_state == "occupied") {
+        wxMessageBox("Bu yazici zaten baska bir hesaba bagli gorunuyor.", "IP Adresi ile Baglan", wxOK | wxICON_WARNING, this);
+        return;
+    }
+
+    if (detect_data.connect_type == "cloud") {
+        wxMessageBox("Yazici LAN modunda degil. Yaziciyi LAN Only moda alip tekrar deneyin.",
+                     "IP Adresi ile Baglan", wxOK | wxICON_WARNING, this);
+        return;
+    }
+
+    const std::string dev_id = detect_data.dev_id.empty() ? dev_ip : detect_data.dev_id;
+
     BBLocalMachine machine;
     machine.dev_id = dev_id;
-    machine.dev_ip = dev_id;
-    machine.dev_name = dev_id;
+    machine.dev_ip = dev_ip;
+    machine.dev_name = detect_data.dev_name.empty() ? dev_ip : detect_data.dev_name;
+    machine.printer_type = detect_data.model_id;
 
-    MachineObject *obj = dev_manager->insert_local_device(machine, "lan", "free", "", access_code);
+    MachineObject *obj = dev_manager->insert_local_device(machine, detect_data.connect_type.empty() ? "lan" : detect_data.connect_type,
+                                                          detect_data.bind_state.empty() ? "free" : detect_data.bind_state,
+                                                          detect_data.version, access_code);
     if (obj == nullptr) {
         wxMessageBox("Yazici yerel cihaz listesine eklenemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
         return;
     }
 
-    obj->local_use_ssl = host.rfind("https://", 0) == 0;
-    dev_manager->set_selected_machine(dev_id);
+    obj->set_user_access_code(access_code);
+    obj->local_use_ssl = host.rfind("http://", 0) != 0;
+    if (wxGetApp().mainframe != nullptr && wxGetApp().mainframe->m_monitor != nullptr)
+        wxGetApp().mainframe->m_monitor->select_machine(dev_id);
+    else
+        dev_manager->set_selected_machine(dev_id);
     obj->command_request_push_all(true);
 
     dismiss_printers_popup();
@@ -1792,6 +1831,22 @@ void PrinterWebView::rebuild_printers_popup()
         line->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { prompt_ip_connect(); });
     };
 
+    auto bind_machine_line = [this, dev_manager](wxStaticText *line, MachineObject *machine) {
+        if (line == nullptr || machine == nullptr)
+            return;
+        line->SetCursor(wxCursor(wxCURSOR_HAND));
+        line->Bind(wxEVT_LEFT_DOWN, [this, dev_manager, machine](wxMouseEvent &) {
+            const std::string dev_id = machine->get_dev_id();
+            dismiss_printers_popup();
+            if (wxGetApp().mainframe != nullptr && wxGetApp().mainframe->m_monitor != nullptr)
+                wxGetApp().mainframe->m_monitor->select_machine(dev_id);
+            else if (dev_manager != nullptr)
+                dev_manager->set_selected_machine(dev_id);
+            machine->command_request_push_all(true);
+            refresh_layer_info_from_selected_machine();
+        });
+    };
+
     std::map<std::string, MachineObject*> visible_my_machines;
     for (const auto &entry : my_machines) {
         if (entry.second == nullptr)
@@ -1807,6 +1862,8 @@ void PrinterWebView::rebuild_printers_popup()
             continue;
         if (visible_my_machines.find(entry.first) != visible_my_machines.end())
             continue;
+        if (selected_machine != nullptr && entry.first == selected_machine->get_dev_id())
+            continue;
         other_local_machines.emplace(entry);
     }
 
@@ -1820,7 +1877,7 @@ void PrinterWebView::rebuild_printers_popup()
                 auto *machine = entry.second;
                 if (machine == nullptr)
                     continue;
-                add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(20, 20, 20), false, 12);
+                bind_machine_line(add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(20, 20, 20), false, 12), machine);
             }
         }
 
@@ -1830,7 +1887,7 @@ void PrinterWebView::rebuild_printers_popup()
                 auto *machine = entry.second;
                 if (machine == nullptr)
                     continue;
-                add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(80, 80, 80), false, 12);
+                bind_machine_line(add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(80, 80, 80), false, 12), machine);
             }
         }
 
