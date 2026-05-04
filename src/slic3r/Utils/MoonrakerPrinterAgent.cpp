@@ -19,6 +19,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cctype>
+#include <sstream>
 #include <thread>
 
 namespace {
@@ -86,6 +87,26 @@ std::string map_moonraker_state(std::string state)
         return "FAILED";
     }
     return "IDLE";
+}
+
+std::string sanitize_klipper_gcode(const std::string& gcode)
+{
+    std::stringstream input(gcode);
+    std::string       line;
+    std::string       sanitized;
+
+    while (std::getline(input, line)) {
+        boost::trim(line);
+        if (line.empty())
+            continue;
+        if (boost::istarts_with(line, "M1002"))
+            continue;
+        if (boost::istarts_with(line, "M211"))
+            continue;
+        sanitized += line + "\n";
+    }
+
+    return sanitized.empty() ? gcode : sanitized;
 }
 
 } // namespace
@@ -1163,7 +1184,7 @@ bool MoonrakerPrinterAgent::query_printer_status(const std::string& base_url,
                                                  nlohmann::json&    status,
                                                  std::string&       error) const
 {
-    std::string url = join_url(base_url, "/printer/objects/query?print_stats&virtual_sdcard&extruder&heater_bed&fan");
+    std::string url = join_url(base_url, "/printer/objects/query?print_stats&virtual_sdcard&extruder&heater_bed&fan&toolhead");
 
     std::string response_body;
     bool        success = false;
@@ -1213,8 +1234,10 @@ bool MoonrakerPrinterAgent::query_printer_status(const std::string& base_url,
 
 bool MoonrakerPrinterAgent::send_gcode(const std::string& dev_id, const std::string& gcode) const
 {
+    const std::string script = sanitize_klipper_gcode(gcode);
+
     nlohmann::json payload;
-    payload["script"]       = gcode;
+    payload["script"]       = script;
     std::string payload_str = payload.dump();
 
     std::string response_body;
@@ -1799,6 +1822,7 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
     int home_flag = 0;
     if (status_cache.contains("toolhead") && status_cache["toolhead"].contains("homed_axes")) {
         std::string homed = status_cache["toolhead"]["homed_axes"].get<std::string>();
+        boost::algorithm::to_upper(homed);
         if (homed.find('X') != std::string::npos)
             home_flag |= 1; // bit 0
         if (homed.find('Y') != std::string::npos)
