@@ -32,12 +32,6 @@ namespace Slic3r {
 namespace GUI {
 
 namespace {
-enum class AxisShapeDirection {
-    Left,
-    Up,
-    Right,
-    Down
-};
 
 // Single-panel D-pad: draws all 4 directional arrows in one wxPanel to avoid
 // the panel-overlap artifact that occurs when 4 separate child panels are used.
@@ -45,11 +39,10 @@ class AxisJoystickPanel : public wxPanel
 {
 public:
     AxisJoystickPanel(wxWindow *parent, int square, int center_sz, int center_gap, int button_gap,
-                      int hw, int hh, int vw, int vh)
+                      int, int, int, int)
         : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(square, square))
         , m_square(square), m_center(center_sz)
         , m_cp((square - center_sz) / 2), m_center_gap(center_gap), m_button_gap(button_gap)
-        , m_hw(hw), m_hh(hh), m_vw(vw), m_vh(vh)
     {
         SetMinSize(wxSize(square, square));
         SetMaxSize(wxSize(square, square));
@@ -59,56 +52,52 @@ public:
     }
 
 private:
-    static const std::vector<wxPoint2DDouble> &arrow_pts(AxisShapeDirection d)
-    {
-        static const std::vector<wxPoint2DDouble> L = {
-            {75.5348,49.9954},{29.9627,4.42324},{4.35614,14.9999},{4.00003,193.411},
-            {29.5362,204.118},{75.4643,158.794},{79.9282,148.117},{79.9282,60.602}};
-        static const std::vector<wxPoint2DDouble> U = {
-            {162.476,71.5348},{208.048,25.9627},{197.471,0.356158},{19.0602,0.0000399},
-            {8.35362,25.5362},{53.6775,71.4644},{64.3541,75.9282},{151.869,75.9282}};
-        static const std::vector<wxPoint2DDouble> R = {
-            {8.3934,158.476},{53.9655,204.048},{79.5721,193.472},{79.9282,15.0602},
-            {54.3921,4.35365},{8.46389,49.6775},{4.00001,60.3541},{4.00001,147.869}};
-        static const std::vector<wxPoint2DDouble> D = {
-            {53.9953,4.39339},{8.42323,49.9655},{18.9999,75.5721},{197.411,75.9282},
-            {208.118,50.3921},{162.794,4.46387},{152.117,0.0},{64.6019,0.0}};
-        switch (d) {
-        case AxisShapeDirection::Left:  return L;
-        case AxisShapeDirection::Up:    return U;
-        case AxisShapeDirection::Right: return R;
-        case AxisShapeDirection::Down:  return D;
-        }
-        return U;
-    }
-
-    struct ShapeExtents {
-        double min_x = 0.;
-        double max_x = 0.;
-        double min_y = 0.;
-        double max_y = 0.;
+    struct AxisPiece {
+        std::vector<wxPoint2DDouble> points;
+        wxString label;
+        wxPoint2DDouble label_center;
     };
 
-    static ShapeExtents scaled_extents(AxisShapeDirection d, double src_w, double src_h, double dst_w, double dst_h)
+    wxPoint2DDouble p(double x, double y) const
     {
-        const auto &raw = arrow_pts(d);
-        ShapeExtents ext;
-        bool first = true;
-        for (const auto &pt : raw) {
-            const double x = pt.m_x * dst_w / src_w;
-            const double y = pt.m_y * dst_h / src_h;
-            if (first) {
-                ext.min_x = ext.max_x = x;
-                ext.min_y = ext.max_y = y;
-                first = false;
-            } else {
-                ext.min_x = std::min(ext.min_x, x);
-                ext.max_x = std::max(ext.max_x, x);
-                ext.min_y = std::min(ext.min_y, y);
-                ext.max_y = std::max(ext.max_y, y);
-            }
+        const double scale = (double)m_square / 300.0;
+        return {x * scale, y * scale};
+    }
+
+    wxGraphicsPath rounded_path(wxGraphicsContext *gc, const std::vector<wxPoint2DDouble> &points, double radius) const
+    {
+        wxGraphicsPath path = gc->CreatePath();
+        const int n = (int)points.size();
+        if (n == 0)
+            return path;
+
+        auto len = [](const wxPoint2DDouble &a, const wxPoint2DDouble &b) {
+            const double dx = b.m_x - a.m_x;
+            const double dy = b.m_y - a.m_y;
+            return std::sqrt(dx * dx + dy * dy);
+        };
+
+        std::vector<wxPoint2DDouble> before(n), after(n);
+        for (int i = 0; i < n; i++) {
+            const auto &prev = points[(i - 1 + n) % n];
+            const auto &curr = points[i];
+            const auto &next = points[(i + 1) % n];
+            const double lin = len(prev, curr);
+            const double lout = len(curr, next);
+            const double ri = std::min(radius, lin * 0.45);
+            const double ro = std::min(radius, lout * 0.45);
+
+            before[i] = {curr.m_x - (curr.m_x - prev.m_x) / lin * ri, curr.m_y - (curr.m_y - prev.m_y) / lin * ri};
+            after[i]  = {curr.m_x + (next.m_x - curr.m_x) / lout * ro, curr.m_y + (next.m_y - curr.m_y) / lout * ro};
         }
-        return ext;
+
+        path.MoveToPoint(before[0]);
+        for (int i = 0; i < n; i++) {
+            path.AddQuadCurveToPoint(points[i].m_x, points[i].m_y, after[i].m_x, after[i].m_y);
+            path.AddLineToPoint(before[(i + 1) % n]);
+        }
+        path.CloseSubpath();
+        return path;
     }
 
     void on_paint(wxPaintEvent &)
@@ -124,92 +113,42 @@ private:
         gc->SetPen(*wxTRANSPARENT_PEN);
         gc->SetBrush(wxBrush(wxColour(217, 217, 217)));
 
-        struct Arrow {
-            AxisShapeDirection dir;
-            double src_w, src_h, dst_w, dst_h, off_x, off_y;
-            wxString label;
-        };
-
-        const ShapeExtents left_ext  = scaled_extents(AxisShapeDirection::Left,  84., 217., (double)m_vw, (double)m_vh);
-        const ShapeExtents up_ext    = scaled_extents(AxisShapeDirection::Up,   217.,  84., (double)m_hw, (double)m_hh);
-        const ShapeExtents right_ext = scaled_extents(AxisShapeDirection::Right, 84., 217., (double)m_vw, (double)m_vh);
-        const ShapeExtents down_ext  = scaled_extents(AxisShapeDirection::Down, 217.,  84., (double)m_hw, (double)m_hh);
-
         const double center_left   = (double)m_cp;
         const double center_top    = (double)m_cp;
         const double center_right  = (double)(m_cp + m_center);
         const double center_bottom = (double)(m_cp + m_center);
-        const double button_gap    = (double)m_button_gap;
-        const double center_gap    = std::max(0.0, (double)m_center_gap - button_gap / 2.0);
+        const double cgap = (double)m_center_gap;
+        const double diagonal_gap = (double)m_button_gap / std::sqrt(2.0);
+        const double left_inner = center_left - cgap;
+        const double top_inner = center_top - cgap;
+        const double right_inner = center_right + cgap;
+        const double bottom_inner = center_bottom + cgap;
 
-        const Arrow arrows[] = {
-            {AxisShapeDirection::Left,  84.,217., (double)m_vw,(double)m_vh,
-             center_left - center_gap - left_ext.max_x, (double)((m_square-m_vh)/2), "X-"},
-            {AxisShapeDirection::Up,   217., 84., (double)m_hw,(double)m_hh,
-             (double)((m_square-m_hw)/2), center_top - center_gap - up_ext.max_y, "Y+"},
-            {AxisShapeDirection::Right, 84.,217., (double)m_vw,(double)m_vh,
-             center_right + center_gap - right_ext.min_x, (double)((m_square-m_vh)/2), "X+"},
-            {AxisShapeDirection::Down, 217., 84., (double)m_hw,(double)m_hh,
-             (double)((m_square-m_hw)/2), center_bottom + center_gap - down_ext.min_y, "Y-"},
+        const AxisPiece pieces[] = {
+            {{{p(54, 22), p(246, 22), p(260, 36), {right_inner - diagonal_gap, top_inner}, {left_inner + diagonal_gap, top_inner}, p(40, 36)}},
+             "Y+", p(150, 74)},
+            {{{p(22, 54), p(36, 40), {left_inner, top_inner + diagonal_gap}, {left_inner, bottom_inner - diagonal_gap}, p(36, 260), p(22, 246)}},
+             "X-", p(68, 150)},
+            {{{p(278, 54), p(264, 40), {right_inner, top_inner + diagonal_gap}, {right_inner, bottom_inner - diagonal_gap}, p(264, 260), p(278, 246)}},
+             "X+", p(232, 150)},
+            {{{p(54, 278), p(246, 278), p(260, 264), {right_inner - diagonal_gap, bottom_inner}, {left_inner + diagonal_gap, bottom_inner}, p(40, 264)}},
+             "Y-", p(150, 226)},
         };
 
-        auto vlen = [](double ax, double ay, double bx, double by) {
-            double dx = bx-ax, dy = by-ay;
-            return std::sqrt(dx*dx + dy*dy);
-        };
-
-        for (const auto &a : arrows) {
-            const auto &raw = arrow_pts(a.dir);
-            const int   n   = (int)raw.size();
-            const double sx  = a.dst_w / a.src_w;
-            const double sy  = a.dst_h / a.src_h;
-            const double r   = 20.0 * std::min(sx, sy);
-
-            std::vector<wxPoint2DDouble> pts(n);
-            for (int i = 0; i < n; i++)
-                pts[i] = {raw[i].m_x * sx + a.off_x, raw[i].m_y * sy + a.off_y};
-
-            std::vector<wxPoint2DDouble> t1(n), t2(n);
-            for (int i = 0; i < n; i++) {
-                const auto &prev = pts[(i-1+n)%n];
-                const auto &curr = pts[i];
-                const auto &next = pts[(i+1)%n];
-                double lin  = vlen(prev.m_x,prev.m_y, curr.m_x,curr.m_y);
-                double lout = vlen(curr.m_x,curr.m_y, next.m_x,next.m_y);
-                double ti   = std::min(r, lin  * 0.45);
-                double to_  = std::min(r, lout * 0.45);
-                t1[i] = {curr.m_x-(curr.m_x-prev.m_x)/lin*ti,  curr.m_y-(curr.m_y-prev.m_y)/lin*ti};
-                t2[i] = {curr.m_x+(next.m_x-curr.m_x)/lout*to_, curr.m_y+(next.m_y-curr.m_y)/lout*to_};
-            }
-
-            wxGraphicsPath path = gc->CreatePath();
-            path.MoveToPoint(t1[0]);
-            for (int i = 0; i < n; i++) {
-                path.AddQuadCurveToPoint(pts[i].m_x, pts[i].m_y, t2[i].m_x, t2[i].m_y);
-                path.AddLineToPoint(t1[(i+1)%n]);
-            }
-            path.CloseSubpath();
-            gc->FillPath(path);
-            if (m_button_gap > 0) {
-                gc->SetPen(wxPen(GetBackgroundColour(), m_button_gap));
-                gc->StrokePath(path);
-                gc->SetPen(*wxTRANSPARENT_PEN);
-            }
-        }
+        for (const auto &piece : pieces)
+            gc->FillPath(rounded_path(gc.get(), piece.points, FromDIP(18)));
 
         gc->SetFont(
-            wxFont(FromDIP(11), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_SEMIBOLD),
+            wxFont(FromDIP(18), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD),
             wxColour(45, 48, 55));
-        for (const auto &a : arrows) {
+        for (const auto &piece : pieces) {
             wxDouble tw, th;
-            gc->GetTextExtent(a.label, &tw, &th);
-            gc->DrawText(a.label,
-                a.off_x + (a.dst_w - tw) / 2.0,
-                a.off_y + (a.dst_h - th) / 2.0);
+            gc->GetTextExtent(piece.label, &tw, &th);
+            gc->DrawText(piece.label, piece.label_center.m_x - tw / 2.0, piece.label_center.m_y - th / 2.0);
         }
     }
 
-    int m_square, m_center, m_cp, m_center_gap, m_button_gap, m_hw, m_hh, m_vw, m_vh;
+    int m_square, m_center, m_cp, m_center_gap, m_button_gap;
 };
 
 wxString layer_value_text(int layer)
