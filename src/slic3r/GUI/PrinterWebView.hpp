@@ -53,6 +53,7 @@ public:
     void toggle_fan_popup();
     void dismiss_fan_popup();
     void prompt_fan_value();
+    void prompt_ip_connect();
     void refresh_fan_value_display();
     void reset_placeholder_selections();
     void toggle_speed_popup();

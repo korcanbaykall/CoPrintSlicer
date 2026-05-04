@@ -1653,6 +1653,62 @@ void PrinterWebView::dismiss_speed_popup()
         m_speed_popup->Dismiss();
 }
 
+void PrinterWebView::prompt_ip_connect()
+{
+    wxTextEntryDialog ip_dialog(this, "Yazicinin IP adresini veya host:port adresini girin.", "IP Adresi ile Baglan");
+    if (ip_dialog.ShowModal() != wxID_OK)
+        return;
+
+    wxString ip_value = ip_dialog.GetValue();
+    ip_value.Trim(true);
+    ip_value.Trim(false);
+    if (ip_value.empty()) {
+        wxMessageBox("IP adresi bos olamaz.", "IP Adresi ile Baglan", wxOK | wxICON_WARNING, this);
+        return;
+    }
+
+    wxTextEntryDialog access_dialog(this, "LAN access code girin. Bos birakirsaniz 88888888 kullanilir.",
+                                    "LAN Access Code", "88888888");
+    if (access_dialog.ShowModal() != wxID_OK)
+        return;
+
+    wxString access_value = access_dialog.GetValue();
+    access_value.Trim(true);
+    access_value.Trim(false);
+    if (access_value.empty())
+        access_value = "88888888";
+
+    const std::string host = into_u8(ip_value);
+    const std::string access_code = into_u8(access_value);
+    const std::string dev_id = MachineObject::dev_id_from_address(host);
+
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    if (dev_manager == nullptr) {
+        wxMessageBox("Device manager hazir degil.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return;
+    }
+
+    BBLocalMachine machine;
+    machine.dev_id = dev_id;
+    machine.dev_ip = dev_id;
+    machine.dev_name = dev_id;
+
+    MachineObject *obj = dev_manager->insert_local_device(machine, "lan", "free", "", access_code);
+    if (obj == nullptr) {
+        wxMessageBox("Yazici yerel cihaz listesine eklenemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return;
+    }
+
+    obj->local_use_ssl = host.rfind("https://", 0) == 0;
+    dev_manager->set_selected_machine(dev_id);
+    obj->command_request_push_all(true);
+
+    dismiss_printers_popup();
+    rebuild_printers_popup();
+    refresh_layer_info_from_selected_machine();
+    Layout();
+}
+
 void PrinterWebView::rebuild_printers_popup()
 {
     if (m_printers_popup == nullptr || m_printers_popup_panel == nullptr)
@@ -1727,6 +1783,13 @@ void PrinterWebView::rebuild_printers_popup()
             line->SetFont(font);
         }
         printers_popup_sizer->Add(line, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(top));
+        return line;
+    };
+
+    auto add_ip_connect_line = [&]() {
+        auto *line = add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 14);
+        line->SetCursor(wxCursor(wxCURSOR_HAND));
+        line->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { prompt_ip_connect(); });
     };
 
     std::map<std::string, MachineObject*> visible_my_machines;
@@ -1749,7 +1812,7 @@ void PrinterWebView::rebuild_printers_popup()
 
     if (!has_any_machine) {
         add_popup_line(m_printers_popup_panel, "Cihaz ekle +", wxColour(20, 20, 20), true, 18);
-        add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 14);
+        add_ip_connect_line();
     } else {
         if (!visible_my_machines.empty()) {
             add_popup_line(m_printers_popup_panel, "Cihazim", wxColour(120, 120, 120), false, 18);
@@ -1771,7 +1834,9 @@ void PrinterWebView::rebuild_printers_popup()
             }
         }
 
-        add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 16);
+        auto *ip_line = add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 16);
+        ip_line->SetCursor(wxCursor(wxCURSOR_HAND));
+        ip_line->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { prompt_ip_connect(); });
     }
 
     add_popup_line(m_printers_popup_panel, "Cihazlarimi bulamiyor musunuz?", wxColour(38, 94, 190), false, 16);
