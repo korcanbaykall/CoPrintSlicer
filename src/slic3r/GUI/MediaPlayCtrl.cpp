@@ -175,7 +175,12 @@ void MediaPlayCtrl::SetMachineObject(MachineObject* obj)
         m_remote_proto = 0;
         m_device_busy = false;
     }
-    Enable(obj && obj->is_info_ready() && obj->m_push_count > 0);
+    const bool moonraker_agent = wxGetApp().getAgent() && wxGetApp().getAgent()->get_printer_agent() &&
+        wxGetApp().getAgent()->get_printer_agent()->get_agent_info().id == "moonraker";
+    // Moonraker never fills Bambu-style module_vers; allow live tab once push_status arrives.
+    const bool ready_for_controls =
+        obj && obj->m_push_count > 0 && (obj->is_info_ready() || (moonraker_agent && obj->is_lan_mode_printer()));
+    Enable(ready_for_controls);
     if (machine == m_machine) {
         if (m_last_state == MEDIASTATE_IDLE && IsEnabled())
             Play();

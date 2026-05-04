@@ -2093,13 +2093,14 @@ void GUI_App::init_networking_callbacks()
                         return;
                     }
                     /* request_pushing */
-                    MachineObject* obj = m_device_manager->get_my_machine(dev_id);
+                    MachineObject* obj = m_device_manager->find_lan_machine_for_agent_messages(dev_id);
                     wxCommandEvent event(EVT_CONNECT_LAN_MODE_PRINT);
 
                     if (obj) {
 
                         if (obj->is_lan_mode_printer()) {
                             if (state == ConnectStatus::ConnectStatusOk) {
+                                obj->set_online_state(true);
                                 obj->command_request_push_all(true);
                                 obj->command_get_version();
                                 event.SetInt(0);
@@ -2213,7 +2214,7 @@ void GUI_App::init_networking_callbacks()
                     return;
                 }
 
-                if (MachineObject* obj = m_device_manager->get_my_machine(dev_id)) {
+                if (MachineObject* obj = m_device_manager->find_lan_machine_for_agent_messages(dev_id)) {
                     obj->parse_json("lan", msg);
                     // Orca: skip it if it doesn't support subscription based filament sync
                     if (this->m_device_manager->get_selected_machine() == obj &&

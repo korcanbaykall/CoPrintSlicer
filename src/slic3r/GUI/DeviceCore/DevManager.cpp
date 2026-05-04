@@ -10,6 +10,8 @@
 
 #include "libslic3r/Time.hpp"
 
+#include <cctype>
+
 using namespace nlohmann;
 
 namespace Slic3r
@@ -435,6 +437,46 @@ namespace Slic3r
         return nullptr;
     }
 
+    MachineObject* DeviceManager::find_lan_machine_for_agent_messages(const std::string& dev_id)
+    {
+        if (MachineObject* direct = get_my_machine(dev_id))
+            return direct;
+
+        auto strip_numeric_port = [](const std::string& s) -> std::string {
+            const auto colon = s.rfind(':');
+            if (colon == std::string::npos || colon == 0)
+                return s;
+            bool all_digits = true;
+            for (size_t i = colon + 1; i < s.size(); ++i) {
+                if (!std::isdigit(static_cast<unsigned char>(s[i]))) {
+                    all_digits = false;
+                    break;
+                }
+            }
+            return all_digits ? s.substr(0, colon) : s;
+        };
+
+        const std::string dev_host = strip_numeric_port(dev_id);
+
+        for (const auto& kv : localMachineList) {
+            MachineObject* o = kv.second;
+            if (!o || !o->is_lan_mode_printer())
+                continue;
+            if (kv.first == dev_id || o->get_dev_id() == dev_id || o->get_dev_ip() == dev_id)
+                return o;
+            if (strip_numeric_port(kv.first) == dev_host || strip_numeric_port(o->get_dev_id()) == dev_host ||
+                strip_numeric_port(o->get_dev_ip()) == dev_host)
+                return o;
+        }
+        MachineObject* sel = get_selected_machine();
+        if (sel && sel->is_lan_mode_printer()) {
+            if (sel->get_dev_id() == dev_id || sel->get_dev_ip() == dev_id || strip_numeric_port(sel->get_dev_id()) == dev_host ||
+                strip_numeric_port(sel->get_dev_ip()) == dev_host)
+                return sel;
+        }
+        return nullptr;
+    }
+
     void DeviceManager::clean_user_info()
     {
         BOOST_LOG_TRIVIAL(trace) << "DeviceManager::clean_user_info";
@@ -633,7 +675,10 @@ namespace Slic3r
 
         for (auto it = localMachineList.begin(); it != localMachineList.end(); it++)
         {
-            if (it->second && it->second->is_avaliable() && it->second->is_lan_mode_printer())
+            // Treat empty bind_state as free (default-constructed MachineObject) so LAN agents can deliver push_status.
+            const bool lan_listable = it->second && it->second->is_lan_mode_printer() &&
+                (it->second->bind_state.empty() || it->second->bind_state == "free");
+            if (lan_listable)
             {
                 // remove redundant in userMachineList
                 if (result.find(it->first) == result.end())

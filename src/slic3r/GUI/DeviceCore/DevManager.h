@@ -81,6 +81,8 @@ public:
 
     /* my machine*/
     MachineObject* get_my_machine(std::string dev_id);
+    /** Resolves LAN printer when agent dev_id / host:port forms differ from map keys (e.g. saved config). */
+    MachineObject* find_lan_machine_for_agent_messages(const std::string& dev_id);
     std::map<std::string, MachineObject*> get_my_machine_list();
     std::map<std::string, MachineObject*> get_my_cloud_machine_list();
     void modify_device_name(std::string dev_id, std::string dev_name);
