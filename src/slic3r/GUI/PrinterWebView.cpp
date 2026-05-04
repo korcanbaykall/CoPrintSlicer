@@ -42,7 +42,7 @@ namespace GUI {
 
 namespace {
 
-bool allow_axis_jog_for_printer(const MachineObject *obj, const std::string &axis_letter)
+bool allow_axis_jog_for_printer(MachineObject *obj, const std::string &axis_letter)
 {
     if (!obj || !obj->is_online())
         return false;
