@@ -5,10 +5,15 @@
 #include "slic3r/GUI/wxExtensions.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
+#include "slic3r/GUI/MediaPlayCtrl.h"
 #include "slic3r/GUI/MultiTaskManagerPage.hpp"
 #include "slic3r/GUI/DeviceCore/DevManager.h"
+#include "slic3r/GUI/DeviceCore/DevBed.h"
+#include "slic3r/GUI/DeviceCore/DevExtruderSystem.h"
+#include "slic3r/GUI/DeviceCore/DevFan.h"
 #include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
+#include "slic3r/GUI/wxMediaCtrl2.h"
 #include "libslic3r/Utils.hpp"
 #include "libslic3r_version.h"
 
@@ -350,7 +355,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_right_frame->SetMaxSize(wxSize(FromDIP(1), -1));
     preview_right_frame->SetBackgroundColour(wxColour(96, 100, 108));
     preview_middle_frame->Add(preview_left_frame, 0, wxEXPAND);
-    preview_middle_frame->AddStretchSpacer(1);
+    m_camera_media_ctrl = new wxMediaCtrl2(preview_box);
+    m_camera_media_ctrl->SetMinSize(wxSize(FromDIP(860), FromDIP(410)));
+    m_camera_media_ctrl->SetBackgroundColour(*wxBLACK);
+    preview_middle_frame->Add(m_camera_media_ctrl, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
     preview_middle_frame->Add(preview_right_frame, 0, wxEXPAND);
     preview_box_sizer->Add(preview_middle_frame, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(15));
     auto *preview_bottom_divider = new wxPanel(preview_box, wxID_ANY);
@@ -369,7 +377,15 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *play_icon = new wxStaticBitmap(preview_bottom_panel, wxID_ANY, create_scaled_bitmap("play", this, 30));
     play_icon->SetMinSize(wxSize(FromDIP(30), FromDIP(30)));
     play_icon->SetMaxSize(wxSize(FromDIP(30), FromDIP(30)));
+    play_icon->SetCursor(wxCursor(wxCURSOR_HAND));
     preview_bottom_row->Add(play_icon, 0, wxALIGN_CENTER_VERTICAL);
+    preview_bottom_row->AddSpacer(FromDIP(12));
+    m_camera_play_ctrl = new MediaPlayCtrl(preview_bottom_panel, m_camera_media_ctrl, wxDefaultPosition, wxSize(FromDIP(790), FromDIP(40)));
+    preview_bottom_row->Add(m_camera_play_ctrl, 1, wxALIGN_CENTER_VERTICAL);
+    play_icon->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
+        if (m_camera_play_ctrl != nullptr)
+            m_camera_play_ctrl->jump_to_play();
+    });
     preview_bottom_sizer->Add(preview_bottom_row, 0, wxEXPAND | wxBOTTOM, FromDIP(5));
     preview_bottom_panel->SetSizer(preview_bottom_sizer);
     preview_box_sizer->Add(preview_bottom_panel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
@@ -427,9 +443,23 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_bar->SetValue(0);
     progress_controls_row->Add(progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(25));
     auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
+    pause_icon->SetCursor(wxCursor(wxCURSOR_HAND));
+    pause_icon->Bind(wxEVT_LEFT_UP, [](wxMouseEvent &) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj != nullptr && obj->is_online())
+            obj->command_task_pause();
+    });
     progress_controls_row->Add(pause_icon, 0, wxALIGN_CENTER_VERTICAL);
     progress_controls_row->AddSpacer(FromDIP(10));
     auto *stop_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("stop", this, 20));
+    stop_icon->SetCursor(wxCursor(wxCURSOR_HAND));
+    stop_icon->Bind(wxEVT_LEFT_UP, [](wxMouseEvent &) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj != nullptr && obj->is_online())
+            obj->command_task_abort();
+    });
     progress_controls_row->Add(stop_icon, 0, wxALIGN_CENTER_VERTICAL);
     progress_controls_row->AddSpacer(FromDIP(5));
     controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(10));
@@ -636,11 +666,20 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     printer_button->SetBorderColorNormal(wxColour(78, 129, 255));
     printer_button->SetBackgroundColorNormal(wxColour(28, 30, 34));
     printer_button->SetTextColorNormal(wxColour(120, 170, 255));
+    printer_button->SetCursor(wxCursor(wxCURSOR_HAND));
+    printer_button->Bind(wxEVT_BUTTON, [](wxCommandEvent &) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj != nullptr && obj->is_online())
+            obj->command_request_push_all(true);
+    });
     lower_placeholder_header->Add(printer_button, 0, wxALIGN_CENTER_VERTICAL);
     lower_placeholder_header->AddSpacer(FromDIP(20));
 
     auto *printer_menu_text = new wxStaticText(lower_placeholder_box, wxID_ANY, "...");
     printer_menu_text->SetForegroundColour(wxColour(180, 180, 180));
+    printer_menu_text->SetCursor(wxCursor(wxCURSOR_HAND));
+    printer_menu_text->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { toggle_printers_popup(); });
     lower_placeholder_header->Add(printer_menu_text, 0, wxALIGN_CENTER_VERTICAL);
 
     lower_placeholder_sizer->Add(lower_placeholder_header, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(20));
@@ -662,6 +701,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     printer_photo_box->SetBorderColorNormal(wxColour(55, 58, 64));
     printer_photo_box->SetBackgroundColorNormal(wxColour(20, 22, 26));
     printer_photo_box->SetBackgroundColour(wxColour(20, 22, 26));
+    auto *printer_photo_sizer = new wxBoxSizer(wxVERTICAL);
+    m_printer_photo_bitmap = new wxStaticBitmap(printer_photo_box, wxID_ANY, create_scaled_bitmap("printer_thumbnail", this, 82));
+    printer_photo_sizer->AddStretchSpacer(1);
+    printer_photo_sizer->Add(m_printer_photo_bitmap, 0, wxALIGN_CENTER_HORIZONTAL);
+    printer_photo_sizer->AddStretchSpacer(1);
+    printer_photo_box->SetSizer(printer_photo_sizer);
     printer_info_row->Add(printer_photo_box, 0, wxALIGN_TOP);
     printer_info_row->AddSpacer(FromDIP(20));
 
@@ -673,6 +718,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     printer_name_font.SetWeight(wxFONTWEIGHT_BOLD);
     printer_name_font.SetPointSize(printer_name_font.GetPointSize() + 1);
     printer_name->SetFont(printer_name_font);
+    m_printer_name_value = printer_name;
     printer_text_col->Add(printer_name, 0, wxALIGN_TOP);
     printer_text_col->AddSpacer(FromDIP(10));
 
@@ -690,6 +736,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         wxSize(FromDIP(300), -1),
         wxST_ELLIPSIZE_END);
     printer_model_value->SetForegroundColour(wxColour(220, 220, 220));
+    m_printer_model_value = printer_model_value;
     printer_model_row->Add(printer_model_value, 0, wxALIGN_TOP);
 
     printer_text_col->Add(printer_model_row, 0, wxALIGN_TOP);
@@ -709,6 +756,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         wxSize(FromDIP(300), -1),
         wxST_ELLIPSIZE_END);
     printer_serial_value->SetForegroundColour(wxColour(220, 220, 220));
+    m_printer_serial_value = printer_serial_value;
     printer_serial_row->Add(printer_serial_value, 0, wxALIGN_TOP);
 
     printer_text_col->Add(printer_serial_row, 0, wxALIGN_TOP);
@@ -728,6 +776,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         wxSize(FromDIP(160), -1),
         wxST_ELLIPSIZE_END);
     printer_firmware_value->SetForegroundColour(wxColour(220, 220, 220));
+    m_printer_firmware_value = printer_firmware_value;
     printer_firmware_row->Add(printer_firmware_value, 0, wxALIGN_TOP);
 
     printer_text_col->Add(printer_firmware_row, 0, wxALIGN_TOP);
@@ -816,10 +865,29 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     };
 
     auto *tool_col = new wxBoxSizer(wxVERTICAL);
-    tool_col->Add(make_tool_btn(right_container, "T1", true), 0, wxBOTTOM, FromDIP(10));
-    tool_col->Add(make_tool_btn(right_container, "T2"), 0, wxBOTTOM, FromDIP(10));
-    tool_col->Add(make_tool_btn(right_container, "T3"), 0, wxBOTTOM, FromDIP(10));
-    tool_col->Add(make_tool_btn(right_container, "T4"), 0);
+    auto *t1_btn = make_tool_btn(right_container, "T1", true);
+    auto *t2_btn = make_tool_btn(right_container, "T2");
+    auto *t3_btn = make_tool_btn(right_container, "T3");
+    auto *t4_btn = make_tool_btn(right_container, "T4");
+    t1_btn->SetCursor(wxCursor(wxCURSOR_HAND));
+    t1_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) {
+        m_selected_extruder = "T1";
+        if (m_extruder_display_label != nullptr)
+            m_extruder_display_label->SetLabelText(m_selected_extruder);
+        m_selected_fan = "T1";
+        if (m_fan_display_label != nullptr)
+            m_fan_display_label->SetLabelText(m_selected_fan);
+        refresh_fan_value_display();
+    });
+    for (auto *disabled_btn : { t2_btn, t3_btn, t4_btn }) {
+        disabled_btn->Enable(false);
+        disabled_btn->SetBackgroundColorNormal(wxColour(43, 46, 52));
+        disabled_btn->SetTextColorNormal(wxColour(115, 118, 124));
+    }
+    tool_col->Add(t1_btn, 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(t2_btn, 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(t3_btn, 0, wxBOTTOM, FromDIP(10));
+    tool_col->Add(t4_btn, 0);
     content_row->Add(tool_col, 0, wxRIGHT, FromDIP(16));
 
     auto icon_exists = [](const std::string &icon_name) {
@@ -932,6 +1000,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
     auto *top_btn = make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true);
+    top_btn->SetCursor(wxCursor(wxCURSOR_HAND));
     z_col->Add(top_btn, 0, wxLEFT, FromDIP(2));
     z_col->AddSpacer(FromDIP(5));
     auto *top_z_label = new wxStaticText(top_btn, wxID_ANY, "+Z");
@@ -950,12 +1019,14 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_home_box->SetBorderWidth(0);
     center_home_box->SetBackgroundColorNormal(wxColour(255, 255, 255));
     center_home_box->SetBackgroundColour(wxColour(28, 30, 34));
+    center_home_box->SetCursor(wxCursor(wxCURSOR_HAND));
 
     z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(7));
     auto *bottom_split_host = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(89), FromDIP(75)));
     bottom_split_host->SetMinSize(wxSize(FromDIP(89), FromDIP(75)));
     bottom_split_host->SetMaxSize(wxSize(FromDIP(89), FromDIP(75)));
     bottom_split_host->SetBackgroundColour(wxColour(28, 30, 34));
+    bottom_split_host->SetCursor(wxCursor(wxCURSOR_HAND));
     auto *bottom_split_bitmap = new wxStaticBitmap(bottom_split_host, wxID_ANY, create_scaled_bitmap("rectangle_12", this, 75));
     const wxSize bottom_split_bitmap_size = bottom_split_bitmap->GetBestSize();
     bottom_split_bitmap->SetPosition(wxPoint(
@@ -972,6 +1043,29 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bottom_z_label->SetPosition(wxPoint(
         (bottom_split_host->GetMinSize().GetWidth() - bottom_z_label_size.GetWidth()) / 2,
         (bottom_split_host->GetMinSize().GetHeight() - bottom_z_label_size.GetHeight()) / 2));
+    auto send_z_axis = [this](double direction) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj == nullptr || !obj->is_online()) {
+            BOOST_LOG_TRIVIAL(warning) << "PrinterWebView Z control ignored: no online selected printer";
+            return;
+        }
+        if (!obj->is_axis_at_home("Z")) {
+            BOOST_LOG_TRIVIAL(warning) << "PrinterWebView Z control ignored: Z axis is not at home";
+            return;
+        }
+        obj->command_axis_control("Z", 1.0, direction * m_axis_move_step, 900);
+    };
+    top_btn->Bind(wxEVT_BUTTON, [send_z_axis](wxCommandEvent &) { send_z_axis(-1.0); });
+    center_home_box->Bind(wxEVT_BUTTON, [](wxCommandEvent &) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj != nullptr && obj->is_online())
+            obj->command_go_home();
+    });
+    bottom_split_host->Bind(wxEVT_LEFT_UP, [send_z_axis](wxMouseEvent &) { send_z_axis(1.0); });
+    bottom_split_bitmap->Bind(wxEVT_LEFT_UP, [send_z_axis](wxMouseEvent &) { send_z_axis(1.0); });
+    bottom_z_label->Bind(wxEVT_LEFT_UP, [send_z_axis](wxMouseEvent &) { send_z_axis(1.0); });
     z_col->Add(bottom_split_host, 0, wxLEFT, FromDIP(2));
     content_row->Add(z_col, 0, wxALIGN_TOP | wxTOP, FromDIP(22));
 
@@ -1020,6 +1114,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *bed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
     bed_value->SetPosition(wxPoint(FromDIP(107), FromDIP(20)));
     bed_value->SetForegroundColour(wxColour(220, 220, 220));
+    bed_value->SetCursor(wxCursor(wxCURSOR_HAND));
+    m_bed_temp_value = bed_value;
 
     auto *bed_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
     bed_unit->SetForegroundColour(wxColour(220, 220, 220));
@@ -1034,6 +1130,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     extruder_value->SetPosition(wxPoint(FromDIP(107), FromDIP(80)));
     extruder_value->SetForegroundColour(wxColour(220, 220, 220));
     extruder_value->SetCursor(wxCursor(wxCURSOR_HAND));
+    m_extruder_temp_value = extruder_value;
 
     auto *extruder_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
     extruder_unit->SetForegroundColour(wxColour(220, 220, 220));
@@ -1041,9 +1138,24 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     m_extruder_popup_button = extruder_label;
     auto extruder_popup_handler = [this](wxMouseEvent &) { toggle_extruder_popup(); };
+    auto extruder_temp_handler = [this](wxMouseEvent &) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj == nullptr || !obj->is_online())
+            return;
+        const long current_value = obj->GetExtderSystem() ? obj->GetExtderSystem()->GetNozzleTempTarget(0) : 0;
+        wxTextEntryDialog dlg(this, "Nozzle hedef sicakligini girin.", "Nozzle", wxString::Format("%ld", current_value));
+        if (dlg.ShowModal() != wxID_OK)
+            return;
+        long entered_value = 0;
+        if (!dlg.GetValue().ToLong(&entered_value))
+            return;
+        entered_value = std::max<long>(0, std::min<long>(350, entered_value));
+        obj->command_set_nozzle_new(0, (int)entered_value);
+    };
     extruder_label->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
-    extruder_value->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
-    extruder_unit->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
+    extruder_value->Bind(wxEVT_LEFT_DOWN, extruder_temp_handler);
+    extruder_unit->Bind(wxEVT_LEFT_DOWN, extruder_temp_handler);
 
     auto *fan_label = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_fan);
     fan_label->SetPosition(wxPoint(FromDIP(12), FromDIP(140)));
@@ -1068,6 +1180,26 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bed_unit->SetPosition(wxPoint(bed_unit_x, FromDIP(20)));
     const int bed_value_x = bed_unit_x - inter_value_gap - bed_value->GetBestSize().GetWidth();
     bed_value->SetPosition(wxPoint(bed_value_x, FromDIP(20)));
+    auto bed_temp_handler = [this](wxMouseEvent &) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj == nullptr || !obj->is_online())
+            return;
+        const long current_value = obj->GetBed() ? (long)obj->GetBed()->GetBedTempTarget() : 0;
+        wxTextEntryDialog dlg(this, "Bed hedef sicakligini girin.", "Bed", wxString::Format("%ld", current_value));
+        if (dlg.ShowModal() != wxID_OK)
+            return;
+        long entered_value = 0;
+        if (!dlg.GetValue().ToLong(&entered_value))
+            return;
+        entered_value = std::max<long>(0, std::min<long>(140, entered_value));
+        obj->command_set_bed((int)entered_value);
+    };
+    bed_label->SetCursor(wxCursor(wxCURSOR_HAND));
+    bed_unit->SetCursor(wxCursor(wxCURSOR_HAND));
+    bed_label->Bind(wxEVT_LEFT_DOWN, bed_temp_handler);
+    bed_value->Bind(wxEVT_LEFT_DOWN, bed_temp_handler);
+    bed_unit->Bind(wxEVT_LEFT_DOWN, bed_temp_handler);
 
     const int extruder_unit_x = value_right_edge - extruder_unit->GetBestSize().GetWidth();
     extruder_unit->SetPosition(wxPoint(extruder_unit_x, FromDIP(80)));
@@ -1381,6 +1513,11 @@ void PrinterWebView::prompt_fan_value()
     if (m_selected_fan.StartsWith("T"))
         m_fan_values[m_selected_fan] = m_selected_fan_value;
     refresh_fan_value_display();
+
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+    if (obj != nullptr && obj->is_online() && obj->GetFan() != nullptr)
+        obj->GetFan()->command_control_fan(1, (int)entered_value);
 }
 
 void PrinterWebView::refresh_fan_value_display()
@@ -1650,8 +1787,8 @@ void PrinterWebView::rebuild_extruder_popup()
     add_popup_line(90);
     add_popup_line(135);
 
-    const std::array<wxString, 4> extruder_labels = { "T1", "T2", "T3", "T4" };
-    for (int i = 0; i < 4; ++i) {
+    const std::array<wxString, 1> extruder_labels = { "T1" };
+    for (int i = 0; i < (int)extruder_labels.size(); ++i) {
         auto *label = new wxStaticText(popup_box, wxID_ANY, extruder_labels[i]);
         label->SetForegroundColour(wxColour(220, 220, 220));
         label->SetCursor(wxCursor(wxCURSOR_HAND));
@@ -1723,8 +1860,8 @@ void PrinterWebView::rebuild_fan_popup()
     add_popup_line(90);
     add_popup_line(135);
 
-    const std::array<wxString, 4> fan_labels = { "T1", "T2", "T3", "T4" };
-    for (int i = 0; i < 4; ++i) {
+    const std::array<wxString, 1> fan_labels = { "T1" };
+    for (int i = 0; i < (int)fan_labels.size(); ++i) {
         auto *label = new wxStaticText(popup_box, wxID_ANY, fan_labels[i]);
         label->SetForegroundColour(wxColour(220, 220, 220));
         label->SetCursor(wxCursor(wxCURSOR_HAND));
@@ -1806,7 +1943,7 @@ void PrinterWebView::rebuild_speed_popup()
         const int label_x = (popup_width - label_size.GetWidth()) / 2;
         const int label_y = i * row_height + (row_height - label_size.GetHeight()) / 2;
         label->SetPosition(wxPoint(label_x, label_y));
-        label->Bind(wxEVT_LEFT_DOWN, [this, choice = speed_labels[i]](wxMouseEvent &) {
+        label->Bind(wxEVT_LEFT_DOWN, [this, choice = speed_labels[i], speed_index = i](wxMouseEvent &) {
             m_selected_speed = choice;
             if (m_speed_display_label != nullptr) {
                 m_speed_display_label->SetLabelText(m_selected_speed);
@@ -1826,6 +1963,17 @@ void PrinterWebView::rebuild_speed_popup()
                 const int aligned_speed_x = fan_unit_x - inter_value_gap - fan_value_width;
                 const int speed_value_x = std::min(aligned_speed_x, value_right_edge - m_speed_display_label->GetBestSize().GetWidth());
                 m_speed_display_label->SetPosition(wxPoint(speed_value_x, FromDIP(200)));
+            }
+            auto *dev_manager = wxGetApp().getDeviceManager();
+            MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+            if (obj != nullptr && obj->is_online()) {
+                const std::array<DevPrintingSpeedLevel, 4> speed_values = {
+                    SPEED_LEVEL_SILENCE,
+                    SPEED_LEVEL_NORMAL,
+                    SPEED_LEVEL_RAPID,
+                    SPEED_LEVEL_RAMPAGE
+                };
+                obj->command_set_printing_speed(speed_values[speed_index]);
             }
             dismiss_speed_popup();
             Layout();
@@ -2115,6 +2263,60 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
 
     set_active_file_name(active_file_name_text(obj));
     update_preview_thumbnail(obj);
+
+    if (m_bed_temp_value != nullptr) {
+        wxString bed_text = "__ / __";
+        if (obj != nullptr && obj->GetBed() != nullptr)
+            bed_text = wxString::Format("%.0f / %.0f", obj->GetBed()->GetBedTemp(), obj->GetBed()->GetBedTempTarget());
+        m_bed_temp_value->SetLabelText(bed_text);
+    }
+
+    if (m_extruder_temp_value != nullptr) {
+        wxString nozzle_text = "__ / __";
+        if (obj != nullptr && obj->GetExtderSystem() != nullptr)
+            nozzle_text = wxString::Format("%d / %d", obj->GetExtderSystem()->GetNozzleTempCurrent(0), obj->GetExtderSystem()->GetNozzleTempTarget(0));
+        m_extruder_temp_value->SetLabelText(nozzle_text);
+    }
+
+    if (m_fan_value_label != nullptr && obj != nullptr && obj->GetFan() != nullptr) {
+        m_selected_fan = "T1";
+        if (m_fan_display_label != nullptr)
+            m_fan_display_label->SetLabelText(m_selected_fan);
+        m_selected_fan_value = wxString::Format("%d", obj->GetFan()->GetCoolingFanSpeed());
+        m_fan_value_label->SetLabelText(m_selected_fan_value);
+    }
+
+    if (m_printer_name_value != nullptr)
+        m_printer_name_value->SetLabelText(obj != nullptr ? from_u8(obj->get_dev_name()) : "N/A");
+    if (m_printer_model_value != nullptr)
+        m_printer_model_value->SetLabelText(obj != nullptr ? obj->get_printer_type_display_str() : "N/A");
+    if (m_printer_serial_value != nullptr) {
+        wxString serial = obj != nullptr ? from_u8(obj->get_dev_id()) : "N/A";
+        m_printer_serial_value->SetLabelText(serial.MakeUpper());
+    }
+    if (m_printer_firmware_value != nullptr) {
+        wxString version = "N/A";
+        if (obj != nullptr) {
+            auto ota_it = obj->module_vers.find("ota");
+            version = ota_it != obj->module_vers.end() ? ota_it->second.sw_ver : from_u8(obj->get_ota_version());
+            if (version.empty())
+                version = "N/A";
+        }
+        m_printer_firmware_value->SetLabelText(version);
+    }
+    if (m_printer_photo_bitmap != nullptr && obj != nullptr) {
+        const wxBitmap bmp = create_scaled_bitmap(obj->get_printer_thumbnail_img_str(), this, 82);
+        if (bmp.IsOk())
+            m_printer_photo_bitmap->SetBitmap(bmp);
+    }
+
+    const std::string camera_machine_id = obj != nullptr ? obj->get_dev_id() : "";
+    if (m_camera_play_ctrl != nullptr && camera_machine_id != m_camera_machine_id) {
+        m_camera_machine_id = camera_machine_id;
+        m_camera_play_ctrl->SetMachineObject(obj);
+        if (obj != nullptr && obj->is_online())
+            m_camera_play_ctrl->jump_to_play();
+    }
 
     const int printer_layer = (obj != nullptr && obj->curr_layer > 0) ? obj->curr_layer : -1;
     const int file_layer = (obj != nullptr && obj->total_layers > 0) ? obj->total_layers : -1;

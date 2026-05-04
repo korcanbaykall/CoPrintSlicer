@@ -15,12 +15,14 @@ class wxStaticBitmap;
 class wxStaticText;
 class wxPopupTransientWindow;
 class wxGauge;
+class wxMediaCtrl2;
 namespace Slic3r {
 class MachineObject;
 
 namespace GUI {
 
 class CloudTaskManagerPage;
+class MediaPlayCtrl;
 
 enum class PrinterWebViewTab {
     Status,
@@ -99,6 +101,8 @@ private:
     wxWindow *m_fan_popup_button{ nullptr };
     wxPanel *m_fan_popup_panel{ nullptr };
     wxStaticText *m_fan_value_label{ nullptr };
+    wxStaticText *m_bed_temp_value{ nullptr };
+    wxStaticText *m_extruder_temp_value{ nullptr };
     std::map<wxString, wxString> m_fan_values;
     wxStaticText *m_layer_file_value{ nullptr };
     wxStaticText *m_layer_label{ nullptr };
@@ -106,6 +110,14 @@ private:
     wxTimer *m_layer_refresh_timer{ nullptr };
     wxWindow *m_preview_printers_button{ nullptr };
     wxStaticBitmap *m_preview_thumbnail{ nullptr };
+    wxMediaCtrl2 *m_camera_media_ctrl{ nullptr };
+    MediaPlayCtrl *m_camera_play_ctrl{ nullptr };
+    wxStaticText *m_printer_name_value{ nullptr };
+    wxStaticText *m_printer_model_value{ nullptr };
+    wxStaticText *m_printer_serial_value{ nullptr };
+    wxStaticText *m_printer_firmware_value{ nullptr };
+    wxStaticBitmap *m_printer_photo_bitmap{ nullptr };
+    std::string m_camera_machine_id;
     wxString m_preview_thumbnail_url;
     wxPopupTransientWindow *m_printers_popup{ nullptr };
     wxPanel *m_printers_popup_panel{ nullptr };
