@@ -508,11 +508,7 @@ namespace Slic3r
                         m_agent->disconnect_printer();
                         it->second->reset();
 
-#if !BBL_RELEASE_TO_PUBLIC
-                        it->second->connect(Slic3r::GUI::wxGetApp().app_config->get("enable_ssl_for_mqtt") == "true" ? true : false);
-#else
                         it->second->connect(it->second->local_use_ssl);
-#endif
                         it->second->set_lan_mode_connection_state(true);
                     }
                 }
@@ -532,11 +528,7 @@ namespace Slic3r
                     {
                         BOOST_LOG_TRIVIAL(info) << "set_selected_machine: select new lan machine, dev_id =" << dev_id;
                         it->second->reset();
-#if !BBL_RELEASE_TO_PUBLIC
-                        it->second->connect(Slic3r::GUI::wxGetApp().app_config->get("enable_ssl_for_mqtt") == "true" ? true : false);
-#else
                         it->second->connect(it->second->local_use_ssl);
-#endif
                         it->second->set_lan_mode_connection_state(true);
                     }
                 }
@@ -641,7 +633,7 @@ namespace Slic3r
 
         for (auto it = localMachineList.begin(); it != localMachineList.end(); it++)
         {
-            if (it->second && it->second->has_access_right() && it->second->is_avaliable() && it->second->is_lan_mode_printer())
+            if (it->second && it->second->is_avaliable() && it->second->is_lan_mode_printer())
             {
                 // remove redundant in userMachineList
                 if (result.find(it->first) == result.end())
