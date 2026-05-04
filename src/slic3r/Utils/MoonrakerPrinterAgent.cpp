@@ -971,6 +971,26 @@ int MoonrakerPrinterAgent::handle_request(const std::string& dev_id, const std::
         }
     }
 
+    if (json.contains("pushing") && json["pushing"].contains("command")) {
+        const auto& command = json["pushing"]["command"];
+        if (command.is_string() && command.get<std::string>() == "pushall") {
+            nlohmann::json status;
+            std::string    error;
+            if (!query_printer_status(device_info.base_url, device_info.api_key, status, error)) {
+                BOOST_LOG_TRIVIAL(warning) << "MoonrakerPrinterAgent: pushall status query failed: " << error;
+                return BAMBU_NETWORK_ERR_CONNECTION_TO_PRINTER_FAILED;
+            }
+            update_status_cache(status);
+            nlohmann::json payload;
+            {
+                std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                payload = build_print_payload_locked();
+            }
+            dispatch_message(dev_id, payload.dump());
+            return BAMBU_NETWORK_SUCCESS;
+        }
+    }
+
     // Handle print commands
     if (json.contains("print") && json["print"].contains("command")) {
         const auto& command = json["print"]["command"];
@@ -2079,8 +2099,6 @@ void MoonrakerPrinterAgent::perform_connection_async(const std::string& dev_id, 
             device_info.klippy_state = fetched_info.klippy_state;
         }
 
-// Orca todo: disable websocket for now, as we don't use MonitorPanel for Moonraker printers yet
-#if 0
         // Query initial status
         nlohmann::json initial_status;
         if (query_printer_status(base_url, api_key, initial_status, error_msg)) {
@@ -2094,7 +2112,6 @@ void MoonrakerPrinterAgent::perform_connection_async(const std::string& dev_id, 
 
         // Start WebSocket status stream
         start_status_stream(dev_id, base_url, api_key);
-#endif
 
         // Success!
         result = BAMBU_NETWORK_SUCCESS;

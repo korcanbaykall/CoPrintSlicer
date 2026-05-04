@@ -1657,7 +1657,7 @@ void PrinterWebView::dismiss_speed_popup()
 
 void PrinterWebView::prompt_ip_connect()
 {
-    wxTextEntryDialog ip_dialog(this, "Yazicinin IP adresini veya host:port adresini girin.", "IP Adresi ile Baglan");
+    wxTextEntryDialog ip_dialog(this, "Yazicinin IP adresini veya Moonraker adresini girin.", "IP Adresi ile Baglan");
     if (ip_dialog.ShowModal() != wxID_OK)
         return;
 
@@ -1669,8 +1669,12 @@ void PrinterWebView::prompt_ip_connect()
         return;
     }
 
-    const std::string host = into_u8(ip_value);
-    const std::string dev_ip = MachineObject::dev_id_from_address(host);
+    std::string host = into_u8(ip_value);
+    const bool has_scheme = host.rfind("http://", 0) == 0 || host.rfind("https://", 0) == 0;
+    const std::string normalized_host = MachineObject::dev_id_from_address(host);
+    std::string dev_ip = normalized_host;
+    if (!has_scheme && normalized_host.find(':') == std::string::npos)
+        dev_ip += ":7125";
     const std::string dev_id = dev_ip;
 
     auto *dev_manager = wxGetApp().getDeviceManager();
