@@ -39,19 +39,78 @@ enum class AxisShapeDirection {
     Down
 };
 
-class AxisShapePanel : public wxPanel
+// Single-panel D-pad: draws all 4 directional arrows in one wxPanel to avoid
+// the panel-overlap artifact that occurs when 4 separate child panels are used.
+class AxisJoystickPanel : public wxPanel
 {
 public:
-    AxisShapePanel(wxWindow *parent, AxisShapeDirection direction, const wxPoint &pos, const wxSize &size)
-        : wxPanel(parent, wxID_ANY, pos, size)
-        , m_direction(direction)
+    AxisJoystickPanel(wxWindow *parent, int square, int center_sz, int center_gap, int button_gap,
+                      int hw, int hh, int vw, int vh)
+        : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(square, square))
+        , m_square(square), m_center(center_sz)
+        , m_cp((square - center_sz) / 2), m_center_gap(center_gap), m_button_gap(button_gap)
+        , m_hw(hw), m_hh(hh), m_vw(vw), m_vh(vh)
     {
+        SetMinSize(wxSize(square, square));
+        SetMaxSize(wxSize(square, square));
         SetBackgroundStyle(wxBG_STYLE_PAINT);
         SetBackgroundColour(wxColour(28, 30, 34));
-        Bind(wxEVT_PAINT, &AxisShapePanel::on_paint, this);
+        Bind(wxEVT_PAINT, &AxisJoystickPanel::on_paint, this);
     }
 
 private:
+    static const std::vector<wxPoint2DDouble> &arrow_pts(AxisShapeDirection d)
+    {
+        static const std::vector<wxPoint2DDouble> L = {
+            {75.5348,49.9954},{29.9627,4.42324},{4.35614,14.9999},{4.00003,193.411},
+            {29.5362,204.118},{75.4643,158.794},{79.9282,148.117},{79.9282,60.602}};
+        static const std::vector<wxPoint2DDouble> U = {
+            {162.476,71.5348},{208.048,25.9627},{197.471,0.356158},{19.0602,0.0000399},
+            {8.35362,25.5362},{53.6775,71.4644},{64.3541,75.9282},{151.869,75.9282}};
+        static const std::vector<wxPoint2DDouble> R = {
+            {8.3934,158.476},{53.9655,204.048},{79.5721,193.472},{79.9282,15.0602},
+            {54.3921,4.35365},{8.46389,49.6775},{4.00001,60.3541},{4.00001,147.869}};
+        static const std::vector<wxPoint2DDouble> D = {
+            {53.9953,4.39339},{8.42323,49.9655},{18.9999,75.5721},{197.411,75.9282},
+            {208.118,50.3921},{162.794,4.46387},{152.117,0.0},{64.6019,0.0}};
+        switch (d) {
+        case AxisShapeDirection::Left:  return L;
+        case AxisShapeDirection::Up:    return U;
+        case AxisShapeDirection::Right: return R;
+        case AxisShapeDirection::Down:  return D;
+        }
+        return U;
+    }
+
+    struct ShapeExtents {
+        double min_x = 0.;
+        double max_x = 0.;
+        double min_y = 0.;
+        double max_y = 0.;
+    };
+
+    static ShapeExtents scaled_extents(AxisShapeDirection d, double src_w, double src_h, double dst_w, double dst_h)
+    {
+        const auto &raw = arrow_pts(d);
+        ShapeExtents ext;
+        bool first = true;
+        for (const auto &pt : raw) {
+            const double x = pt.m_x * dst_w / src_w;
+            const double y = pt.m_y * dst_h / src_h;
+            if (first) {
+                ext.min_x = ext.max_x = x;
+                ext.min_y = ext.max_y = y;
+                first = false;
+            } else {
+                ext.min_x = std::min(ext.min_x, x);
+                ext.max_x = std::max(ext.max_x, x);
+                ext.min_y = std::min(ext.min_y, y);
+                ext.max_y = std::max(ext.max_y, y);
+            }
+        }
+        return ext;
+    }
+
     void on_paint(wxPaintEvent &)
     {
         wxAutoBufferedPaintDC dc(this);
@@ -65,99 +124,92 @@ private:
         gc->SetPen(*wxTRANSPARENT_PEN);
         gc->SetBrush(wxBrush(wxColour(217, 217, 217)));
 
-        const wxSize sz = GetClientSize();
-        const double w = static_cast<double>(sz.GetWidth());
-        const double h = static_cast<double>(sz.GetHeight());
-        wxGraphicsPath path = gc->CreatePath();
-        auto add_scaled_polygon = [&path](const std::vector<wxPoint2DDouble> &pts, double src_w, double src_h, double dst_w, double dst_h) {
-            if (pts.empty())
-                return;
-
-            path.MoveToPoint((pts.front().m_x / src_w) * dst_w, (pts.front().m_y / src_h) * dst_h);
-            for (size_t i = 1; i < pts.size(); ++i)
-                path.AddLineToPoint((pts[i].m_x / src_w) * dst_w, (pts[i].m_y / src_h) * dst_h);
-            path.CloseSubpath();
+        struct Arrow {
+            AxisShapeDirection dir;
+            double src_w, src_h, dst_w, dst_h, off_x, off_y;
+            wxString label;
         };
 
-        switch (m_direction) {
-        case AxisShapeDirection::Left:
-            add_scaled_polygon(
-                {
-                    {75.5348, 49.9954},
-                    {29.9627, 4.42324},
-                    {4.35614, 14.9999},
-                    {4.00003, 193.411},
-                    {29.5362, 204.118},
-                    {75.4643, 158.794},
-                    {79.9282, 148.117},
-                    {79.9282, 60.602}
-                },
-                84.0,
-                217.0,
-                w,
-                h);
+        const ShapeExtents left_ext  = scaled_extents(AxisShapeDirection::Left,  84., 217., (double)m_vw, (double)m_vh);
+        const ShapeExtents up_ext    = scaled_extents(AxisShapeDirection::Up,   217.,  84., (double)m_hw, (double)m_hh);
+        const ShapeExtents right_ext = scaled_extents(AxisShapeDirection::Right, 84., 217., (double)m_vw, (double)m_vh);
+        const ShapeExtents down_ext  = scaled_extents(AxisShapeDirection::Down, 217.,  84., (double)m_hw, (double)m_hh);
+
+        const double center_left   = (double)m_cp;
+        const double center_top    = (double)m_cp;
+        const double center_right  = (double)(m_cp + m_center);
+        const double center_bottom = (double)(m_cp + m_center);
+        const double button_gap    = (double)m_button_gap;
+        const double center_gap    = std::max(0.0, (double)m_center_gap - button_gap / 2.0);
+
+        const Arrow arrows[] = {
+            {AxisShapeDirection::Left,  84.,217., (double)m_vw,(double)m_vh,
+             center_left - center_gap - left_ext.max_x, (double)((m_square-m_vh)/2), "X-"},
+            {AxisShapeDirection::Up,   217., 84., (double)m_hw,(double)m_hh,
+             (double)((m_square-m_hw)/2), center_top - center_gap - up_ext.max_y, "Y+"},
+            {AxisShapeDirection::Right, 84.,217., (double)m_vw,(double)m_vh,
+             center_right + center_gap - right_ext.min_x, (double)((m_square-m_vh)/2), "X+"},
+            {AxisShapeDirection::Down, 217., 84., (double)m_hw,(double)m_hh,
+             (double)((m_square-m_hw)/2), center_bottom + center_gap - down_ext.min_y, "Y-"},
+        };
+
+        auto vlen = [](double ax, double ay, double bx, double by) {
+            double dx = bx-ax, dy = by-ay;
+            return std::sqrt(dx*dx + dy*dy);
+        };
+
+        for (const auto &a : arrows) {
+            const auto &raw = arrow_pts(a.dir);
+            const int   n   = (int)raw.size();
+            const double sx  = a.dst_w / a.src_w;
+            const double sy  = a.dst_h / a.src_h;
+            const double r   = 20.0 * std::min(sx, sy);
+
+            std::vector<wxPoint2DDouble> pts(n);
+            for (int i = 0; i < n; i++)
+                pts[i] = {raw[i].m_x * sx + a.off_x, raw[i].m_y * sy + a.off_y};
+
+            std::vector<wxPoint2DDouble> t1(n), t2(n);
+            for (int i = 0; i < n; i++) {
+                const auto &prev = pts[(i-1+n)%n];
+                const auto &curr = pts[i];
+                const auto &next = pts[(i+1)%n];
+                double lin  = vlen(prev.m_x,prev.m_y, curr.m_x,curr.m_y);
+                double lout = vlen(curr.m_x,curr.m_y, next.m_x,next.m_y);
+                double ti   = std::min(r, lin  * 0.45);
+                double to_  = std::min(r, lout * 0.45);
+                t1[i] = {curr.m_x-(curr.m_x-prev.m_x)/lin*ti,  curr.m_y-(curr.m_y-prev.m_y)/lin*ti};
+                t2[i] = {curr.m_x+(next.m_x-curr.m_x)/lout*to_, curr.m_y+(next.m_y-curr.m_y)/lout*to_};
+            }
+
+            wxGraphicsPath path = gc->CreatePath();
+            path.MoveToPoint(t1[0]);
+            for (int i = 0; i < n; i++) {
+                path.AddQuadCurveToPoint(pts[i].m_x, pts[i].m_y, t2[i].m_x, t2[i].m_y);
+                path.AddLineToPoint(t1[(i+1)%n]);
+            }
             path.CloseSubpath();
-            break;
-        case AxisShapeDirection::Up:
-            add_scaled_polygon(
-                {
-                    {162.476, 71.5348},
-                    {208.048, 25.9627},
-                    {197.471, 0.356158},
-                    {19.0602, 0.0000399},
-                    {8.35362, 25.5362},
-                    {53.6775, 71.4644},
-                    {64.3541, 75.9282},
-                    {151.869, 75.9282}
-                },
-                217.0,
-                84.0,
-                w,
-                h);
-            path.CloseSubpath();
-            break;
-        case AxisShapeDirection::Right:
-            add_scaled_polygon(
-                {
-                    {8.3934, 158.476},
-                    {53.9655, 204.048},
-                    {79.5721, 193.472},
-                    {79.9282, 15.0602},
-                    {54.3921, 4.35365},
-                    {8.46389, 49.6775},
-                    {4.00001, 60.3541},
-                    {4.00001, 147.869}
-                },
-                84.0,
-                217.0,
-                w,
-                h);
-            path.CloseSubpath();
-            break;
-        case AxisShapeDirection::Down:
-            add_scaled_polygon(
-                {
-                    {53.9953, 4.39339},
-                    {8.42323, 49.9655},
-                    {18.9999, 75.5721},
-                    {197.411, 75.9282},
-                    {208.118, 50.3921},
-                    {162.794, 4.46387},
-                    {152.117, 0.0},
-                    {64.6019, 0.0}
-                },
-                217.0,
-                84.0,
-                w,
-                h);
-            path.CloseSubpath();
-            break;
+            gc->FillPath(path);
+            if (m_button_gap > 0) {
+                gc->SetPen(wxPen(GetBackgroundColour(), m_button_gap));
+                gc->StrokePath(path);
+                gc->SetPen(*wxTRANSPARENT_PEN);
+            }
         }
 
-        gc->FillPath(path);
+        gc->SetFont(
+            wxFont(FromDIP(11), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_SEMIBOLD),
+            wxColour(45, 48, 55));
+        for (const auto &a : arrows) {
+            wxDouble tw, th;
+            gc->GetTextExtent(a.label, &tw, &th);
+            gc->DrawText(a.label,
+                a.off_x + (a.dst_w - tw) / 2.0,
+                a.off_y + (a.dst_h - th) / 2.0);
+        }
     }
 
-    AxisShapeDirection m_direction;
+    int m_square, m_center, m_cp, m_center_gap, m_button_gap, m_hw, m_hh, m_vw, m_vh;
 };
 
 wxString layer_value_text(int layer)
@@ -701,7 +753,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
     const int right_container_width = FromDIP(760);
-    const int right_container_height = FromDIP(390);
+    const int right_container_height = FromDIP(430);
     right_container->SetSize(wxSize(right_container_width, right_container_height));
     right_container->SetMinSize(wxSize(right_container_width, -1));
     right_container->SetMaxSize(wxSize(right_container_width, right_container_height));
@@ -737,7 +789,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *step_bg_sizer = new wxBoxSizer(wxVERTICAL);
     step_bg_sizer->Add(step_row, 0, wxALL, FromDIP(8));
     step_bg->SetSizer(step_bg_sizer);
-    right_sizer->Add(step_bg, 0, wxTOP | wxLEFT, FromDIP(24));
+    {
+        auto *step_align = new wxBoxSizer(wxHORIZONTAL);
+        step_align->AddSpacer(FromDIP(120));
+        step_align->Add(step_bg, 0);
+        right_sizer->Add(step_align, 0, wxTOP, FromDIP(24));
+    }
 
     auto *content_row = new wxBoxSizer(wxHORIZONTAL);
 
@@ -774,51 +831,32 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         return std::string();
     };
 
-    const int xy_square = FromDIP(261);
-    const int center_size = FromDIP(70);
+    const int xy_square = FromDIP(300);
+    const int center_size = FromDIP(85);
     const int center_pos = (xy_square - center_size) / 2;
-    const int axis_gap = FromDIP(8);
-    const int horizontal_icon_width = FromDIP(170);
-    const int horizontal_icon_height = FromDIP(66);
-    const int vertical_icon_width = FromDIP(66);
-    const int vertical_icon_height = FromDIP(170);
+    const int axis_center_gap = FromDIP(4);
+    const int axis_button_gap = FromDIP(3);
+    const int horizontal_icon_width = FromDIP(210);
+    const int horizontal_icon_height = FromDIP(76);
+    const int vertical_icon_width = FromDIP(76);
+    const int vertical_icon_height = FromDIP(210);
 
-    auto *xy_area = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(xy_square, xy_square));
-    xy_area->SetMinSize(wxSize(xy_square, xy_square));
-    xy_area->SetMaxSize(wxSize(xy_square, xy_square));
-    xy_area->SetBackgroundColour(wxColour(28, 30, 34));
-
-    new AxisShapePanel(
-        xy_area,
-        AxisShapeDirection::Left,
-        wxPoint(center_pos - axis_gap - vertical_icon_width, (xy_square - vertical_icon_height) / 2),
-        wxSize(vertical_icon_width, vertical_icon_height));
-    new AxisShapePanel(
-        xy_area,
-        AxisShapeDirection::Up,
-        wxPoint((xy_square - horizontal_icon_width) / 2, center_pos - axis_gap - horizontal_icon_height),
-        wxSize(horizontal_icon_width, horizontal_icon_height));
-    new AxisShapePanel(
-        xy_area,
-        AxisShapeDirection::Right,
-        wxPoint(center_pos + center_size + axis_gap, (xy_square - vertical_icon_height) / 2),
-        wxSize(vertical_icon_width, vertical_icon_height));
-    new AxisShapePanel(
-        xy_area,
-        AxisShapeDirection::Down,
-        wxPoint((xy_square - horizontal_icon_width) / 2, center_pos + center_size + axis_gap),
-        wxSize(horizontal_icon_width, horizontal_icon_height));
+    auto *xy_area = new AxisJoystickPanel(
+        right_container,
+        xy_square, center_size, axis_center_gap, axis_button_gap,
+        horizontal_icon_width, horizontal_icon_height,
+        vertical_icon_width,   vertical_icon_height);
 
     auto *center_btn = new Button(xy_area, "", "home", 0, 34);
     center_btn->SetSize(wxRect(wxPoint(center_pos, center_pos), wxSize(center_size, center_size)));
     center_btn->SetMinSize(wxSize(center_size, center_size));
     center_btn->SetMaxSize(wxSize(center_size, center_size));
-    center_btn->SetCornerRadius(FromDIP(10));
+    center_btn->SetCornerRadius(FromDIP(18));
     center_btn->SetBorderWidth(0);
     center_btn->SetBackgroundColorNormal(wxColour(255, 255, 255));
-    center_btn->SetBackgroundColour(wxColour(255, 255, 255));
+    center_btn->SetBackgroundColour(wxColour(28, 30, 34));
 
-    content_row->Add(xy_area, 0, wxRIGHT, FromDIP(16));
+    content_row->Add(xy_area, 0);
 
     auto make_icon_btn = [this, &make_btn](const std::string &icon_key, int w, int h, bool transparent_bg = false, int icon_w = -1, int icon_h = -1) {
         auto *btn = make_btn("", w, h, true);
@@ -848,7 +886,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *z_col = new wxBoxSizer(wxVERTICAL);
     auto *top_btn = make_icon_btn(resolve_icon("rectangle_10", ""), 90, 75, true);
-    z_col->Add(top_btn, 0, wxLEFT | wxBOTTOM, FromDIP(10));
+    z_col->Add(top_btn, 0, wxLEFT, FromDIP(2));
+    z_col->AddSpacer(FromDIP(5));
     auto *top_z_label = new wxStaticText(top_btn, wxID_ANY, "+Z");
     top_z_label->SetForegroundColour(wxColour(45, 48, 55));
     top_z_label->SetBackgroundColour(wxColour(214, 214, 214));
@@ -866,7 +905,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_home_box->SetBackgroundColorNormal(wxColour(255, 255, 255));
     center_home_box->SetBackgroundColour(wxColour(28, 30, 34));
 
-    z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(15));
+    z_col->Add(center_home_box, 0, wxLEFT | wxBOTTOM, FromDIP(7));
     auto *bottom_split_host = new wxPanel(right_container, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(89), FromDIP(75)));
     bottom_split_host->SetMinSize(wxSize(FromDIP(89), FromDIP(75)));
     bottom_split_host->SetMaxSize(wxSize(FromDIP(89), FromDIP(75)));
@@ -887,8 +926,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bottom_z_label->SetPosition(wxPoint(
         (bottom_split_host->GetMinSize().GetWidth() - bottom_z_label_size.GetWidth()) / 2,
         (bottom_split_host->GetMinSize().GetHeight() - bottom_z_label_size.GetHeight()) / 2));
-    z_col->Add(bottom_split_host, 0, wxLEFT, FromDIP(10));
-    content_row->Add(z_col, 0, wxALIGN_CENTER_VERTICAL);
+    z_col->Add(bottom_split_host, 0, wxLEFT, FromDIP(2));
+    content_row->Add(z_col, 0, wxALIGN_TOP | wxTOP, FromDIP(22));
 
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
 
@@ -1029,10 +1068,23 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_placeholder_right_border->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(24)));
     right_placeholder_right_border->SetBackgroundColour(wxColour(70, 74, 82));
 
+    wxBitmap idea_bmp;
+    {
+        wxImage img;
+        if (img.LoadFile(from_u8(Slic3r::var("idea.png")), wxBITMAP_TYPE_PNG) && img.IsOk()) {
+            if (!img.HasAlpha()) img.InitAlpha();
+            for (int y = 0; y < img.GetHeight(); y++)
+                for (int x = 0; x < img.GetWidth(); x++)
+                    if (img.GetAlpha(x, y) > 0)
+                        img.SetRGB(x, y, 255, 255, 255);
+            const int px = FromDIP(40);
+            idea_bmp = wxBitmap(img.Scale(px, px, wxIMAGE_QUALITY_HIGH));
+        } else {
+            idea_bmp = create_scaled_bitmap("idea", this, 40);
+        }
+    }
     auto *bottom_left_placeholder_icon = new wxStaticBitmap(
-        right_placeholder_box,
-        wxID_ANY,
-        create_scaled_bitmap("idea", this, 40));
+        right_placeholder_box, wxID_ANY, idea_bmp);
     const wxSize bottom_left_icon_size = bottom_left_placeholder_icon->GetBestSize();
     const int bottom_cell_width = right_placeholder_width / 2;
     const int bottom_cell_height = right_placeholder_height - FromDIP(240);
