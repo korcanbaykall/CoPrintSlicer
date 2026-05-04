@@ -133,6 +133,7 @@ private:
     wxStaticText *m_update_serial_value{ nullptr };
     wxStaticText *m_update_status_value{ nullptr };
     wxStaticText *m_update_version_value{ nullptr };
+    double m_axis_move_step{ 1.0 };
     int m_zoomFactor{ 100 };
 };
 

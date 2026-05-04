@@ -22,6 +22,7 @@
 #include <wx/textdlg.h>
 
 #include <array>
+#include <functional>
 
 #include <slic3r/GUI/Widgets/WebView.hpp>
 #include <wx/webview.h>
@@ -32,6 +33,14 @@ namespace Slic3r {
 namespace GUI {
 
 namespace {
+enum class AxisControlAction {
+    None,
+    XMinus,
+    XPlus,
+    YMinus,
+    YPlus
+};
+
 
 // Single-panel D-pad: draws all 4 directional arrows in one wxPanel to avoid
 // the panel-overlap artifact that occurs when 4 separate child panels are used.
@@ -49,13 +58,17 @@ public:
         SetBackgroundStyle(wxBG_STYLE_PAINT);
         SetBackgroundColour(wxColour(28, 30, 34));
         Bind(wxEVT_PAINT, &AxisJoystickPanel::on_paint, this);
+        Bind(wxEVT_LEFT_UP, &AxisJoystickPanel::on_left_up, this);
     }
+
+    void set_action_handler(std::function<void(AxisControlAction)> handler) { m_action_handler = std::move(handler); }
 
 private:
     struct AxisPiece {
         std::vector<wxPoint2DDouble> points;
         wxString label;
         wxPoint2DDouble label_center;
+        AxisControlAction action;
     };
 
     wxPoint2DDouble p(double x, double y) const
@@ -100,6 +113,62 @@ private:
         return path;
     }
 
+    std::vector<AxisPiece> pieces() const
+    {
+        const double center_left   = (double)m_cp;
+        const double center_top    = (double)m_cp;
+        const double center_right  = (double)(m_cp + m_center);
+        const double center_bottom = (double)(m_cp + m_center);
+        const double cgap = (double)m_center_gap;
+        const double diagonal_gap = (double)m_button_gap / std::sqrt(2.0);
+        const double left_inner = center_left - cgap;
+        const double top_inner = center_top - cgap;
+        const double right_inner = center_right + cgap;
+        const double bottom_inner = center_bottom + cgap;
+
+        return {
+            {{{p(54, 22), p(246, 22), p(260, 36), {right_inner - diagonal_gap, top_inner}, {left_inner + diagonal_gap, top_inner}, p(40, 36)}},
+             "Y+", p(150, 74), AxisControlAction::YPlus},
+            {{{p(22, 54), p(36, 40), {left_inner, top_inner + diagonal_gap}, {left_inner, bottom_inner - diagonal_gap}, p(36, 260), p(22, 246)}},
+             "X-", p(68, 150), AxisControlAction::XMinus},
+            {{{p(278, 54), p(264, 40), {right_inner, top_inner + diagonal_gap}, {right_inner, bottom_inner - diagonal_gap}, p(264, 260), p(278, 246)}},
+             "X+", p(232, 150), AxisControlAction::XPlus},
+            {{{p(54, 278), p(246, 278), p(260, 264), {right_inner - diagonal_gap, bottom_inner}, {left_inner + diagonal_gap, bottom_inner}, p(40, 264)}},
+             "Y-", p(150, 226), AxisControlAction::YMinus},
+        };
+    }
+
+    static bool contains_point(const std::vector<wxPoint2DDouble> &poly, const wxPoint &point)
+    {
+        bool inside = false;
+        const double x = point.x;
+        const double y = point.y;
+        for (size_t i = 0, j = poly.size() - 1; i < poly.size(); j = i++) {
+            const double xi = poly[i].m_x;
+            const double yi = poly[i].m_y;
+            const double xj = poly[j].m_x;
+            const double yj = poly[j].m_y;
+            const bool intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect)
+                inside = !inside;
+        }
+        return inside;
+    }
+
+    void on_left_up(wxMouseEvent &event)
+    {
+        if (!m_action_handler)
+            return;
+
+        for (const auto &piece : pieces()) {
+            if (contains_point(piece.points, event.GetPosition())) {
+                m_action_handler(piece.action);
+                return;
+            }
+        }
+        event.Skip();
+    }
+
     void on_paint(wxPaintEvent &)
     {
         wxAutoBufferedPaintDC dc(this);
@@ -113,35 +182,14 @@ private:
         gc->SetPen(*wxTRANSPARENT_PEN);
         gc->SetBrush(wxBrush(wxColour(217, 217, 217)));
 
-        const double center_left   = (double)m_cp;
-        const double center_top    = (double)m_cp;
-        const double center_right  = (double)(m_cp + m_center);
-        const double center_bottom = (double)(m_cp + m_center);
-        const double cgap = (double)m_center_gap;
-        const double diagonal_gap = (double)m_button_gap / std::sqrt(2.0);
-        const double left_inner = center_left - cgap;
-        const double top_inner = center_top - cgap;
-        const double right_inner = center_right + cgap;
-        const double bottom_inner = center_bottom + cgap;
-
-        const AxisPiece pieces[] = {
-            {{{p(54, 22), p(246, 22), p(260, 36), {right_inner - diagonal_gap, top_inner}, {left_inner + diagonal_gap, top_inner}, p(40, 36)}},
-             "Y+", p(150, 74)},
-            {{{p(22, 54), p(36, 40), {left_inner, top_inner + diagonal_gap}, {left_inner, bottom_inner - diagonal_gap}, p(36, 260), p(22, 246)}},
-             "X-", p(68, 150)},
-            {{{p(278, 54), p(264, 40), {right_inner, top_inner + diagonal_gap}, {right_inner, bottom_inner - diagonal_gap}, p(264, 260), p(278, 246)}},
-             "X+", p(232, 150)},
-            {{{p(54, 278), p(246, 278), p(260, 264), {right_inner - diagonal_gap, bottom_inner}, {left_inner + diagonal_gap, bottom_inner}, p(40, 264)}},
-             "Y-", p(150, 226)},
-        };
-
-        for (const auto &piece : pieces)
+        const auto axis_pieces = pieces();
+        for (const auto &piece : axis_pieces)
             gc->FillPath(rounded_path(gc.get(), piece.points, FromDIP(18)));
 
         gc->SetFont(
             wxFont(FromDIP(18), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD),
             wxColour(45, 48, 55));
-        for (const auto &piece : pieces) {
+        for (const auto &piece : axis_pieces) {
             wxDouble tw, th;
             gc->GetTextExtent(piece.label, &tw, &th);
             gc->DrawText(piece.label, piece.label_center.m_x - tw / 2.0, piece.label_center.m_y - th / 2.0);
@@ -149,6 +197,7 @@ private:
     }
 
     int m_square, m_center, m_cp, m_center_gap, m_button_gap;
+    std::function<void(AxisControlAction)> m_action_handler;
 };
 
 wxString layer_value_text(int layer)
@@ -722,9 +771,25 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     step_bg->SetBackgroundColorNormal(wxColour(35, 38, 43));
 
     auto *step_row = new wxBoxSizer(wxHORIZONTAL);
-    step_row->Add(make_step_btn(step_bg, "1mm", true), 0, wxRIGHT, FromDIP(8));
-    step_row->Add(make_step_btn(step_bg, "5mm"), 0, wxRIGHT, FromDIP(8));
-    step_row->Add(make_step_btn(step_bg, "10mm"), 0);
+    auto *step_1_btn = make_step_btn(step_bg, "1mm", true);
+    auto *step_5_btn = make_step_btn(step_bg, "5mm");
+    auto *step_10_btn = make_step_btn(step_bg, "10mm");
+    std::vector<Button *> step_buttons { step_1_btn, step_5_btn, step_10_btn };
+    auto select_axis_step = [this, step_buttons](double step, Button *active_btn) {
+        m_axis_move_step = step;
+        for (auto *btn : step_buttons) {
+            const bool active = btn == active_btn;
+            btn->SetBackgroundColorNormal(active ? wxColour(210, 210, 210) : wxColour(61, 64, 68));
+            btn->SetTextColorNormal(active ? wxColour(40, 40, 40) : wxColour(215, 215, 215));
+            btn->Refresh();
+        }
+    };
+    step_1_btn->Bind(wxEVT_BUTTON, [select_axis_step, step_1_btn](wxCommandEvent &) { select_axis_step(1.0, step_1_btn); });
+    step_5_btn->Bind(wxEVT_BUTTON, [select_axis_step, step_5_btn](wxCommandEvent &) { select_axis_step(5.0, step_5_btn); });
+    step_10_btn->Bind(wxEVT_BUTTON, [select_axis_step, step_10_btn](wxCommandEvent &) { select_axis_step(10.0, step_10_btn); });
+    step_row->Add(step_1_btn, 0, wxRIGHT, FromDIP(8));
+    step_row->Add(step_5_btn, 0, wxRIGHT, FromDIP(8));
+    step_row->Add(step_10_btn, 0);
     auto *step_bg_sizer = new wxBoxSizer(wxVERTICAL);
     step_bg_sizer->Add(step_row, 0, wxALL, FromDIP(8));
     step_bg->SetSizer(step_bg_sizer);
@@ -785,6 +850,38 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         xy_square, center_size, axis_center_gap, axis_button_gap,
         horizontal_icon_width, horizontal_icon_height,
         vertical_icon_width,   vertical_icon_height);
+    xy_area->SetCursor(wxCursor(wxCURSOR_HAND));
+    auto send_axis_action = [this](AxisControlAction action) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj == nullptr || !obj->is_online()) {
+            BOOST_LOG_TRIVIAL(warning) << "PrinterWebView axis control ignored: no online selected printer";
+            return;
+        }
+
+        const double step = m_axis_move_step;
+        switch (action) {
+        case AxisControlAction::XMinus:
+            if (obj->is_axis_at_home("X"))
+                obj->command_axis_control("X", 1.0, -step, 3000);
+            break;
+        case AxisControlAction::XPlus:
+            if (obj->is_axis_at_home("X"))
+                obj->command_axis_control("X", 1.0, step, 3000);
+            break;
+        case AxisControlAction::YMinus:
+            if (obj->is_axis_at_home("Y"))
+                obj->command_axis_control("Y", 1.0, -step, 3000);
+            break;
+        case AxisControlAction::YPlus:
+            if (obj->is_axis_at_home("Y"))
+                obj->command_axis_control("Y", 1.0, step, 3000);
+            break;
+        case AxisControlAction::None:
+            break;
+        }
+    };
+    xy_area->set_action_handler(send_axis_action);
 
     auto *center_btn = new Button(xy_area, "", "home", 0, 34);
     center_btn->SetSize(wxRect(wxPoint(center_pos, center_pos), wxSize(center_size, center_size)));
@@ -794,6 +891,16 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     center_btn->SetBorderWidth(0);
     center_btn->SetBackgroundColorNormal(wxColour(255, 255, 255));
     center_btn->SetBackgroundColour(wxColour(28, 30, 34));
+    center_btn->SetCursor(wxCursor(wxCURSOR_HAND));
+    center_btn->Bind(wxEVT_BUTTON, [](wxCommandEvent &) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj == nullptr || !obj->is_online()) {
+            BOOST_LOG_TRIVIAL(warning) << "PrinterWebView home control ignored: no online selected printer";
+            return;
+        }
+        obj->command_go_home();
+    });
 
     content_row->Add(xy_area, 0);
 
