@@ -63,7 +63,10 @@ public:
         SetBackgroundStyle(wxBG_STYLE_PAINT);
         SetBackgroundColour(wxColour(28, 30, 34));
         Bind(wxEVT_PAINT, &AxisJoystickPanel::on_paint, this);
+        Bind(wxEVT_LEFT_DOWN, &AxisJoystickPanel::on_left_down, this);
         Bind(wxEVT_LEFT_UP, &AxisJoystickPanel::on_left_up, this);
+        Bind(wxEVT_LEAVE_WINDOW, &AxisJoystickPanel::on_mouse_leave, this);
+        Bind(wxEVT_MOUSE_CAPTURE_LOST, &AxisJoystickPanel::on_mouse_capture_lost, this);
     }
 
     void set_action_handler(std::function<void(AxisControlAction)> handler) { m_action_handler = std::move(handler); }
@@ -160,18 +163,55 @@ private:
         return inside;
     }
 
-    void on_left_up(wxMouseEvent &event)
+    AxisControlAction hit_test(const wxPoint &point) const
     {
-        if (!m_action_handler)
-            return;
+        for (const auto &piece : pieces())
+            if (contains_point(piece.points, point))
+                return piece.action;
+        return AxisControlAction::None;
+    }
 
-        for (const auto &piece : pieces()) {
-            if (contains_point(piece.points, event.GetPosition())) {
-                m_action_handler(piece.action);
-                return;
-            }
+    void on_left_down(wxMouseEvent &event)
+    {
+        m_pressed_action = hit_test(event.GetPosition());
+        if (m_pressed_action != AxisControlAction::None) {
+            if (!HasCapture())
+                CaptureMouse();
+            Refresh();
+            return;
         }
         event.Skip();
+    }
+
+    void on_left_up(wxMouseEvent &event)
+    {
+        if (HasCapture())
+            ReleaseMouse();
+
+        const AxisControlAction pressed_action = m_pressed_action;
+        const AxisControlAction released_action = hit_test(event.GetPosition());
+        m_pressed_action = AxisControlAction::None;
+        Refresh();
+
+        if (m_action_handler && pressed_action != AxisControlAction::None && pressed_action == released_action)
+            m_action_handler(pressed_action);
+        else
+            event.Skip();
+    }
+
+    void on_mouse_leave(wxMouseEvent &event)
+    {
+        if (!HasCapture() && m_pressed_action != AxisControlAction::None) {
+            m_pressed_action = AxisControlAction::None;
+            Refresh();
+        }
+        event.Skip();
+    }
+
+    void on_mouse_capture_lost(wxMouseCaptureLostEvent &)
+    {
+        m_pressed_action = AxisControlAction::None;
+        Refresh();
     }
 
     void on_paint(wxPaintEvent &)
@@ -185,23 +225,26 @@ private:
 
         gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
         gc->SetPen(*wxTRANSPARENT_PEN);
-        gc->SetBrush(wxBrush(wxColour(217, 217, 217)));
 
         const auto axis_pieces = pieces();
-        for (const auto &piece : axis_pieces)
+        for (const auto &piece : axis_pieces) {
+            const bool pressed = piece.action == m_pressed_action;
+            gc->SetBrush(wxBrush(pressed ? wxColour(185, 185, 185) : wxColour(217, 217, 217)));
             gc->FillPath(rounded_path(gc.get(), piece.points, FromDIP(18)));
+        }
 
-        gc->SetFont(
-            wxFont(FromDIP(18), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD),
-            wxColour(45, 48, 55));
+        gc->SetFont(wxFont(FromDIP(18), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD), wxColour(45, 48, 55));
         for (const auto &piece : axis_pieces) {
             wxDouble tw, th;
             gc->GetTextExtent(piece.label, &tw, &th);
+            gc->SetFont(wxFont(FromDIP(18), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD),
+                piece.action == m_pressed_action ? wxColour(25, 27, 31) : wxColour(45, 48, 55));
             gc->DrawText(piece.label, piece.label_center.m_x - tw / 2.0, piece.label_center.m_y - th / 2.0);
         }
     }
 
     int m_square, m_center, m_cp, m_center_gap, m_button_gap;
+    AxisControlAction m_pressed_action{ AxisControlAction::None };
     std::function<void(AxisControlAction)> m_action_handler;
 };
 
