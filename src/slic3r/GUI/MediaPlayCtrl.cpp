@@ -282,14 +282,31 @@ void MediaPlayCtrl::Play()
         m_failed_retry = 0;
         return;
     }
-    if (!m_camera_exists) {
+    NetworkAgent *agent = wxGetApp().getAgent();
+    const bool moonraker_agent = agent && agent->get_printer_agent() &&
+        agent->get_printer_agent()->get_agent_info().id == "moonraker";
+
+    if (!m_camera_exists && !moonraker_agent) {
         Stop(_L("Printer camera is malfunctioning."));
         return;
     }
 
     BOOST_LOG_TRIVIAL(info) << "MediaPlayCtrl::Play: " << m_lan_proto << m_remote_proto << m_disable_lan;
-    NetworkAgent *agent = wxGetApp().getAgent();
     std::string  agent_version = agent ? agent->get_version() : "";
+
+    // Moonraker fallback:
+    // Bambu-style liveview flags are not provided, but Mainsail webcam stream exists.
+    if (moonraker_agent && !m_lan_ip.empty()) {
+        m_disable_lan = false;
+        m_failed_code = 0;
+        std::string url = "http://" + m_lan_ip + "/webcam/?action=stream";
+        BOOST_LOG_TRIVIAL(info) << "MediaPlayCtrl Moonraker fallback URL: " << url;
+        m_url = url;
+        load();
+        m_button_play->SetIcon("media_stop");
+        return;
+    }
+
     if (m_lan_proto > MachineObject::LVL_Disable && (m_lan_mode || !m_remote_proto) && !m_disable_lan && !m_lan_ip.empty()) {
         m_disable_lan = m_remote_proto && !m_lan_mode; // try remote next time
         std::string url;
