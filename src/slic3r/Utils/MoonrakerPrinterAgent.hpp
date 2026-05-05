@@ -126,6 +126,7 @@ private:
     int send_access_code(const std::string& dev_id);
 
     bool fetch_object_list(const std::string& base_url, const std::string& api_key, std::set<std::string>& objects, std::string& error) const;
+    bool fetch_camera_streams(const std::string& base_url, const std::string& api_key, nlohmann::json& streams, std::string& error) const;
     bool query_printer_status(const std::string& base_url, const std::string& api_key, nlohmann::json& status, std::string& error) const;
     bool send_gcode(const std::string& dev_id, const std::string& gcode) const;
 

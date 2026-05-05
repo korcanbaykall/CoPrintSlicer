@@ -27,6 +27,7 @@
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
 
+#include <algorithm>
 #include <array>
 #include <functional>
 
@@ -40,17 +41,25 @@ namespace GUI {
 
 namespace {
 
-wxString moonraker_camera_stream_url(MachineObject *obj)
+std::vector<wxString> moonraker_camera_stream_urls(MachineObject *obj)
 {
     if (obj == nullptr || !obj->is_online())
-        return wxString();
+        return {};
 
     const std::string ip = obj->get_dev_ip();
     if (ip.empty())
-        return wxString();
+        return {};
 
-    // Mainsail-compatible default webcam endpoint.
-    return wxString::Format("http://%s/webcam/?action=stream", ip);
+    // Common Mainsail/Crowsnest webcam endpoints. Mainsail often proxies the
+    // stream under /webcam, while some installs expose mjpg-streamer directly.
+    return {
+        wxString::Format("http://%s/webcam/?action=stream", ip),
+        wxString::Format("http://%s/webcam?action=stream", ip),
+        wxString::Format("http://%s/webcam/stream", ip),
+        wxString::Format("http://%s/webcam/video", ip),
+        wxString::Format("http://%s:8080/?action=stream", ip),
+        wxString::Format("http://%s:8080/webcam/?action=stream", ip)
+    };
 }
 
 wxString html_escape(wxString text)
@@ -59,6 +68,15 @@ wxString html_escape(wxString text)
     text.Replace("\"", "&quot;");
     text.Replace("<", "&lt;");
     text.Replace(">", "&gt;");
+    return text;
+}
+
+wxString js_escape(wxString text)
+{
+    text.Replace("\\", "\\\\");
+    text.Replace("'", "\\'");
+    text.Replace("\r", "");
+    text.Replace("\n", "");
     return text;
 }
 
@@ -83,26 +101,42 @@ wxString normalize_camera_stream_url(wxString source, MachineObject *obj)
     return "http://" + source;
 }
 
-wxString configured_camera_stream_url(MachineObject *obj)
+std::vector<wxString> configured_camera_stream_urls(MachineObject *obj)
 {
+    std::vector<wxString> urls;
+    if (obj != nullptr) {
+        for (const std::string &stream_url : obj->camera_stream_urls) {
+            const wxString url = normalize_camera_stream_url(from_u8(stream_url), obj);
+            if (!url.IsEmpty() && std::find(urls.begin(), urls.end(), url) == urls.end())
+                urls.push_back(url);
+        }
+    }
+
     if (wxGetApp().app_config != nullptr && wxGetApp().app_config->get("camera", "enable_custom_source") == "true") {
         const wxString custom_source = from_u8(wxGetApp().app_config->get("camera", "custom_source"));
         const wxString custom_url = normalize_camera_stream_url(custom_source, obj);
-        if (!custom_url.IsEmpty())
-            return custom_url;
+        if (!custom_url.IsEmpty() && std::find(urls.begin(), urls.end(), custom_url) == urls.end())
+            urls.push_back(custom_url);
     }
 
-    return moonraker_camera_stream_url(obj);
+    if (urls.empty()) {
+        for (const wxString &url : moonraker_camera_stream_urls(obj)) {
+            if (std::find(urls.begin(), urls.end(), url) == urls.end())
+                urls.push_back(url);
+        }
+    }
+    return urls;
 }
 
-wxString camera_stream_page(const wxString &stream_url)
+wxString camera_stream_page(const std::vector<wxString> &stream_urls)
 {
-    wxString body = "<div class='message'>Camera stream unavailable</div>";
-    if (!stream_url.IsEmpty()) {
-        const wxString escaped_url = html_escape(stream_url);
-        body = "<img id='camera-stream' src='" + escaped_url + "' alt='Camera stream' "
-               "onerror=\"document.body.className='failed';document.querySelector('.message').style.display='flex';\">"
-               "<div class='message'>Camera stream unavailable</div>";
+    wxString urls_js;
+    for (const wxString &url : stream_urls) {
+        if (url.IsEmpty())
+            continue;
+        if (!urls_js.IsEmpty())
+            urls_js += ",";
+        urls_js += "'" + js_escape(url) + "'";
     }
 
     return "<!doctype html><html><head><meta charset='utf-8'>"
@@ -111,8 +145,27 @@ wxString camera_stream_page(const wxString &stream_url)
            "body{display:flex;align-items:center;justify-content:center;color:#b8bec8;font-family:Arial,sans-serif;}"
            "#camera-stream{width:100%;height:100%;object-fit:contain;background:#000;}"
            ".message{display:none;position:absolute;inset:0;align-items:center;justify-content:center;background:#000;}"
-           "body:not(.failed) .message:first-child{display:flex;}"
-           "</style></head><body>" + body + "</body></html>";
+           "body.loading .message,body.failed .message{display:flex;}"
+           "</style></head><body class='loading'>"
+           "<img id='camera-stream' alt='Camera stream'>"
+           "<div class='message'>Camera stream unavailable</div>"
+           "<script>"
+           "const urls=[" + urls_js + "];"
+           "let index=0;"
+           "const img=document.getElementById('camera-stream');"
+           "const msg=document.querySelector('.message');"
+           "function withCacheBuster(url){return url+(url.indexOf('?')>=0?'&':'?')+'_='+(Date.now());}"
+           "function fail(){document.body.className='failed';msg.textContent='Camera stream unavailable';}"
+           "function next(){"
+           "if(index>=urls.length){fail();return;}"
+           "document.body.className='loading';"
+           "msg.textContent='Trying camera stream...';"
+           "img.src=withCacheBuster(urls[index++]);"
+           "}"
+           "img.onload=function(){document.body.className='';};"
+           "img.onerror=function(){setTimeout(next,250);};"
+           "if(urls.length){next();}else{fail();}"
+           "</script></body></html>";
 }
 
 enum class AxisControlAction {
@@ -478,7 +531,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_camera_webview = wxWebView::New(preview_box, wxID_ANY);
     m_camera_webview->SetMinSize(wxSize(FromDIP(860), FromDIP(410)));
     m_camera_webview->SetBackgroundColour(*wxBLACK);
-    m_camera_webview->SetPage(camera_stream_page(wxString()), "");
+    m_camera_webview->SetPage(camera_stream_page({}), "");
     preview_middle_frame->Add(m_camera_webview, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
     preview_middle_frame->Add(preview_right_frame, 0, wxEXPAND);
     preview_box_sizer->Add(preview_middle_frame, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(15));
@@ -505,8 +558,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     camera_hint->SetForegroundColour(wxColour(170, 176, 186));
     preview_bottom_row->Add(camera_hint, 1, wxALIGN_CENTER_VERTICAL);
     play_icon->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
-        if (m_camera_webview != nullptr && !m_camera_stream_url.IsEmpty())
-            m_camera_webview->SetPage(camera_stream_page(m_camera_stream_url), m_camera_stream_url.BeforeLast('/'));
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        const std::vector<wxString> camera_urls = configured_camera_stream_urls(obj);
+        if (m_camera_webview != nullptr && !camera_urls.empty())
+            m_camera_webview->SetPage(camera_stream_page(camera_urls), camera_urls.front().BeforeLast('/'));
     });
     preview_bottom_sizer->Add(preview_bottom_row, 0, wxEXPAND | wxBOTTOM, FromDIP(5));
     preview_bottom_panel->SetSizer(preview_bottom_sizer);
@@ -2529,14 +2585,15 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
 
     const std::string camera_machine_id = obj != nullptr ? obj->get_dev_id() : "";
     if (m_camera_webview != nullptr) {
-        const wxString next_camera_url = configured_camera_stream_url(obj);
+        const std::vector<wxString> camera_urls = configured_camera_stream_urls(obj);
+        const wxString next_camera_url = camera_urls.empty() ? wxString() : camera_urls.front();
         const bool machine_changed = camera_machine_id != m_camera_machine_id;
         const bool stream_changed = next_camera_url != m_camera_stream_url;
         m_camera_machine_id = camera_machine_id;
         m_camera_stream_url = next_camera_url;
 
         if (machine_changed || stream_changed)
-            m_camera_webview->SetPage(camera_stream_page(m_camera_stream_url), m_camera_stream_url.BeforeLast('/'));
+            m_camera_webview->SetPage(camera_stream_page(camera_urls), m_camera_stream_url.BeforeLast('/'));
     }
 
     const int printer_layer = (obj != nullptr && obj->curr_layer > 0) ? obj->curr_layer : -1;

@@ -3618,6 +3618,30 @@ int MachineObject::parse_json(std::string tunnel, std::string payload, bool key_
                                         resolution_supported.emplace_back(res.get<std::string>());
                                     camera_resolution_supported.swap(resolution_supported);
                                 }
+                                if (ipcam.contains("stream_url") && ipcam["stream_url"].is_string()) {
+                                    camera_stream_urls = { ipcam["stream_url"].get<std::string>() };
+                                }
+                                if (ipcam.contains("snapshot_url") && ipcam["snapshot_url"].is_string()) {
+                                    camera_snapshot_urls = { ipcam["snapshot_url"].get<std::string>() };
+                                }
+                                if (ipcam.contains("streams") && ipcam["streams"].is_array()) {
+                                    std::vector<std::string> stream_urls;
+                                    std::vector<std::string> snapshot_urls;
+                                    for (const auto &stream : ipcam["streams"]) {
+                                        if (!stream.is_object())
+                                            continue;
+                                        if (stream.value("enabled", true) == false)
+                                            continue;
+                                        const std::string stream_url = stream.value("stream_url", "");
+                                        const std::string snapshot_url = stream.value("snapshot_url", "");
+                                        if (!stream_url.empty())
+                                            stream_urls.emplace_back(stream_url);
+                                        if (!snapshot_url.empty())
+                                            snapshot_urls.emplace_back(snapshot_url);
+                                    }
+                                    camera_stream_urls.swap(stream_urls);
+                                    camera_snapshot_urls.swap(snapshot_urls);
+                                }
                                 if (ipcam.contains("liveview")) {
                                     char const *local_protos[] = {"none", "disabled", "local", "rtsps", "rtsp"};
                                     liveview_local = enum_index_of(ipcam["liveview"].value<std::string>("local", "none").c_str(), local_protos, 5, LiveviewLocal::LVL_None);

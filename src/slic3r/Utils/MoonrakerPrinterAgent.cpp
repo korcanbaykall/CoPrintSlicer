@@ -1388,6 +1388,83 @@ bool MoonrakerPrinterAgent::fetch_object_list(const std::string&     base_url,
     return !objects.empty();
 }
 
+bool MoonrakerPrinterAgent::fetch_camera_streams(const std::string& base_url,
+                                                 const std::string& api_key,
+                                                 nlohmann::json&    streams,
+                                                 std::string&       error) const
+{
+    std::string response_body;
+    bool        success = false;
+    std::string http_error;
+
+    auto http = Http::get(join_url(base_url, "/server/webcams/list"));
+    if (!api_key.empty()) {
+        http.header("X-Api-Key", api_key);
+    }
+    http.timeout_connect(5)
+        .timeout_max(10)
+        .on_complete([&](std::string body, unsigned status) {
+            if (status == 200) {
+                response_body = body;
+                success       = true;
+            } else {
+                http_error = "HTTP error: " + std::to_string(status);
+            }
+        })
+        .on_error([&](std::string body, std::string err, unsigned status) {
+            http_error = err;
+            if (status > 0) {
+                http_error += " (HTTP " + std::to_string(status) + ")";
+            }
+        })
+        .perform_sync();
+
+    if (!success) {
+        error = http_error.empty() ? "Connection failed" : http_error;
+        return false;
+    }
+
+    auto json = nlohmann::json::parse(response_body, nullptr, false, true);
+    if (json.is_discarded()) {
+        error = "Invalid JSON response";
+        return false;
+    }
+
+    nlohmann::json result = json.contains("result") ? json["result"] : json;
+    if (!result.contains("webcams") || !result["webcams"].is_array()) {
+        error = "Unexpected JSON structure";
+        return false;
+    }
+
+    streams = nlohmann::json::array();
+    for (const auto& webcam : result["webcams"]) {
+        if (!webcam.is_object())
+            continue;
+
+        std::string stream_url = webcam.value("stream_url", webcam.value("streamUrl", ""));
+        std::string snapshot_url = webcam.value("snapshot_url", webcam.value("snapshotUrl", ""));
+        if (stream_url.empty())
+            continue;
+
+        auto make_absolute = [this, &base_url](std::string url) {
+            if (url.empty() || boost::istarts_with(url, "http://") || boost::istarts_with(url, "https://"))
+                return url;
+            return join_url(base_url, url);
+        };
+
+        nlohmann::json stream;
+        stream["name"]         = webcam.value("name", webcam.value("display_name", "Camera"));
+        stream["stream_url"]   = make_absolute(stream_url);
+        stream["snapshot_url"] = make_absolute(snapshot_url);
+        stream["service"]      = webcam.value("service", webcam.value("source", "moonraker"));
+        stream["enabled"]      = webcam.value("enabled", true);
+        stream["local_only"]   = true;
+        streams.push_back(stream);
+    }
+
+    return !streams.empty();
+}
+
 int MoonrakerPrinterAgent::send_version_info(const std::string& dev_id)
 {
     nlohmann::json payload;
@@ -1898,6 +1975,19 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
     bool has_bed_leveling                    = (available_objects.count("bed_mesh") != 0 || available_objects.count("probe") != 0);
     payload["print"]["support_bed_leveling"] = has_bed_leveling ? 1 : 0;
 
+    if (status_cache.contains("__camera_streams") && status_cache["__camera_streams"].is_array() &&
+        !status_cache["__camera_streams"].empty()) {
+        payload["print"]["ipcam"]["ipcam_dev"] = "1";
+        payload["print"]["ipcam"]["streams"] = status_cache["__camera_streams"];
+        const auto& first_stream = status_cache["__camera_streams"].front();
+        if (first_stream.is_object()) {
+            if (first_stream.contains("stream_url") && first_stream["stream_url"].is_string())
+                payload["print"]["ipcam"]["stream_url"] = first_stream["stream_url"];
+            if (first_stream.contains("snapshot_url") && first_stream["snapshot_url"].is_string())
+                payload["print"]["ipcam"]["snapshot_url"] = first_stream["snapshot_url"];
+        }
+    }
+
     const nlohmann::json* extruder = nullptr;
     if (status_cache.contains("extruder") && status_cache["extruder"].is_object()) {
         extruder = &status_cache["extruder"];
@@ -2211,6 +2301,17 @@ void MoonrakerPrinterAgent::perform_connection_async(const std::string& dev_id, 
             BOOST_LOG_TRIVIAL(info) << "MoonrakerPrinterAgent: Initial status queried successfully";
         } else {
             BOOST_LOG_TRIVIAL(warning) << "MoonrakerPrinterAgent: Initial status query failed: " << error_msg;
+        }
+
+        nlohmann::json camera_streams;
+        if (fetch_camera_streams(base_url, api_key, camera_streams, error_msg)) {
+            {
+                std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                status_cache["__camera_streams"] = camera_streams;
+            }
+            BOOST_LOG_TRIVIAL(info) << "MoonrakerPrinterAgent: Camera streams discovered: " << camera_streams.size();
+        } else {
+            BOOST_LOG_TRIVIAL(info) << "MoonrakerPrinterAgent: Camera discovery unavailable: " << error_msg;
         }
 
         // Start WebSocket status stream

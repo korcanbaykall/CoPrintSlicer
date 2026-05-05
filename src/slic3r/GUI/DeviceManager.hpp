@@ -492,6 +492,8 @@ public:
     int  camera_resolution_hold_count = 0;
     std::string camera_resolution            = "";
     std::vector<std::string> camera_resolution_supported;
+    std::vector<std::string> camera_stream_urls;
+    std::vector<std::string> camera_snapshot_urls;
     bool xcam_first_layer_inspector { false };
     time_t  xcam_first_layer_hold_start = 0;
     std::string local_rtsp_url;
