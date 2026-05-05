@@ -1845,16 +1845,6 @@ int MachineObject::command_axis_control(std::string axis, double unit, double in
         return s;
     };
 
-    auto publish_lines = [this](std::initializer_list<std::string> lines) {
-        int ret = 0;
-        for (const auto &line : lines) {
-            ret = this->publish_gcode(line + "\n");
-            if (ret != 0)
-                return ret;
-        }
-        return ret;
-    };
-
     const bool moonraker_klipper_jog =
         m_agent && m_agent->get_printer_agent() && m_agent->get_printer_agent()->get_agent_info().id == "moonraker" &&
         !m_support_mqtt_axis_control;
@@ -1868,7 +1858,8 @@ int MachineObject::command_axis_control(std::string axis, double unit, double in
         }
         char move_cmd[64];
         std::snprintf(move_cmd, sizeof(move_cmd), "G1 %s%.3f F%d", axis.c_str(), value, speed);
-        return publish_lines({"G91", normalize_decimal_separator(move_cmd), "G90"});
+        const std::string gcode = "G91\n" + normalize_decimal_separator(move_cmd) + "\nG90\n";
+        return this->publish_gcode(gcode);
     }
 
     if (m_support_mqtt_axis_control)
@@ -1895,12 +1886,20 @@ int MachineObject::command_axis_control(std::string axis, double unit, double in
         || axis.compare("Z") == 0) {
         char move_cmd[64];
         std::snprintf(move_cmd, sizeof(move_cmd), "G1 %s%0.1f F%d", axis.c_str(), value * unit, speed);
-        return publish_lines({"M211 S", "M211 X1 Y1 Z1", "M1002 push_ref_mode", "G91", normalize_decimal_separator(move_cmd), "M1002 pop_ref_mode", "M211 R"});
+        const std::string gcode =
+            "M211 S\n"
+            "M211 X1 Y1 Z1\n"
+            "M1002 push_ref_mode\n"
+            "G91\n" + normalize_decimal_separator(move_cmd) + "\n"
+            "M1002 pop_ref_mode\n"
+            "M211 R\n";
+        return this->publish_gcode(gcode);
     }
     else if (axis.compare("E") == 0) {
         char extrude_cmd[64];
         std::snprintf(extrude_cmd, sizeof(extrude_cmd), "G0 %s%0.1f F%d", axis.c_str(), value * unit, speed);
-        return publish_lines({"M83", normalize_decimal_separator(extrude_cmd)});
+        const std::string gcode = "M83\n" + normalize_decimal_separator(extrude_cmd) + "\n";
+        return this->publish_gcode(gcode);
     }
     else {
         return -1;
