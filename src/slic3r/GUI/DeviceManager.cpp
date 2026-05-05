@@ -1837,6 +1837,14 @@ int MachineObject::command_ams_air_print_detect(bool air_print_detect)
 
 int MachineObject::command_axis_control(std::string axis, double unit, double input_val, int speed)
 {
+    auto normalize_decimal_separator = [](std::string s) {
+        for (char &ch : s) {
+            if (ch == ',')
+                ch = '.';
+        }
+        return s;
+    };
+
     auto publish_lines = [this](std::initializer_list<std::string> lines) {
         int ret = 0;
         for (const auto &line : lines) {
@@ -1860,7 +1868,7 @@ int MachineObject::command_axis_control(std::string axis, double unit, double in
         }
         char move_cmd[64];
         std::snprintf(move_cmd, sizeof(move_cmd), "G1 %s%.3f F%d", axis.c_str(), value, speed);
-        return publish_lines({"G91", move_cmd, "G90"});
+        return publish_lines({"G91", normalize_decimal_separator(move_cmd), "G90"});
     }
 
     if (m_support_mqtt_axis_control)
@@ -1887,12 +1895,12 @@ int MachineObject::command_axis_control(std::string axis, double unit, double in
         || axis.compare("Z") == 0) {
         char move_cmd[64];
         std::snprintf(move_cmd, sizeof(move_cmd), "G1 %s%0.1f F%d", axis.c_str(), value * unit, speed);
-        return publish_lines({"M211 S", "M211 X1 Y1 Z1", "M1002 push_ref_mode", "G91", move_cmd, "M1002 pop_ref_mode", "M211 R"});
+        return publish_lines({"M211 S", "M211 X1 Y1 Z1", "M1002 push_ref_mode", "G91", normalize_decimal_separator(move_cmd), "M1002 pop_ref_mode", "M211 R"});
     }
     else if (axis.compare("E") == 0) {
         char extrude_cmd[64];
         std::snprintf(extrude_cmd, sizeof(extrude_cmd), "G0 %s%0.1f F%d", axis.c_str(), value * unit, speed);
-        return publish_lines({"M83", extrude_cmd});
+        return publish_lines({"M83", normalize_decimal_separator(extrude_cmd)});
     }
     else {
         return -1;
