@@ -1876,10 +1876,16 @@ int MachineObject::command_axis_control(std::string axis, double unit, double in
     if (axis.compare("X") == 0
         || axis.compare("Y") == 0
         || axis.compare("Z") == 0) {
-        sprintf(cmd, "M211 S \nM211 X1 Y1 Z1\nM1002 push_ref_mode\nG91 \nG1 %s%0.1f F%d\nM1002 pop_ref_mode\nM211 R\n", axis.c_str(), value * unit, speed);
+        std::snprintf(
+            cmd,
+            sizeof(cmd),
+            "M211 S\nM211 X1 Y1 Z1\nM1002 push_ref_mode\nG91\nG1 %s%0.1f F%d\nM1002 pop_ref_mode\nM211 R\n",
+            axis.c_str(),
+            value * unit,
+            speed);
     }
     else if (axis.compare("E") == 0) {
-        sprintf(cmd, "M83 \nG0 %s%0.1f F%d\n", axis.c_str(), value * unit, speed);
+        std::snprintf(cmd, sizeof(cmd), "M83\nG0 %s%0.1f F%d\n", axis.c_str(), value * unit, speed);
     }
     else {
         return -1;
