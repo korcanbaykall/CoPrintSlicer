@@ -297,13 +297,16 @@ void MediaPlayCtrl::Play()
     // Moonraker fallback:
     // Bambu-style liveview flags are not provided, but Mainsail webcam stream exists.
     if (moonraker_agent && !m_lan_ip.empty()) {
-        m_disable_lan = false;
-        m_failed_code = 0;
-        std::string url = "http://" + m_lan_ip + "/webcam/?action=stream";
-        BOOST_LOG_TRIVIAL(info) << "MediaPlayCtrl Moonraker fallback URL: " << url;
-        m_url = url;
-        load();
-        m_button_play->SetIcon("media_stop");
+        const std::string url = "http://" + m_lan_ip + "/webcam/?action=stream";
+        BOOST_LOG_TRIVIAL(info) << "MediaPlayCtrl Moonraker external fallback URL: " << url;
+        m_url = from_u8(url);
+        if (!m_user_triggered) {
+            SetStatus(_L("Moonraker webcam is available. Click play to open stream in browser."), false);
+            return;
+        }
+        wxLaunchDefaultBrowser(m_url);
+        m_user_triggered = false;
+        SetStatus(_L("Opened webcam stream in browser."), false);
         return;
     }
 
@@ -694,7 +697,7 @@ void MediaPlayCtrl::load()
         std::string file_h264 = data_dir() + "/video.h264";
         std::string file_info = data_dir() + "/video.info";
         BOOST_LOG_TRIVIAL(info) << "MediaPlayCtrl dump video to " << file_h264;
-        // closed by BambuSource
+        // closed by the stream backend process
         FILE *dump_h264_file = boost::nowide::fopen(file_h264.c_str(), "wb");
         FILE *dump_info_file = boost::nowide::fopen(file_info.c_str(), "wb");
         m_url                = m_url + "&dump_h264=" + boost::lexical_cast<std::string>(dump_h264_file);
@@ -789,12 +792,11 @@ bool MediaPlayCtrl::start_stream_service(bool *need_install)
         boost::filesystem::path start_dir(boost::filesystem::path(data_dir()) / "plugins");
 #ifdef __WXMSW__
         auto plugins_dir = boost::nowide::widen(data_dir()) + L"\\plugins\\";
-        for (auto dll : {L"BambuSource.dll", L"live555.dll"}) {
-            auto file_dll  = tools_dir + dll;
-            auto file_dll2 = plugins_dir + dll;
-            if (!boost::filesystem::exists(file_dll) || boost::filesystem::last_write_time(file_dll) != boost::filesystem::last_write_time(file_dll2))
-                boost::filesystem::copy_file(file_dll2, file_dll, boost::filesystem::copy_options::overwrite_existing);
-        }
+        auto file_dll  = tools_dir + L"live555.dll";
+        auto file_dll2 = plugins_dir + L"live555.dll";
+        if (boost::filesystem::exists(file_dll2) &&
+            (!boost::filesystem::exists(file_dll) || boost::filesystem::last_write_time(file_dll) != boost::filesystem::last_write_time(file_dll2)))
+            boost::filesystem::copy_file(file_dll2, file_dll, boost::filesystem::copy_options::overwrite_existing);
         boost::process::child process_source(file_source, file_url2.ToStdWstring(), boost::process::start_dir(tools_dir), 
                                              boost::process::windows::create_no_window, 
                                              boost::process::std_out > intermediate, boost::process::limit_handles);

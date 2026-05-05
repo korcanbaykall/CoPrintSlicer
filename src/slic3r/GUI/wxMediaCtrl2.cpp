@@ -78,75 +78,7 @@ void wxMediaCtrl2::Load(wxURI url)
         return;
     }
     {
-        wxRegKey key11(wxRegKey::HKCU, L"SOFTWARE\\Classes\\CLSID\\" CLSID_BAMBU_SOURCE L"\\InProcServer32");
-        wxRegKey key12(wxRegKey::HKCR, L"CLSID\\" CLSID_BAMBU_SOURCE L"\\InProcServer32");
-        wxString path = key11.Exists() ? key11.QueryDefaultValue() 
-                                       : key12.Exists() ? key12.QueryDefaultValue() : wxString{};
-        wxRegKey key2(wxRegKey::HKCR, "bambu");
-        wxString clsid;
-        if (key2.Exists())
-            key2.QueryRawValue("Source Filter", clsid);
-        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << boost::format(": clsid %1% path %2%") % clsid % path;
-
-        std::string             data_dir_str = Slic3r::data_dir();
-        boost::filesystem::path data_dir_path(data_dir_str);
-        auto                    dll_path = data_dir_path / "plugins" / "BambuSource.dll";
-        if (path.empty() || !wxFile::Exists(path) || clsid != CLSID_BAMBU_SOURCE) {
-            if (boost::filesystem::exists(dll_path)) {
-                CallAfter(
-                    [dll_path] {
-                    int res = wxMessageBox(_L("BambuSource has not correctly been registered for media playing! Press Yes to re-register it. You will be promoted twice"), _L("Error"), wxYES_NO);
-                    if (res == wxYES) {
-                        std::string regContent = R"(Windows Registry Editor Version 5.00
-                                                    [HKEY_CLASSES_ROOT\bambu]
-                                                    "Source Filter"="{233E64FB-2041-4A6C-AFAB-FF9BCF83E7AA}"
-                                                    )";
-
-                        auto reg_path = (fs::temp_directory_path() / fs::unique_path()).replace_extension(".reg");
-                        std::ofstream temp_reg_file(reg_path.c_str());
-                        if (!temp_reg_file) {
-                            return false;
-                        }
-                        temp_reg_file << regContent;
-                        temp_reg_file.close();
-                        auto sei_params = L"/q /s " + reg_path.wstring();
-                        SHELLEXECUTEINFO sei{sizeof(sei), SEE_MASK_NOCLOSEPROCESS, NULL,   L"open",
-                                             L"regedit",  sei_params.c_str(),SW_HIDE,SW_HIDE};
-                        ::ShellExecuteEx(&sei);
-
-                        wstring quoted_dll_path = L"\"" + dll_path.wstring() + L"\"";
-                        SHELLEXECUTEINFO info{sizeof(info), 0, NULL, L"runas", L"regsvr32", quoted_dll_path.c_str(), SW_HIDE };
-                        ::ShellExecuteEx(&info);
-                        fs::remove(reg_path);
-                    }
-                    return true;
-                });
-            } else {
-                CallAfter([] {
-                    wxMessageBox(_L("Missing BambuSource component registered for media playing! Please re-install BambuStudio or seek after-sales help."), _L("Error"), wxOK);
-                });
-            }
-            m_error = clsid != CLSID_BAMBU_SOURCE ? 101 : path.empty() ? 102 : 103;
-            wxMediaEvent event(wxEVT_MEDIA_STATECHANGED);
-            event.SetId(GetId());
-            event.SetEventObject(this);
-            wxPostEvent(this, event);
-            return;
-        }
-        if (path != dll_path) {
-            static bool notified = false;
-            if (!notified) CallAfter([dll_path] {
-                int res = wxMessageBox(_L("Using a BambuSource from a different install, video play may not work correctly! Press Yes to fix it."), _L("Warning"), wxYES_NO | wxICON_WARNING);
-                if (res == wxYES) {
-                    auto path = dll_path.wstring();
-                    if (path.find(L' ') != std::wstring::npos)
-                        path = L"\"" + path + L"\"";
-                    SHELLEXECUTEINFO info{sizeof(info), 0, NULL, L"open", L"regsvr32", path.c_str(), SW_HIDE};
-                    ::ShellExecuteEx(&info);
-                }
-            });
-            notified = true;
-        }
+        // Custom source-filter dependency removed: rely on platform media backend only.
         wxRegKey keyWmp(wxRegKey::HKCU, "SOFTWARE\\Microsoft\\MediaPlayer\\Player\\Extensions\\.");
         keyWmp.Create();
         long permissions = 0;

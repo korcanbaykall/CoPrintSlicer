@@ -3246,31 +3246,19 @@ void GUI_App::copy_network_if_available()
         return;
     }
 
-    std::string network_library, player_library, live555_library, network_library_dst, player_library_dst, live555_library_dst;
+    std::string network_library, network_library_dst;
 #if defined(_MSC_VER) || defined(_WIN32)
     network_library = cache_folder.string() + "/bambu_networking.dll";
-    player_library = cache_folder.string() + "/BambuSource.dll";
-    live555_library = cache_folder.string() + "/live555.dll";
     network_library_dst = plugin_folder.string() + "/" + std::string(BAMBU_NETWORK_LIBRARY) + "_" + cached_version + ".dll";
-    player_library_dst = plugin_folder.string() + "/BambuSource.dll";
-    live555_library_dst = plugin_folder.string() + "/live555.dll";
 #elif defined(__WXMAC__)
     network_library = cache_folder.string() + "/libbambu_networking.dylib";
-    player_library = cache_folder.string() + "/libBambuSource.dylib";
-    live555_library = cache_folder.string() + "/liblive555.dylib";
     network_library_dst = plugin_folder.string() + "/lib" + std::string(BAMBU_NETWORK_LIBRARY) + "_" + cached_version + ".dylib";
-    player_library_dst = plugin_folder.string() + "/libBambuSource.dylib";
-    live555_library_dst = plugin_folder.string() + "/liblive555.dylib";
 #else
     network_library = cache_folder.string() + "/libbambu_networking.so";
-    player_library = cache_folder.string() + "/libBambuSource.so";
-    live555_library = cache_folder.string() + "/liblive555.so";
     network_library_dst = plugin_folder.string() + "/lib" + std::string(BAMBU_NETWORK_LIBRARY) + "_" + cached_version + ".so";
-    player_library_dst = plugin_folder.string() + "/libBambuSource.so";
-    live555_library_dst = plugin_folder.string() + "/liblive555.so";
 #endif
 
-    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ": checking network_library " << network_library << ", player_library " << player_library;
+    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ": checking network_library " << network_library;
     if (!boost::filesystem::exists(plugin_folder)) {
         BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ": create directory " << plugin_folder.string();
         boost::filesystem::create_directory(plugin_folder);
@@ -3292,31 +3280,6 @@ void GUI_App::copy_network_if_available()
         app_config->save();
     }
 
-    if (boost::filesystem::exists(player_library)) {
-        CopyFileResult cfr = copy_file(player_library, player_library_dst, error_message, false);
-        if (cfr != CopyFileResult::SUCCESS) {
-            BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << ": Copying failed(" << cfr << "): " << error_message;
-            return;
-        }
-
-        static constexpr const auto perms = fs::owner_read | fs::owner_write | fs::group_read | fs::others_read;
-        fs::permissions(player_library_dst, perms);
-        fs::remove(player_library);
-        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ": Copying player library from " << player_library << " to " << player_library_dst << " successfully.";
-    }
-
-    if (boost::filesystem::exists(live555_library)) {
-        CopyFileResult cfr = copy_file(live555_library, live555_library_dst, error_message, false);
-        if (cfr != CopyFileResult::SUCCESS) {
-            BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << ": Copying failed(" << cfr << "): " << error_message;
-            return;
-        }
-
-        static constexpr const auto perms = fs::owner_read | fs::owner_write | fs::group_read | fs::others_read;
-        fs::permissions(live555_library_dst, perms);
-        fs::remove(live555_library);
-        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ": Copying live555 library from " << live555_library << " to " << live555_library_dst << " successfully.";
-    }
     if (boost::filesystem::exists(changelog_file))
         fs::remove(changelog_file);
     app_config->set("update_network_plugin", "false");
@@ -3360,14 +3323,6 @@ bool GUI_App::on_init_network(bool try_backup)
 
             if (check_networking_version()) {
                 BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ": on_init_network, compatibility version";
-                auto bambu_source = Slic3r::NetworkAgent::get_bambu_source_entry();
-                if (!bambu_source) {
-                    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ": can not get bambu source module!";
-                    m_networking_compatible = false;
-                    if (should_load_networking_plugin) {
-                        m_networking_need_update = true;
-                    }
-                }
             } else {
                 if (try_backup) {
                     int result = Slic3r::NetworkAgent::unload_network_module();

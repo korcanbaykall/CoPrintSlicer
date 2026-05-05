@@ -5,7 +5,6 @@
 #include "slic3r/GUI/wxExtensions.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
-#include "slic3r/GUI/MediaPlayCtrl.h"
 #include "slic3r/GUI/Monitor.hpp"
 #include "slic3r/GUI/MultiTaskManagerPage.hpp"
 #include "slic3r/GUI/DeviceCore/DevManager.h"
@@ -14,7 +13,6 @@
 #include "slic3r/GUI/DeviceCore/DevFan.h"
 #include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
-#include "slic3r/GUI/wxMediaCtrl2.h"
 #include "slic3r/Utils/NetworkAgentFactory.hpp"
 #include "slic3r/Utils/NetworkAgent.hpp"
 #include "libslic3r/Utils.hpp"
@@ -41,6 +39,19 @@ namespace Slic3r {
 namespace GUI {
 
 namespace {
+
+wxString moonraker_camera_stream_url(const MachineObject *obj)
+{
+    if (obj == nullptr || !obj->is_online())
+        return wxString();
+
+    const std::string ip = obj->get_dev_ip();
+    if (ip.empty())
+        return wxString();
+
+    // Mainsail-compatible default webcam endpoint.
+    return wxString::Format("http://%s/webcam/?action=stream", ip);
+}
 
 enum class AxisControlAction {
     None,
@@ -402,10 +413,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_right_frame->SetMaxSize(wxSize(FromDIP(1), -1));
     preview_right_frame->SetBackgroundColour(wxColour(96, 100, 108));
     preview_middle_frame->Add(preview_left_frame, 0, wxEXPAND);
-    m_camera_media_ctrl = new wxMediaCtrl2(preview_box);
-    m_camera_media_ctrl->SetMinSize(wxSize(FromDIP(860), FromDIP(410)));
-    m_camera_media_ctrl->SetBackgroundColour(*wxBLACK);
-    preview_middle_frame->Add(m_camera_media_ctrl, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
+    m_camera_webview = wxWebView::New(preview_box, wxID_ANY);
+    m_camera_webview->SetMinSize(wxSize(FromDIP(860), FromDIP(410)));
+    m_camera_webview->SetBackgroundColour(*wxBLACK);
+    m_camera_webview->SetPage("<html><body style='background:#000;color:#bbb;font-family:sans-serif;display:flex;align-items:center;justify-content:center;'>Camera stream unavailable</body></html>", "");
+    preview_middle_frame->Add(m_camera_webview, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
     preview_middle_frame->Add(preview_right_frame, 0, wxEXPAND);
     preview_box_sizer->Add(preview_middle_frame, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(15));
     auto *preview_bottom_divider = new wxPanel(preview_box, wxID_ANY);
@@ -427,11 +439,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     play_icon->SetCursor(wxCursor(wxCURSOR_HAND));
     preview_bottom_row->Add(play_icon, 0, wxALIGN_CENTER_VERTICAL);
     preview_bottom_row->AddSpacer(FromDIP(12));
-    m_camera_play_ctrl = new MediaPlayCtrl(preview_bottom_panel, m_camera_media_ctrl, wxDefaultPosition, wxSize(FromDIP(790), FromDIP(40)));
-    preview_bottom_row->Add(m_camera_play_ctrl, 1, wxALIGN_CENTER_VERTICAL);
+    auto *camera_hint = new wxStaticText(preview_bottom_panel, wxID_ANY, _L("Play ile kamera akisini yenile"));
+    camera_hint->SetForegroundColour(wxColour(170, 176, 186));
+    preview_bottom_row->Add(camera_hint, 1, wxALIGN_CENTER_VERTICAL);
     play_icon->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
-        if (m_camera_play_ctrl != nullptr)
-            m_camera_play_ctrl->jump_to_play();
+        if (m_camera_webview != nullptr && !m_camera_stream_url.IsEmpty())
+            m_camera_webview->LoadURL(m_camera_stream_url);
     });
     preview_bottom_sizer->Add(preview_bottom_row, 0, wxEXPAND | wxBOTTOM, FromDIP(5));
     preview_bottom_panel->SetSizer(preview_bottom_sizer);
@@ -2453,15 +2466,15 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     }
 
     const std::string camera_machine_id = obj != nullptr ? obj->get_dev_id() : "";
-    if (m_camera_play_ctrl != nullptr) {
-        // Keep camera/session state fresh even when selected machine doesn't change.
-        // Liveview capabilities arrive asynchronously via push_status.
-        m_camera_play_ctrl->SetMachineObject(obj);
-        if (camera_machine_id != m_camera_machine_id) {
-            m_camera_machine_id = camera_machine_id;
-            if (obj != nullptr && obj->is_online())
-                m_camera_play_ctrl->jump_to_play();
-        }
+    if (m_camera_webview != nullptr) {
+        const wxString next_camera_url = moonraker_camera_stream_url(obj);
+        const bool machine_changed = camera_machine_id != m_camera_machine_id;
+        const bool stream_changed = next_camera_url != m_camera_stream_url;
+        m_camera_machine_id = camera_machine_id;
+        m_camera_stream_url = next_camera_url;
+
+        if (!m_camera_stream_url.IsEmpty() && (machine_changed || stream_changed))
+            m_camera_webview->LoadURL(m_camera_stream_url);
     }
 
     const int printer_layer = (obj != nullptr && obj->curr_layer > 0) ? obj->curr_layer : -1;

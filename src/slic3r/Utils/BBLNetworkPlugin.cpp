@@ -14,8 +14,6 @@
 
 namespace Slic3r {
 
-#define BAMBU_SOURCE_LIBRARY "BambuSource"
-
 // ============================================================================
 // Singleton Implementation
 // ============================================================================
@@ -261,39 +259,7 @@ HMODULE BBLNetworkPlugin::get_source_module()
 void* BBLNetworkPlugin::get_source_module()
 #endif
 {
-    if ((m_source_module) || (!m_networking_module))
-        return m_source_module;
-
-    std::string library;
-    std::string data_dir_str = data_dir();
-    boost::filesystem::path data_dir_path(data_dir_str);
-    auto plugin_folder = data_dir_path / "plugins";
-
-#if defined(_MSC_VER) || defined(_WIN32)
-    wchar_t lib_wstr[128];
-
-    library = plugin_folder.string() + "/" + std::string(BAMBU_SOURCE_LIBRARY) + ".dll";
-    memset(lib_wstr, 0, sizeof(lib_wstr));
-    ::MultiByteToWideChar(CP_UTF8, NULL, library.c_str(), strlen(library.c_str())+1, lib_wstr, sizeof(lib_wstr) / sizeof(lib_wstr[0]));
-    m_source_module = LoadLibrary(lib_wstr);
-    if (!m_source_module) {
-        std::string library_path = get_libpath_in_current_directory(std::string(BAMBU_SOURCE_LIBRARY));
-        if (library_path.empty()) {
-            return m_source_module;
-        }
-        memset(lib_wstr, 0, sizeof(lib_wstr));
-        ::MultiByteToWideChar(CP_UTF8, NULL, library_path.c_str(), strlen(library_path.c_str()) + 1, lib_wstr, sizeof(lib_wstr) / sizeof(lib_wstr[0]));
-        m_source_module = LoadLibrary(lib_wstr);
-    }
-#else
-#if defined(__WXMAC__)
-    library = plugin_folder.string() + "/" + std::string("lib") + std::string(BAMBU_SOURCE_LIBRARY) + ".dylib";
-#else
-    library = plugin_folder.string() + "/" + std::string("lib") + std::string(BAMBU_SOURCE_LIBRARY) + ".so";
-#endif
-    m_source_module = dlopen(library.c_str(), RTLD_LAZY);
-#endif
-
+    // Deprecated: external source module is no longer required.
     return m_source_module;
 }
 
