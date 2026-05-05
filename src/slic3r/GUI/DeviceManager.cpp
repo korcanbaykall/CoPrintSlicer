@@ -1837,6 +1837,16 @@ int MachineObject::command_ams_air_print_detect(bool air_print_detect)
 
 int MachineObject::command_axis_control(std::string axis, double unit, double input_val, int speed)
 {
+    auto publish_lines = [this](std::initializer_list<std::string> lines) {
+        int ret = 0;
+        for (const auto &line : lines) {
+            ret = this->publish_gcode(line + "\n");
+            if (ret != 0)
+                return ret;
+        }
+        return ret;
+    };
+
     const bool moonraker_klipper_jog =
         m_agent && m_agent->get_printer_agent() && m_agent->get_printer_agent()->get_agent_info().id == "moonraker" &&
         !m_support_mqtt_axis_control;
@@ -1848,9 +1858,9 @@ int MachineObject::command_axis_control(std::string axis, double unit, double in
             if (axis.compare("Y") == 0 || axis.compare("Z") == 0)
                 value = -1.0 * value;
         }
-        char cmd[128];
-        std::snprintf(cmd, sizeof(cmd), "G91\nG1 %s%.3f F%d\nG90\n", axis.c_str(), value, speed);
-        return this->publish_gcode(std::string(cmd));
+        char move_cmd[64];
+        std::snprintf(move_cmd, sizeof(move_cmd), "G1 %s%.3f F%d", axis.c_str(), value, speed);
+        return publish_lines({"G91", move_cmd, "G90"});
     }
 
     if (m_support_mqtt_axis_control)
@@ -1872,27 +1882,21 @@ int MachineObject::command_axis_control(std::string axis, double unit, double in
         }
     }
 
-    char cmd[256];
     if (axis.compare("X") == 0
         || axis.compare("Y") == 0
         || axis.compare("Z") == 0) {
-        std::snprintf(
-            cmd,
-            sizeof(cmd),
-            "M211 S\nM211 X1 Y1 Z1\nM1002 push_ref_mode\nG91\nG1 %s%0.1f F%d\nM1002 pop_ref_mode\nM211 R\n",
-            axis.c_str(),
-            value * unit,
-            speed);
+        char move_cmd[64];
+        std::snprintf(move_cmd, sizeof(move_cmd), "G1 %s%0.1f F%d", axis.c_str(), value * unit, speed);
+        return publish_lines({"M211 S", "M211 X1 Y1 Z1", "M1002 push_ref_mode", "G91", move_cmd, "M1002 pop_ref_mode", "M211 R"});
     }
     else if (axis.compare("E") == 0) {
-        std::snprintf(cmd, sizeof(cmd), "M83\nG0 %s%0.1f F%d\n", axis.c_str(), value * unit, speed);
+        char extrude_cmd[64];
+        std::snprintf(extrude_cmd, sizeof(extrude_cmd), "G0 %s%0.1f F%d", axis.c_str(), value * unit, speed);
+        return publish_lines({"M83", extrude_cmd});
     }
     else {
         return -1;
     }
-
-
-    return this->publish_gcode(cmd);
 }
 
 int MachineObject::command_extruder_control(int nozzle_id, double val)
