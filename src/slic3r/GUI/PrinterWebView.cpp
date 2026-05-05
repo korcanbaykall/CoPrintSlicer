@@ -8,6 +8,7 @@
 #include "slic3r/GUI/MediaPlayCtrl.h"
 #include "slic3r/GUI/Monitor.hpp"
 #include "slic3r/GUI/MultiTaskManagerPage.hpp"
+#include "slic3r/GUI/RecenterDialog.hpp"
 #include "slic3r/GUI/DeviceCore/DevManager.h"
 #include "slic3r/GUI/DeviceCore/DevBed.h"
 #include "slic3r/GUI/DeviceCore/DevExtruderSystem.h"
@@ -988,22 +989,37 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
             return;
         }
 
+        auto ensure_axis_ready = [this, obj](const std::string &axis) {
+            if (allow_axis_jog_for_printer(obj, axis))
+                return true;
+
+            if (!obj->is_axis_at_home(axis)) {
+                RecenterDialog dlg(this);
+                if (dlg.ShowModal() == wxID_OK)
+                    obj->command_go_home();
+                return false;
+            }
+
+            BOOST_LOG_TRIVIAL(warning) << "PrinterWebView axis control ignored: jog not allowed for axis " << axis;
+            return false;
+        };
+
         const double step = m_axis_move_step;
         switch (action) {
         case AxisControlAction::XMinus:
-            if (allow_axis_jog_for_printer(obj, "X"))
+            if (ensure_axis_ready("X"))
                 obj->command_axis_control("X", 1.0, -step, 3000);
             break;
         case AxisControlAction::XPlus:
-            if (allow_axis_jog_for_printer(obj, "X"))
+            if (ensure_axis_ready("X"))
                 obj->command_axis_control("X", 1.0, step, 3000);
             break;
         case AxisControlAction::YMinus:
-            if (allow_axis_jog_for_printer(obj, "Y"))
+            if (ensure_axis_ready("Y"))
                 obj->command_axis_control("Y", 1.0, -step, 3000);
             break;
         case AxisControlAction::YPlus:
-            if (allow_axis_jog_for_printer(obj, "Y"))
+            if (ensure_axis_ready("Y"))
                 obj->command_axis_control("Y", 1.0, step, 3000);
             break;
         case AxisControlAction::None:
@@ -1111,8 +1127,15 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
             BOOST_LOG_TRIVIAL(warning) << "PrinterWebView Z control ignored: no online selected printer";
             return;
         }
+
         if (!allow_axis_jog_for_printer(obj, "Z")) {
-            BOOST_LOG_TRIVIAL(warning) << "PrinterWebView Z control ignored: Z axis is not at home";
+            if (!obj->is_axis_at_home("Z")) {
+                RecenterDialog dlg(this);
+                if (dlg.ShowModal() == wxID_OK)
+                    obj->command_go_home();
+            } else {
+                BOOST_LOG_TRIVIAL(warning) << "PrinterWebView Z control ignored: jog not allowed for Z axis";
+            }
             return;
         }
         obj->command_axis_control("Z", 1.0, direction * m_axis_move_step, 900);
