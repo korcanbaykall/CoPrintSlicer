@@ -2453,11 +2453,15 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     }
 
     const std::string camera_machine_id = obj != nullptr ? obj->get_dev_id() : "";
-    if (m_camera_play_ctrl != nullptr && camera_machine_id != m_camera_machine_id) {
-        m_camera_machine_id = camera_machine_id;
+    if (m_camera_play_ctrl != nullptr) {
+        // Keep camera/session state fresh even when selected machine doesn't change.
+        // Liveview capabilities arrive asynchronously via push_status.
         m_camera_play_ctrl->SetMachineObject(obj);
-        if (obj != nullptr && obj->is_online())
-            m_camera_play_ctrl->jump_to_play();
+        if (camera_machine_id != m_camera_machine_id) {
+            m_camera_machine_id = camera_machine_id;
+            if (obj != nullptr && obj->is_online())
+                m_camera_play_ctrl->jump_to_play();
+        }
     }
 
     const int printer_layer = (obj != nullptr && obj->curr_layer > 0) ? obj->curr_layer : -1;
