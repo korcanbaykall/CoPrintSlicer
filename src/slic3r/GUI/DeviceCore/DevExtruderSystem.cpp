@@ -74,7 +74,7 @@ namespace Slic3r
     {
         if (extder_id < 0 || extder_id >= static_cast<int>(m_extders.size()))
             return;
-        m_extders[extder_id].set_target_temp(temp);
+        m_extders[extder_id].set_target_temp(static_cast<float>(temp));
     }
 
     bool DevExtderSystem::CanQuitSwitching() const

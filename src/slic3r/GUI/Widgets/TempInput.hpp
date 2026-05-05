@@ -83,9 +83,11 @@ public:
     wxString erasePending(wxString &str);
 
     void SetTagTemp(int temp);
+    void SetTagTemp(float temp);
     void SetTagTemp(wxString temp);
 
     void SetCurrTemp(int temp);
+    void SetCurrTemp(float temp);
     void SetCurrTemp(wxString temp);
     void SetCurrType(TempInputType type);
     TempInputType GetCurrType(){return m_input_type;};

@@ -1204,7 +1204,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
         if (obj == nullptr || !obj->is_online())
             return;
-        const long current_value = obj->GetExtderSystem() ? obj->GetExtderSystem()->GetNozzleTempTarget(0) : 0;
+        const long current_value = obj->GetExtderSystem() ? static_cast<long>(obj->GetExtderSystem()->GetNozzleTempTarget(0)) : 0;
         wxTextEntryDialog dlg(this, "Nozzle hedef sicakligini girin.", "Nozzle", wxString::Format("%ld", current_value));
         if (dlg.ShowModal() != wxID_OK)
             return;
@@ -2427,14 +2427,17 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     if (m_bed_temp_value != nullptr) {
         wxString bed_text = "__ / __";
         if (obj != nullptr && obj->GetBed() != nullptr)
-            bed_text = wxString::Format("%.0f / %.0f", obj->GetBed()->GetBedTemp(), obj->GetBed()->GetBedTempTarget());
+            bed_text = wxString::Format("%.1f / %.1f", obj->GetBed()->GetBedTemp(), obj->GetBed()->GetBedTempTarget());
         m_bed_temp_value->SetLabelText(bed_text);
     }
 
     if (m_extruder_temp_value != nullptr) {
         wxString nozzle_text = "__ / __";
         if (obj != nullptr && obj->GetExtderSystem() != nullptr)
-            nozzle_text = wxString::Format("%d / %d", obj->GetExtderSystem()->GetNozzleTempCurrent(0), obj->GetExtderSystem()->GetNozzleTempTarget(0));
+            nozzle_text = wxString::Format(
+                "%.1f / %.1f",
+                static_cast<double>(obj->GetExtderSystem()->GetNozzleTempCurrent(0)),
+                static_cast<double>(obj->GetExtderSystem()->GetNozzleTempTarget(0)));
         m_extruder_temp_value->SetLabelText(nozzle_text);
     }
 

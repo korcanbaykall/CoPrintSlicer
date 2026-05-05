@@ -56,9 +56,9 @@ public:
     float          GetNozzleDiameter() const;
 
     // temperature
-    int  GetCurrentTemp() const { return m_cur_temp; }
-    int  GetTargetTemp() const { return m_target_temp; }
-    void set_target_temp(int t) { m_target_temp = t; }
+    float GetCurrentTemp() const { return m_cur_temp; }
+    float GetTargetTemp() const { return m_target_temp; }
+    void  set_target_temp(float t) { m_target_temp = t; }
 
     // filament
     bool             HasFilamentInExt() const { return m_ext_has_filament; }
@@ -86,8 +86,8 @@ private:
     int    m_target_nozzle_id = 0; // target nozzle id
 
     // temperature
-    int    m_cur_temp = 0;
-    int    m_target_temp = 0;
+    float  m_cur_temp = 0.0f;
+    float  m_target_temp = 0.0f;
 
     // filament
     bool             m_ext_has_filament = false;
@@ -144,8 +144,8 @@ public:
     NozzleType     GetNozzleType(int extder_id)     const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetNozzleType() : NozzleType::ntUndefine; }
     NozzleFlowType GetNozzleFlowType(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetNozzleFlowType() : NozzleFlowType::NONE_FLOWTYPE;; }
     float          GetNozzleDiameter(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetNozzleDiameter() : 0.0; }
-    int            GetNozzleTempCurrent(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetCurrentTemp() : 0; }
-    int            GetNozzleTempTarget(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetTargetTemp() : 0; }
+    float          GetNozzleTempCurrent(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetCurrentTemp() : 0.0f; }
+    float          GetNozzleTempTarget(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetTargetTemp() : 0.0f; }
 
     /** Until the next push_status, mirror the user's last nozzle target in the UI. */
     void set_extder_target_temp(int extder_id, int temp);

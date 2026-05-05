@@ -2959,9 +2959,9 @@ void StatusPanel::update_temp_ctrl(MachineObject *obj)
     if (!obj) return;
 
     DevBed* bed = obj->GetBed();
-    int bed_cur_temp = bed->GetBedTemp();
-    int bed_target_temp = bed->GetBedTempTarget();
-    m_tempCtrl_bed->SetCurrTemp((int) bed_cur_temp);
+    float bed_cur_temp = bed->GetBedTemp();
+    float bed_target_temp = bed->GetBedTempTarget();
+    m_tempCtrl_bed->SetCurrTemp(bed_cur_temp);
 
     auto limit = obj->get_bed_temperature_limit();
     if (obj->bed_temp_range.size() > 1) {
@@ -2981,7 +2981,7 @@ void StatusPanel::update_temp_ctrl(MachineObject *obj)
     if (m_temp_bed_timeout > 0) {
         m_temp_bed_timeout--;
     } else {
-        if (!bed_temp_input) { m_tempCtrl_bed->SetTagTemp((int) bed_target_temp); }
+        if (!bed_temp_input) { m_tempCtrl_bed->SetTagTemp(bed_target_temp); }
     }
 
     if ((bed_target_temp - bed_cur_temp) >= TEMP_THRESHOLD_VAL) {
@@ -3032,7 +3032,7 @@ void StatusPanel::update_temp_ctrl(MachineObject *obj)
             if (main_extder)
             {
                 m_tempCtrl_nozzle->SetTagTemp(main_extder->GetTargetTemp());
-                m_tempCtrl_nozzle->SetCurrTemp((int)main_extder->GetCurrentTemp());
+                m_tempCtrl_nozzle->SetCurrTemp(main_extder->GetCurrentTemp());
                 if (main_extder->GetTargetTemp() - main_extder->GetCurrentTemp() > TEMP_THRESHOLD_VAL)
                 {
                     m_tempCtrl_nozzle->SetIconActive();
@@ -3054,7 +3054,7 @@ void StatusPanel::update_temp_ctrl(MachineObject *obj)
             if (deputy_extder)
             {
                 m_tempCtrl_nozzle_deputy->SetTagTemp(deputy_extder->GetTargetTemp());
-                m_tempCtrl_nozzle_deputy->SetCurrTemp((int)deputy_extder->GetCurrentTemp());
+                m_tempCtrl_nozzle_deputy->SetCurrTemp(deputy_extder->GetCurrentTemp());
                 if (deputy_extder->GetTargetTemp() - deputy_extder->GetCurrentTemp() > TEMP_THRESHOLD_VAL)
                 {
                     m_tempCtrl_nozzle_deputy->SetIconActive();

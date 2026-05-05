@@ -6,6 +6,14 @@
 #include "../GUI.hpp"
 #include "../GUI_App.hpp"
 
+namespace
+{
+wxString format_temp_with_one_decimal(float temp)
+{
+    return wxString::Format("%.1f", static_cast<double>(temp));
+}
+}
+
 wxDEFINE_EVENT(wxCUSTOMEVT_SET_TEMP_FINISH, wxCommandEvent);
 
 BEGIN_EVENT_TABLE(TempInput, StaticBox)
@@ -198,6 +206,16 @@ void TempInput::SetTagTemp(int temp)
     }
 }
 
+void TempInput::SetTagTemp(float temp)
+{
+    const wxString tp = format_temp_with_one_decimal(temp);
+    if (text_ctrl->GetValue() != tp) {
+        text_ctrl->SetValue(tp);
+        messureSize();
+        Refresh();
+    }
+}
+
 void TempInput::SetTagTemp(wxString temp)
 {
     if (text_ctrl->GetValue() != temp) {
@@ -210,6 +228,15 @@ void TempInput::SetTagTemp(wxString temp)
 void TempInput::SetCurrTemp(int temp)
 {
     auto tp = wxString::Format("%d", temp);
+    if (GetLabel() != tp) {
+        SetLabel(tp);
+        Refresh();
+    }
+}
+
+void TempInput::SetCurrTemp(float temp)
+{
+    const wxString tp = format_temp_with_one_decimal(temp);
     if (GetLabel() != tp) {
         SetLabel(tp);
         Refresh();
@@ -394,7 +421,7 @@ void TempInput::DoSetSize(int x, int y, int width, int height, int sizeFlags)
     left += sepSize.x;
 
     // text text
-    auto textSize = text_ctrl->GetTextExtent(wxString("0000"));
+    auto textSize = text_ctrl->GetTextExtent(wxString("000.0"));
     text_ctrl->SetSize(textSize);
     text_ctrl->SetPosition({left, (GetSize().y - text_ctrl->GetSize().y) / 2});
 }
@@ -575,7 +602,7 @@ void TempInput::messureMiniSize()
     height = sepSize.y > height ? sepSize.y : height;
 
     // text text
-    auto textSize = text_ctrl->GetTextExtent(wxString("0000"));
+    auto textSize = text_ctrl->GetTextExtent(wxString("000.0"));
     width += textSize.x;
     height = textSize.y > height ? textSize.y : height;
 
@@ -635,7 +662,7 @@ void TempInput::messureSize()
     height = sepSize.y > height ? sepSize.y : height;
 
     // text text
-    auto textSize = text_ctrl->GetTextExtent(wxString("0000"));
+    auto textSize = text_ctrl->GetTextExtent(wxString("000.0"));
     width += textSize.x;
     height = textSize.y > height ? textSize.y : height;
 
