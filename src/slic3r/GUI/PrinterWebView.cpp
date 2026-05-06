@@ -1381,7 +1381,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int bed_unit_x = value_right_edge - bed_unit->GetBestSize().GetWidth();
     bed_unit->SetPosition(wxPoint(bed_unit_x, FromDIP(20)));
     const int bed_value_x = bed_unit_x - inter_value_gap - bed_value->GetBestSize().GetWidth();
-    bed_value->SetPosition(wxPoint(bed_value_x, FromDIP(20)));
+    bed_value->SetPosition(wxPoint(bed_value_x - FromDIP(10), FromDIP(20)));
     auto bed_temp_handler = [this](wxMouseEvent &) {
         auto *dev_manager = wxGetApp().getDeviceManager();
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
@@ -1406,7 +1406,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int extruder_unit_x = value_right_edge - extruder_unit->GetBestSize().GetWidth();
     extruder_unit->SetPosition(wxPoint(extruder_unit_x, FromDIP(80)));
     const int extruder_value_x = extruder_unit_x - inter_value_gap - extruder_value->GetBestSize().GetWidth();
-    extruder_value->SetPosition(wxPoint(extruder_value_x, FromDIP(80)));
+    extruder_value->SetPosition(wxPoint(extruder_value_x - FromDIP(10), FromDIP(80)));
 
     const int fan_row_y = FromDIP(140);
     const int fan_unit_x = value_right_edge - fan_unit->GetBestSize().GetWidth();

@@ -17,6 +17,7 @@
 #include <boost/log/trivial.hpp>
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cctype>
 #include <sstream>
@@ -149,6 +150,56 @@ std::string moonraker_light_pin_name(const std::set<std::string>& objects)
     }
 
     return {};
+}
+
+bool json_number_value(const nlohmann::json& object, const std::vector<const char*>& keys, double& value)
+{
+    if (!object.is_object())
+        return false;
+
+    for (const char* key : keys) {
+        if (!object.contains(key))
+            continue;
+        const auto& item = object[key];
+        if (item.is_number()) {
+            value = item.get<double>();
+            return true;
+        }
+        if (item.is_string()) {
+            try {
+                value = std::stod(item.get<std::string>());
+                return true;
+            } catch (...) {
+            }
+        }
+    }
+    return false;
+}
+
+bool moonraker_current_z(const nlohmann::json& status_cache, double& z)
+{
+    if (status_cache.contains("gcode_move") && status_cache["gcode_move"].is_object()) {
+        const auto& gcode_move = status_cache["gcode_move"];
+        if (gcode_move.contains("gcode_position") && gcode_move["gcode_position"].is_array() &&
+            gcode_move["gcode_position"].size() > 2 && gcode_move["gcode_position"][2].is_number()) {
+            z = gcode_move["gcode_position"][2].get<double>();
+            return true;
+        }
+        if (gcode_move.contains("position") && gcode_move["position"].is_array() &&
+            gcode_move["position"].size() > 2 && gcode_move["position"][2].is_number()) {
+            z = gcode_move["position"][2].get<double>();
+            return true;
+        }
+    }
+
+    if (status_cache.contains("toolhead") && status_cache["toolhead"].is_object() &&
+        status_cache["toolhead"].contains("position") && status_cache["toolhead"]["position"].is_array() &&
+        status_cache["toolhead"]["position"].size() > 2 && status_cache["toolhead"]["position"][2].is_number()) {
+        z = status_cache["toolhead"]["position"][2].get<double>();
+        return true;
+    }
+
+    return false;
 }
 
 } // namespace
@@ -1315,7 +1366,7 @@ bool MoonrakerPrinterAgent::query_printer_status(const std::string& base_url,
                                                  nlohmann::json&    status,
                                                  std::string&       error) const
 {
-    std::string url = join_url(base_url, "/printer/objects/query?print_stats&virtual_sdcard&extruder&extruder1&extruder2&extruder3&heater_bed&fan&toolhead");
+    std::string url = join_url(base_url, "/printer/objects/query?print_stats&virtual_sdcard&extruder&extruder1&extruder2&extruder3&heater_bed&fan&toolhead&display_status&gcode_move");
 
     std::string response_body;
     bool        success = false;
@@ -1828,6 +1879,9 @@ void MoonrakerPrinterAgent::run_status_stream(std::string dev_id, std::string ba
                 if (this->available_objects.count("display_status") != 0) {
                     subscribe_objects.insert("display_status");
                 }
+                if (this->available_objects.count("gcode_move") != 0) {
+                    subscribe_objects.insert("gcode_move");
+                }
 
                 for (const auto& name : this->available_objects) {
                     if (name == "extruder" || name.rfind("extruder", 0) == 0) {
@@ -1846,6 +1900,8 @@ void MoonrakerPrinterAgent::run_status_stream(std::string dev_id, std::string ba
                 subscribe_objects.insert("extruder");
                 subscribe_objects.insert("heater_bed");
                 subscribe_objects.insert("toolhead"); // Add toolhead as fallback
+                subscribe_objects.insert("display_status");
+                subscribe_objects.insert("gcode_move");
                 subscribe_objects.insert("fan");      // Try to subscribe to fan as fallback
             }
 
@@ -2257,17 +2313,19 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
         payload["print"]["mc_percent"] = mc_percent;
     }
 
+    int current_layer = -1;
+    int total_layer = -1;
+
     // Layer counts from Klipper SET_PRINT_STATS_INFO (slicer macros), mapped to Bambu-style fields
     if (status_cache.contains("print_stats") && status_cache["print_stats"].is_object()) {
         const auto& ps = status_cache["print_stats"];
         if (ps.contains("info") && ps["info"].is_object()) {
             const auto& info = ps["info"];
-            if (info.contains("current_layer") && info["current_layer"].is_number()) {
-                payload["print"]["layer_num"] = static_cast<int>(info["current_layer"].get<double>());
-            }
-            if (info.contains("total_layer") && info["total_layer"].is_number()) {
-                payload["print"]["total_layer_num"] = static_cast<int>(info["total_layer"].get<double>());
-            }
+            double value = 0.0;
+            if (json_number_value(info, {"current_layer", "current_layer_num", "layer", "layer_num"}, value))
+                current_layer = std::max(0, static_cast<int>(value));
+            if (json_number_value(info, {"total_layer", "total_layers", "total_layer_num", "layer_count", "layers"}, value))
+                total_layer = std::max(0, static_cast<int>(value));
         }
     }
 
@@ -2295,6 +2353,29 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
         }
 
         // Estimated time from slicer metadata → use for remaining time and prediction
+        double layer_count = 0.0;
+        if (total_layer <= 0 && json_number_value(meta, {"layer_count", "layers", "total_layer", "total_layers"}, layer_count))
+            total_layer = std::max(0, static_cast<int>(layer_count));
+
+        double layer_height = 0.0;
+        double first_layer_height = 0.0;
+        double object_height = 0.0;
+        json_number_value(meta, {"layer_height"}, layer_height);
+        json_number_value(meta, {"first_layer_height", "first_layer_extr_height"}, first_layer_height);
+        if (total_layer <= 0 && json_number_value(meta, {"object_height", "max_z"}, object_height) && layer_height > 0.0) {
+            const double first_height = first_layer_height > 0.0 ? first_layer_height : layer_height;
+            total_layer = std::max(1, static_cast<int>(std::ceil((object_height - first_height) / layer_height)) + 1);
+        }
+        if (current_layer <= 0 && layer_height > 0.0) {
+            double z = 0.0;
+            if (moonraker_current_z(status_cache, z) && z > 0.0) {
+                const double first_height = first_layer_height > 0.0 ? first_layer_height : layer_height;
+                current_layer = z <= first_height ? 1 : static_cast<int>(std::floor((z - first_height) / layer_height)) + 2;
+                if (total_layer > 0)
+                    current_layer = std::min(current_layer, total_layer);
+            }
+        }
+
         if (meta.contains("estimated_time") && meta["estimated_time"].is_number()) {
             const int estimated_seconds = static_cast<int>(meta["estimated_time"].get<double>());
             if (estimated_seconds > 0) {
@@ -2306,6 +2387,11 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
             }
         }
     }
+
+    if (current_layer >= 0)
+        payload["print"]["layer_num"] = current_layer;
+    if (total_layer > 0)
+        payload["print"]["total_layer_num"] = total_layer;
 
     // Fallback remaining time: estimate from elapsed print_duration and progress percentage
     if (!payload["print"].contains("mc_remaining_time") && mc_percent > 0 && mc_percent < 100) {
