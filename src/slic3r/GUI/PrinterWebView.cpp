@@ -1375,8 +1375,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_unit->SetForegroundColour(wxColour(220, 220, 220));
     fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
 
-    const int temp_value_x = FromDIP(122);
-    const int temp_unit_x = FromDIP(188);
+    const int temp_value_x = FromDIP(107);
+    const int temp_unit_x = FromDIP(173);
     const int fan_value_x = FromDIP(165);
     const int fan_unit_x = FromDIP(190);
     const int speed_value_x = FromDIP(180);
