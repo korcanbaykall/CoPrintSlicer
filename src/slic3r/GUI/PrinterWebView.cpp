@@ -7,6 +7,8 @@
 #include "slic3r/GUI/MainFrame.hpp"
 #include "slic3r/GUI/Monitor.hpp"
 #include "slic3r/GUI/MultiTaskManagerPage.hpp"
+#include "slic3r/GUI/PartPlate.hpp"
+#include "slic3r/GUI/Plater.hpp"
 #include "slic3r/GUI/DeviceCore/DevManager.h"
 #include "slic3r/GUI/DeviceCore/DevBed.h"
 #include "slic3r/GUI/DeviceCore/DevExtruderSystem.h"
@@ -79,6 +81,24 @@ wxString js_escape(wxString text)
     text.Replace("\r", "");
     text.Replace("\n", "");
     return text;
+}
+
+wxImage image_from_thumbnail_data(const ThumbnailData &data)
+{
+    if (!data.is_valid())
+        return wxImage();
+
+    wxImage image(data.width, data.height);
+    image.InitAlpha();
+    for (unsigned int r = 0; r < data.height; ++r) {
+        const unsigned int rr = (data.height - 1 - r) * data.width;
+        for (unsigned int c = 0; c < data.width; ++c) {
+            const unsigned char *px = data.pixels.data() + 4 * (rr + c);
+            image.SetRGB((int)c, (int)r, px[0], px[1], px[2]);
+            image.SetAlpha((int)c, (int)r, px[3]);
+        }
+    }
+    return image;
 }
 
 wxString normalize_camera_stream_url(wxString source, MachineObject *obj)
@@ -2449,6 +2469,18 @@ void PrinterWebView::set_fallback_preview_thumbnail()
         return;
 
     m_preview_thumbnail_url.clear();
+    if (auto *plater = wxGetApp().plater()) {
+        PartPlate *plate = plater->get_partplate_list().get_curr_plate();
+        if (plate != nullptr) {
+            wxImage plate_image = image_from_thumbnail_data(plate->thumbnail_data);
+            if (plate_image.IsOk()) {
+                m_preview_thumbnail->SetBitmap(wxBitmap(scale_preview_thumbnail(plate_image, FromDIP(120), FromDIP(120))));
+                Layout();
+                return;
+            }
+        }
+    }
+
     const wxString logo_path = from_u8(Slic3r::resources_dir() + "/images/logo.jpg");
     wxImage logo_image;
     if (logo_image.LoadFile(logo_path, wxBITMAP_TYPE_JPEG)) {
