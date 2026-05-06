@@ -11,6 +11,7 @@
 #include "slic3r/GUI/DeviceCore/DevBed.h"
 #include "slic3r/GUI/DeviceCore/DevExtruderSystem.h"
 #include "slic3r/GUI/DeviceCore/DevFan.h"
+#include "slic3r/GUI/DeviceCore/DevLamp.h"
 #include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/Utils/NetworkAgentFactory.hpp"
@@ -1440,6 +1441,18 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int bottom_left_icon_x = (bottom_cell_width - bottom_left_icon_size.GetWidth()) / 2;
     const int bottom_left_icon_y = FromDIP(240) + (bottom_cell_height - bottom_left_icon_size.GetHeight()) / 2;
     bottom_left_placeholder_icon->SetPosition(wxPoint(bottom_left_icon_x, bottom_left_icon_y));
+    bottom_left_placeholder_icon->SetCursor(wxCursor(wxCURSOR_HAND));
+    bottom_left_placeholder_icon->Bind(wxEVT_LEFT_DOWN, [](wxMouseEvent &) {
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj == nullptr || !obj->is_online() || obj->GetLamp() == nullptr) {
+            BOOST_LOG_TRIVIAL(warning) << "PrinterWebView lamp control ignored: no online selected printer";
+            return;
+        }
+
+        const bool light_on = obj->GetLamp()->IsChamberLightOn();
+        obj->GetLamp()->CtrlSetChamberLight(light_on ? DevLamp::LIGHT_EFFECT_OFF : DevLamp::LIGHT_EFFECT_ON);
+    });
 
     auto *clear_all_button = new wxButton(
         right_placeholder_box,
