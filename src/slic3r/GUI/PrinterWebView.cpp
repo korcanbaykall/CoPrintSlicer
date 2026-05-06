@@ -617,9 +617,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     controls_col->Add(m_active_file_name_value, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
     
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(645), FromDIP(12)), wxGA_SMOOTH);
-    progress_bar->SetValue(0);
-    progress_controls_row->Add(progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(25));
+    m_print_progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(645), FromDIP(12)), wxGA_SMOOTH);
+    m_print_progress_bar->SetValue(0);
+    progress_controls_row->Add(m_print_progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(25));
     auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
     pause_icon->SetCursor(wxCursor(wxCURSOR_HAND));
     pause_icon->Bind(wxEVT_LEFT_UP, [](wxMouseEvent &) {
@@ -2533,6 +2533,12 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
 
     set_active_file_name(active_file_name_text(obj));
     update_preview_thumbnail(obj);
+
+    if (m_print_progress_bar != nullptr) {
+        const int pct = (obj != nullptr && obj->mc_print_percent >= 0 && obj->mc_print_percent <= 100)
+                            ? obj->mc_print_percent : 0;
+        m_print_progress_bar->SetValue(pct);
+    }
 
     if (m_bed_temp_value != nullptr) {
         wxString bed_text = "__ / __";

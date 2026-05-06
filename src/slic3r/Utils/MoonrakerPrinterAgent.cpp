@@ -115,6 +115,42 @@ std::string sanitize_klipper_gcode(const std::string& gcode)
     return sanitized.empty() ? gcode : sanitized;
 }
 
+std::string moonraker_light_mode_from_value(double value)
+{
+    return value > 0.0 ? "on" : "off";
+}
+
+std::string moonraker_light_pin_name(const std::set<std::string>& objects)
+{
+    static const std::vector<std::string> candidate_pins = {
+        "camera_light",
+        "webcam_light",
+        "cam_light",
+        "caselight",
+        "case_light",
+        "chamber_light",
+        "light"
+    };
+
+    for (const std::string& pin : candidate_pins) {
+        if (objects.count("output_pin " + pin) != 0 || objects.count("pwm_tool " + pin) != 0)
+            return pin;
+    }
+
+    for (const std::string& object : objects) {
+        if (!boost::istarts_with(object, "output_pin ") && !boost::istarts_with(object, "pwm_tool "))
+            continue;
+        std::string pin = object.substr(object.find(' ') + 1);
+        std::string normalized = pin;
+        boost::algorithm::to_lower(normalized);
+        if (normalized.find("light") != std::string::npos || normalized.find("led") != std::string::npos ||
+            normalized.find("camera") != std::string::npos || normalized.find("webcam") != std::string::npos)
+            return pin;
+    }
+
+    return {};
+}
+
 } // namespace
 
 namespace Slic3r {
@@ -996,6 +1032,47 @@ int MoonrakerPrinterAgent::handle_request(const std::string& dev_id, const std::
         if (command.is_string() && command.get<std::string>() == "get_access_code") {
             return send_access_code(dev_id);
         }
+        if (command.is_string() && command.get<std::string>() == "ledctrl") {
+            const auto& system = json["system"];
+            const std::string led_node = system.value("led_node", "");
+            if (!led_node.empty() && led_node != "chamber_light" && led_node != "chamber_light2")
+                return BAMBU_NETWORK_SUCCESS;
+
+            const std::string led_mode = system.value("led_mode", "off");
+            const bool        light_on = boost::iequals(led_mode, "on") || boost::iequals(led_mode, "flashing");
+            const double      value    = light_on ? 1.0 : 0.0;
+
+            std::string light_pin;
+            {
+                std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                light_pin = moonraker_light_pin_name(available_objects);
+            }
+
+            bool sent = false;
+            if (!light_pin.empty()) {
+                sent = send_gcode(dev_id, "SET_PIN PIN=" + light_pin + " VALUE=" + std::to_string(value));
+            } else {
+                sent = send_gcode(dev_id, light_on ? "M355 S1" : "M355 S0");
+            }
+
+            if (sent) {
+                nlohmann::json updates;
+                updates["__chamber_light"]["mode"] = moonraker_light_mode_from_value(value);
+                if (!light_pin.empty())
+                    updates["output_pin " + light_pin]["value"] = value;
+                update_status_cache(updates);
+
+                nlohmann::json message;
+                {
+                    std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                    message = build_print_payload_locked();
+                }
+                dispatch_message(dev_id, message.dump());
+                return BAMBU_NETWORK_SUCCESS;
+            }
+
+            return BAMBU_NETWORK_ERR_SEND_MSG_FAILED;
+        }
     }
 
     if (json.contains("pushing") && json["pushing"].contains("command")) {
@@ -1449,6 +1526,18 @@ bool MoonrakerPrinterAgent::fetch_camera_streams(const std::string& base_url,
         auto make_absolute = [this, &base_url](std::string url) {
             if (url.empty() || boost::istarts_with(url, "http://") || boost::istarts_with(url, "https://"))
                 return url;
+            // Relative paths (e.g. /webcam/?action=stream) are served by nginx on port 80,
+            // not the Moonraker API port. Strip the port so the URL resolves correctly.
+            if (!url.empty() && url[0] == '/') {
+                std::string web_base = base_url;
+                size_t proto_end = web_base.find("://");
+                if (proto_end != std::string::npos) {
+                    size_t colon = web_base.find(':', proto_end + 3);
+                    if (colon != std::string::npos)
+                        web_base = web_base.substr(0, colon);
+                }
+                return join_url(web_base, url);
+            }
             return join_url(base_url, url);
         };
 
@@ -1593,6 +1682,52 @@ void MoonrakerPrinterAgent::dispatch_printer_connected(const std::string& dev_id
     }
 }
 
+bool MoonrakerPrinterAgent::fetch_file_metadata(const std::string& base_url,
+                                                 const std::string& api_key,
+                                                 const std::string& filename,
+                                                 nlohmann::json&    metadata,
+                                                 std::string&       error) const
+{
+    if (filename.empty()) {
+        error = "Empty filename";
+        return false;
+    }
+
+    std::string encoded;
+    for (unsigned char c : filename) {
+        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '/')
+            encoded += c;
+        else {
+            char buf[4];
+            std::snprintf(buf, sizeof(buf), "%%%02X", c);
+            encoded += buf;
+        }
+    }
+
+    std::string response_body;
+    bool        success = false;
+    auto        http    = Http::get(join_url(base_url, "/server/files/metadata?filename=" + encoded));
+    if (!api_key.empty())
+        http.header("X-Api-Key", api_key);
+    http.timeout_connect(5)
+        .timeout_max(10)
+        .on_complete([&](std::string body, unsigned status) {
+            if (status == 200) { response_body = body; success = true; }
+            else { error = "HTTP " + std::to_string(status); }
+        })
+        .on_error([&](std::string body, std::string err, unsigned) { error = err; })
+        .perform_sync();
+
+    if (!success)
+        return false;
+
+    auto json = nlohmann::json::parse(response_body, nullptr, false, true);
+    if (json.is_discarded()) { error = "Invalid JSON"; return false; }
+
+    metadata = json.contains("result") ? json["result"] : json;
+    return true;
+}
+
 void MoonrakerPrinterAgent::start_status_stream(const std::string& dev_id, const std::string& base_url, const std::string& api_key)
 {
     stop_status_stream();
@@ -1697,6 +1832,14 @@ void MoonrakerPrinterAgent::run_status_stream(std::string dev_id, std::string ba
                 for (const auto& name : this->available_objects) {
                     if (name == "extruder" || name.rfind("extruder", 0) == 0) {
                         subscribe_objects.insert(name);
+                    }
+                    if (name.rfind("output_pin ", 0) == 0 || name.rfind("pwm_tool ", 0) == 0) {
+                        const std::string pin = name.substr(name.find(' ') + 1);
+                        std::string normalized = pin;
+                        boost::algorithm::to_lower(normalized);
+                        if (normalized.find("light") != std::string::npos || normalized.find("led") != std::string::npos ||
+                            normalized.find("camera") != std::string::npos || normalized.find("webcam") != std::string::npos)
+                            subscribe_objects.insert(name);
                     }
                 }
             } else {
@@ -1864,6 +2007,30 @@ void MoonrakerPrinterAgent::handle_ws_message(const std::string& dev_id, const s
         }
     }
 
+    // Fetch file metadata when the active filename changes (thumbnail + estimated_time)
+    if (updated) {
+        std::string current_filename;
+        {
+            std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+            if (status_cache.contains("print_stats") &&
+                status_cache["print_stats"].contains("filename") &&
+                status_cache["print_stats"]["filename"].is_string())
+                current_filename = status_cache["print_stats"]["filename"].get<std::string>();
+        }
+        if (!current_filename.empty() && current_filename != m_last_metadata_filename) {
+            m_last_metadata_filename = current_filename;
+            nlohmann::json file_meta;
+            std::string    meta_error;
+            if (fetch_file_metadata(device_info.base_url, device_info.api_key, current_filename, file_meta, meta_error)) {
+                std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                status_cache["__file_metadata"] = file_meta;
+                BOOST_LOG_TRIVIAL(info) << "MoonrakerPrinterAgent: Fetched metadata for " << current_filename;
+            } else {
+                BOOST_LOG_TRIVIAL(warning) << "MoonrakerPrinterAgent: Metadata fetch failed for " << current_filename << ": " << meta_error;
+            }
+        }
+    }
+
     if (updated) {
         const auto now_ms = static_cast<uint64_t>(
             std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
@@ -1975,6 +2142,25 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
     bool has_bed_leveling                    = (available_objects.count("bed_mesh") != 0 || available_objects.count("probe") != 0);
     payload["print"]["support_bed_leveling"] = has_bed_leveling ? 1 : 0;
 
+    std::string light_mode;
+    if (status_cache.contains("__chamber_light") && status_cache["__chamber_light"].contains("mode") &&
+        status_cache["__chamber_light"]["mode"].is_string()) {
+        light_mode = status_cache["__chamber_light"]["mode"].get<std::string>();
+    } else {
+        const std::string light_pin = moonraker_light_pin_name(available_objects);
+        for (const std::string& light_object : { "output_pin " + light_pin, "pwm_tool " + light_pin }) {
+            if (!light_pin.empty() && status_cache.contains(light_object) && status_cache[light_object].contains("value") &&
+                status_cache[light_object]["value"].is_number()) {
+                light_mode = moonraker_light_mode_from_value(status_cache[light_object]["value"].get<double>());
+                break;
+            }
+        }
+    }
+    if (!light_mode.empty()) {
+        payload["print"]["lights_report"] = nlohmann::json::array(
+            { { { "node", "chamber_light" }, { "mode", light_mode } } });
+    }
+
     if (status_cache.contains("__camera_streams") && status_cache["__camera_streams"].is_array() &&
         !status_cache["__camera_streams"].empty()) {
         payload["print"]["ipcam"]["ipcam_dev"] = "1";
@@ -2085,14 +2271,53 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
         }
     }
 
-    if (status_cache.contains("print_stats") && status_cache["print_stats"].contains("total_duration") &&
-        status_cache["print_stats"].contains("print_duration") && status_cache["print_stats"]["total_duration"].is_number() &&
-        status_cache["print_stats"]["print_duration"].is_number()) {
-        const double total   = status_cache["print_stats"]["total_duration"].get<double>();
-        const double elapsed = status_cache["print_stats"]["print_duration"].get<double>();
-        if (total > 0.0 && elapsed >= 0.0) {
-            const auto remaining_minutes          = std::max(0, static_cast<int>((total - elapsed) / 60.0));
-            payload["print"]["mc_remaining_time"] = remaining_minutes;
+    // Populate thumbnail URL and estimated_time from file metadata (fetched async on filename change)
+    if (status_cache.contains("__file_metadata")) {
+        const auto& meta = status_cache["__file_metadata"];
+
+        // Thumbnail: pick the largest available thumbnail
+        if (meta.contains("thumbnails") && meta["thumbnails"].is_array()) {
+            std::string best_path;
+            int         best_pixels = 0;
+            for (const auto& thumb : meta["thumbnails"]) {
+                if (!thumb.is_object()) continue;
+                const int pixels = thumb.value("width", 0) * thumb.value("height", 0);
+                if (pixels > best_pixels) {
+                    best_pixels = pixels;
+                    best_path   = thumb.value("relative_path", "");
+                }
+            }
+            if (!best_path.empty()) {
+                // Thumbnails are served via Moonraker's file API (port 7125)
+                payload["print"]["slice_info_thumbnail_url"] =
+                    join_url(device_info.base_url, "/server/files/gcodes/" + best_path);
+            }
+        }
+
+        // Estimated time from slicer metadata → use for remaining time and prediction
+        if (meta.contains("estimated_time") && meta["estimated_time"].is_number()) {
+            const int estimated_seconds = static_cast<int>(meta["estimated_time"].get<double>());
+            if (estimated_seconds > 0) {
+                payload["print"]["slice_info_prediction"] = estimated_seconds;
+                if (mc_percent >= 0 && mc_percent < 100) {
+                    const int remaining = std::max(0, static_cast<int>(estimated_seconds * (100 - mc_percent) / 100.0));
+                    payload["print"]["mc_remaining_time"] = remaining / 60;
+                }
+            }
+        }
+    }
+
+    // Fallback remaining time: estimate from elapsed print_duration and progress percentage
+    if (!payload["print"].contains("mc_remaining_time") && mc_percent > 0 && mc_percent < 100) {
+        if (status_cache.contains("print_stats") &&
+            status_cache["print_stats"].contains("print_duration") &&
+            status_cache["print_stats"]["print_duration"].is_number()) {
+            const double elapsed = status_cache["print_stats"]["print_duration"].get<double>();
+            if (elapsed > 0.0) {
+                const double estimated_total   = elapsed * 100.0 / mc_percent;
+                const int    remaining_seconds = std::max(0, static_cast<int>(estimated_total - elapsed));
+                payload["print"]["mc_remaining_time"] = remaining_seconds / 60;
+            }
         }
     }
 

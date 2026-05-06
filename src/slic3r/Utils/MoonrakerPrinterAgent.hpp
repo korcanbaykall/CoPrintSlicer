@@ -127,6 +127,7 @@ private:
 
     bool fetch_object_list(const std::string& base_url, const std::string& api_key, std::set<std::string>& objects, std::string& error) const;
     bool fetch_camera_streams(const std::string& base_url, const std::string& api_key, nlohmann::json& streams, std::string& error) const;
+    bool fetch_file_metadata(const std::string& base_url, const std::string& api_key, const std::string& filename, nlohmann::json& metadata, std::string& error) const;
     bool query_printer_status(const std::string& base_url, const std::string& api_key, nlohmann::json& status, std::string& error) const;
     bool send_gcode(const std::string& dev_id, const std::string& gcode) const;
 
@@ -203,6 +204,7 @@ private:
     static constexpr uint64_t STATUS_UPDATE_INTERVAL_MS = 75;  // ~13 updates/sec; Moonraker can emit many notify_status_update frames
     std::atomic<uint64_t> ws_last_dispatch_ms{0};
     std::string last_print_state;  // Track state for immediate dispatch on change
+    std::string m_last_metadata_filename; // Track filename to detect when to re-fetch metadata
 
     // Connection thread management
     std::atomic<uint64_t>  connect_generation{0};

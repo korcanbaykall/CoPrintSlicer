@@ -96,7 +96,7 @@
         "343"
     ],
     "thumbnails_format": "PNG",
-    "before_layer_change_gcode": "TIMELAPSE_TAKE_FRAME\nG92 E0",
+    "before_layer_change_gcode": "SET_PRINT_STATS_INFO CURRENT_LAYER={layer_num} TOTAL_LAYER={total_layer_count}\nTIMELAPSE_TAKE_FRAME\nG92 E0",
     "machine_start_gcode": "start_print  EXTRUDER=[initial_extruder] EXTRUDER_TEMP=[nozzle_temperature_initial_layer] BED_TEMP=[bed_temperature_initial_layer_single]",
     "machine_end_gcode": "end_print",
     "default_filament_profile": [

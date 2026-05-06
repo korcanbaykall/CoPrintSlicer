@@ -3236,6 +3236,20 @@ int MachineObject::parse_json(std::string tunnel, std::string payload, bool key_
                         subtask_name = jj["subtask_name"].get<std::string>();
                     }
 
+                    // Moonraker file metadata: thumbnail and estimated print time
+                    if (jj.contains("slice_info_thumbnail_url") || jj.contains("slice_info_prediction")) {
+                        if (slice_info == nullptr)
+                            slice_info = new BBLSliceInfo();
+                        if (jj.contains("slice_info_thumbnail_url") && jj["slice_info_thumbnail_url"].is_string()) {
+                            const std::string url = jj["slice_info_thumbnail_url"].get<std::string>();
+                            if (!url.empty())
+                                slice_info->thumbnail_url = url;
+                        }
+                        if (jj.contains("slice_info_prediction") && jj["slice_info_prediction"].is_number()) {
+                            slice_info->prediction = jj["slice_info_prediction"].get<int>();
+                        }
+                    }
+
                     if (!key_field_only) {
                         if (jj.contains("printer_type")) {
                             printer_type = _parse_printer_type(jj["printer_type"].get<std::string>());
