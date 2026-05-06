@@ -102,6 +102,36 @@ wxString normalize_camera_stream_url(wxString source, MachineObject *obj)
     return "http://" + source;
 }
 
+bool is_http_url(const wxString &source)
+{
+    return source.StartsWith("http://") || source.StartsWith("https://");
+}
+
+wxString normalize_local_file_url(wxString source)
+{
+    if (source.StartsWith("file://"))
+        source = source.Mid(7);
+#ifdef _WIN32
+    if (source.StartsWith("/") && source.length() > 2 && source[2] == ':')
+        source = source.Mid(1);
+#endif
+    source.Replace("%20", " ");
+    return source;
+}
+
+wxImage scale_preview_thumbnail(wxImage image, int max_width, int max_height)
+{
+    if (!image.IsOk() || image.GetWidth() <= 0 || image.GetHeight() <= 0)
+        return {};
+
+    const double width_ratio = static_cast<double>(max_width) / static_cast<double>(image.GetWidth());
+    const double height_ratio = static_cast<double>(max_height) / static_cast<double>(image.GetHeight());
+    const double scale_ratio = std::min(width_ratio, height_ratio);
+    const int scaled_width = std::max(1, static_cast<int>(image.GetWidth() * scale_ratio));
+    const int scaled_height = std::max(1, static_cast<int>(image.GetHeight() * scale_ratio));
+    return image.Scale(scaled_width, scaled_height, wxIMAGE_QUALITY_HIGH);
+}
+
 std::vector<wxString> configured_camera_stream_urls(MachineObject *obj)
 {
     std::vector<wxString> urls;
@@ -2468,14 +2498,7 @@ void PrinterWebView::set_fallback_preview_thumbnail()
     const wxString logo_path = from_u8(Slic3r::resources_dir() + "/images/logo.jpg");
     wxImage logo_image;
     if (logo_image.LoadFile(logo_path, wxBITMAP_TYPE_JPEG)) {
-        const int max_width = FromDIP(110);
-        const int max_height = FromDIP(60);
-        const double width_ratio = static_cast<double>(max_width) / static_cast<double>(logo_image.GetWidth());
-        const double height_ratio = static_cast<double>(max_height) / static_cast<double>(logo_image.GetHeight());
-        const double scale_ratio = std::min(width_ratio, height_ratio);
-        const int scaled_width = std::max(1, static_cast<int>(logo_image.GetWidth() * scale_ratio));
-        const int scaled_height = std::max(1, static_cast<int>(logo_image.GetHeight() * scale_ratio));
-        wxImage resized = logo_image.Scale(scaled_width, scaled_height, wxIMAGE_QUALITY_HIGH);
+        wxImage resized = scale_preview_thumbnail(logo_image, FromDIP(110), FromDIP(60));
         m_preview_thumbnail->SetBitmap(wxBitmap(resized));
     } else {
         m_preview_thumbnail->SetBitmap(create_scaled_bitmap("CoPrintSlicer", m_preview_thumbnail, 96));
@@ -2492,7 +2515,7 @@ void PrinterWebView::on_thumbnail_webrequest_state(wxWebRequestEvent &evt)
     case wxWebRequest::State_Completed: {
         m_thumbnail_image = *evt.GetResponse().GetStream();
         if (m_preview_thumbnail != nullptr && m_thumbnail_image.IsOk()) {
-            wxImage resized = m_thumbnail_image.Scale(FromDIP(120), FromDIP(120), wxIMAGE_QUALITY_HIGH);
+            wxImage resized = scale_preview_thumbnail(m_thumbnail_image, FromDIP(120), FromDIP(120));
             m_preview_thumbnail->SetBitmap(wxBitmap(resized));
             Layout();
         } else {
@@ -2515,21 +2538,46 @@ void PrinterWebView::on_thumbnail_webrequest_state(wxWebRequestEvent &evt)
 
 void PrinterWebView::update_preview_thumbnail(const MachineObject *obj)
 {
-    if (obj == nullptr || obj->slice_info == nullptr || obj->slice_info->thumbnail_url.empty()) {
+    if (obj == nullptr || obj->slice_info == nullptr) {
         if (m_thumbnail_web_request.IsOk())
             m_thumbnail_web_request.Cancel();
         set_fallback_preview_thumbnail();
         return;
     }
 
-    const wxString next_url = wxString(obj->slice_info->thumbnail_url);
-    if (next_url == m_preview_thumbnail_url)
+    wxString next_source = from_u8(obj->slice_info->thumbnail_url);
+    if (next_source.IsEmpty() && !obj->slice_info->thumbnail_dir.empty() && !obj->slice_info->thumbnail_name.empty()) {
+        wxFileName thumbnail_file(from_u8(obj->slice_info->thumbnail_dir), from_u8(obj->slice_info->thumbnail_name));
+        next_source = thumbnail_file.GetFullPath();
+    }
+
+    if (next_source.IsEmpty()) {
+        if (m_thumbnail_web_request.IsOk())
+            m_thumbnail_web_request.Cancel();
+        set_fallback_preview_thumbnail();
+        return;
+    }
+
+    if (next_source == m_preview_thumbnail_url)
         return;
 
     if (m_thumbnail_web_request.IsOk())
         m_thumbnail_web_request.Cancel();
 
-    m_preview_thumbnail_url = next_url;
+    if (!is_http_url(next_source)) {
+        const wxString local_path = normalize_local_file_url(next_source);
+        wxImage local_image;
+        if (wxFileName::FileExists(local_path) && local_image.LoadFile(local_path, wxBITMAP_TYPE_ANY) && local_image.IsOk()) {
+            m_preview_thumbnail_url = next_source;
+            m_preview_thumbnail->SetBitmap(wxBitmap(scale_preview_thumbnail(local_image, FromDIP(120), FromDIP(120))));
+            Layout();
+            return;
+        }
+        set_fallback_preview_thumbnail();
+        return;
+    }
+
+    m_preview_thumbnail_url = next_source;
     m_thumbnail_web_request = wxWebSession::GetDefault().CreateRequest(this, m_preview_thumbnail_url);
     if (!m_thumbnail_web_request.IsOk()) {
         set_fallback_preview_thumbnail();
