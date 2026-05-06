@@ -1276,7 +1276,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
     const int right_placeholder_height = FromDIP(320);
     const int right_placeholder_x = FromDIP(529);
-    const int right_placeholder_width = right_container_width - right_placeholder_x - FromDIP(8);
+    const int right_placeholder_width = FromDIP(205);
     const int right_placeholder_content_width = right_placeholder_width - FromDIP(5);
     right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(32)), wxSize(right_placeholder_width, right_placeholder_height)));
     right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
@@ -1375,11 +1375,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_unit->SetForegroundColour(wxColour(220, 220, 220));
     fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
 
-    const int temp_value_x = FromDIP(140);
-    const int temp_unit_x = FromDIP(210);
-    const int fan_value_x = FromDIP(190);
-    const int fan_unit_x = FromDIP(222);
-    const int speed_value_x = FromDIP(190);
+    const int temp_value_x = FromDIP(122);
+    const int temp_unit_x = FromDIP(188);
+    const int fan_value_x = FromDIP(165);
+    const int fan_unit_x = FromDIP(190);
+    const int speed_value_x = FromDIP(180);
 
     bed_value->SetPosition(wxPoint(temp_value_x, FromDIP(20)));
     bed_unit->SetPosition(wxPoint(temp_unit_x, FromDIP(20)));
@@ -1738,7 +1738,7 @@ void PrinterWebView::refresh_fan_value_display()
 
     if (m_fan_value_label != nullptr) {
         m_fan_value_label->SetLabelText(m_selected_fan_value);
-        m_fan_value_label->SetPosition(wxPoint(FromDIP(190), FromDIP(140)));
+        m_fan_value_label->SetPosition(wxPoint(FromDIP(165), FromDIP(140)));
     }
     Layout();
 }
@@ -1761,7 +1761,7 @@ void PrinterWebView::reset_placeholder_selections()
     m_selected_speed = "--";
     if (m_speed_display_label != nullptr) {
         m_speed_display_label->SetLabelText(m_selected_speed);
-        m_speed_display_label->SetPosition(wxPoint(FromDIP(190), FromDIP(200)));
+        m_speed_display_label->SetPosition(wxPoint(FromDIP(180), FromDIP(200)));
     }
 
     dismiss_extruder_popup();
@@ -2229,7 +2229,7 @@ void PrinterWebView::rebuild_speed_popup()
             m_selected_speed = choice;
             if (m_speed_display_label != nullptr) {
                 m_speed_display_label->SetLabelText(m_selected_speed);
-                m_speed_display_label->SetPosition(wxPoint(FromDIP(190), FromDIP(200)));
+                m_speed_display_label->SetPosition(wxPoint(FromDIP(180), FromDIP(200)));
             }
             auto *dev_manager = wxGetApp().getDeviceManager();
             MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
