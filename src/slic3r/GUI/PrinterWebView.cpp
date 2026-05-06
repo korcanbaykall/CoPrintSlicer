@@ -998,7 +998,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
-    const int right_container_width = FromDIP(760);
+    const int right_container_width = FromDIP(725);
     const int right_container_height = FromDIP(430);
     right_container->SetSize(wxSize(right_container_width, right_container_height));
     right_container->SetMinSize(wxSize(right_container_width, -1));
@@ -1274,7 +1274,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
-    const int right_placeholder_width = FromDIP(190);
+    const int right_placeholder_width = FromDIP(155);
     const int right_placeholder_height = FromDIP(320);
     const int right_placeholder_x = FromDIP(529);
     right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(32)), wxSize(right_placeholder_width, right_placeholder_height)));
@@ -1489,9 +1489,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         wxID_ANY,
         "Clear All",
         wxDefaultPosition,
-        wxSize(FromDIP(84), FromDIP(32)));
-    clear_all_button->SetMinSize(wxSize(FromDIP(84), FromDIP(32)));
-    clear_all_button->SetMaxSize(wxSize(FromDIP(84), FromDIP(32)));
+        wxSize(FromDIP(72), FromDIP(32)));
+    clear_all_button->SetMinSize(wxSize(FromDIP(72), FromDIP(32)));
+    clear_all_button->SetMaxSize(wxSize(FromDIP(72), FromDIP(32)));
     clear_all_button->SetBackgroundColour(wxColour(28, 30, 34));
     clear_all_button->SetForegroundColour(wxColour(220, 220, 220));
     clear_all_button->SetWindowStyleFlag(wxBORDER_SIMPLE);
@@ -1743,7 +1743,7 @@ void PrinterWebView::refresh_fan_value_display()
 
     if (m_fan_value_label != nullptr) {
         m_fan_value_label->SetLabelText(m_selected_fan_value);
-        const int right_placeholder_width = FromDIP(190);
+        const int right_placeholder_width = FromDIP(155);
         const int right_value_margin = FromDIP(5);
         const int inter_value_gap = FromDIP(5);
         const int value_right_edge = right_placeholder_width - right_value_margin;
@@ -1777,7 +1777,7 @@ void PrinterWebView::reset_placeholder_selections()
     m_selected_speed = "--";
     if (m_speed_display_label != nullptr) {
         m_speed_display_label->SetLabelText(m_selected_speed);
-        const int right_placeholder_width = FromDIP(190);
+        const int right_placeholder_width = FromDIP(155);
         const int right_value_margin = FromDIP(5);
         const int inter_value_gap = FromDIP(5);
         const int value_right_edge = right_placeholder_width - right_value_margin;
@@ -2262,7 +2262,7 @@ void PrinterWebView::rebuild_speed_popup()
                 m_speed_display_label->SetLabelText(m_selected_speed);
                 const int right_value_margin = FromDIP(5);
                 const int inter_value_gap = FromDIP(5);
-                const int right_placeholder_width = FromDIP(190);
+                const int right_placeholder_width = FromDIP(155);
                 const int value_right_edge = right_placeholder_width - right_value_margin;
                 wxClientDC dc(m_speed_display_label);
                 dc.SetFont(m_speed_display_label->GetFont());
