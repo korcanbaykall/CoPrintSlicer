@@ -19,6 +19,7 @@
 #include "slic3r/GUI/I18N.hpp"
 
 #include <algorithm>
+#include <array>
 #include <iterator>
 #include <exception>
 #include <cstdlib>
@@ -375,13 +376,38 @@ public:
         // App title
         if (!m_constant_text.title.empty()) {
             memDc.SetFont(m_constant_text.title_font);
-            memDc.SetTextForeground(wxColour(0x00, 0x97, 0x89));
             wxSize title_ext = memDc.GetTextExtent(m_constant_text.title);
-            wxRect title_rect(
-                wxPoint(0, int(height * 0.52)),
-                wxPoint(width, int(height * 0.52) + title_ext.GetHeight())
-            );
-            memDc.DrawLabel(m_constant_text.title, title_rect, wxALIGN_CENTER);
+            const int title_y = int(height * 0.52);
+            int       title_x = (width - title_ext.GetWidth()) / 2;
+
+            const std::array<wxColour, 5> title_colors = {
+                wxColour(0x18, 0xa8, 0x4a),
+                wxColour(0xff, 0xc4, 0x00),
+                wxColour(0xee, 0x3d, 0x32),
+                wxColour(0x57, 0x7f, 0xc9),
+                wxColour(0x18, 0xa8, 0x4a),
+            };
+            auto title_color_at = [&title_colors](double t) {
+                t = std::clamp(t, 0.0, 1.0) * (title_colors.size() - 1);
+                const size_t index = std::min<size_t>(size_t(t), title_colors.size() - 2);
+                const double local_t = t - index;
+                const wxColour& c1 = title_colors[index];
+                const wxColour& c2 = title_colors[index + 1];
+                return wxColour(
+                    static_cast<unsigned char>(c1.Red() + (c2.Red() - c1.Red()) * local_t),
+                    static_cast<unsigned char>(c1.Green() + (c2.Green() - c1.Green()) * local_t),
+                    static_cast<unsigned char>(c1.Blue() + (c2.Blue() - c1.Blue()) * local_t)
+                );
+            };
+
+            for (size_t i = 0; i < m_constant_text.title.length(); ++i) {
+                wxString character = m_constant_text.title.substr(i, 1);
+                wxSize   char_ext  = memDc.GetTextExtent(character);
+                const double progress = title_ext.GetWidth() > 0 ? double(title_x - (width - title_ext.GetWidth()) / 2) / title_ext.GetWidth() : 0.0;
+                memDc.SetTextForeground(title_color_at(progress));
+                memDc.DrawText(character, title_x, title_y);
+                title_x += char_ext.GetWidth();
+            }
         }
 
         // Version
