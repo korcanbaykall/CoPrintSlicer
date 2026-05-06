@@ -358,8 +358,19 @@ public:
 
 		// Logo
         BitmapCache bmp_cache;
-        wxBitmap logo_bmp = *bmp_cache.load_svg(is_dark ? "splash_logo_dark" : "splash_logo", width, height);  // use with full width & height
-        memDc.DrawBitmap(logo_bmp, 0, 0, true);
+        const int logo_container_size = int(width * 0.30);
+        const int logo_container_x    = (width - logo_container_size) / 2;
+        const int logo_container_y    = int(height * 0.17);
+        const int logo_corner_radius  = int(logo_container_size * 0.12);
+        const int logo_padding        = int(logo_container_size * 0.13);
+        const int logo_size           = logo_container_size - logo_padding * 2;
+
+        memDc.SetPen(*wxTRANSPARENT_PEN);
+        memDc.SetBrush(wxBrush(is_dark ? wxColour(0x94, 0x94, 0x94) : wxColour(0xe9, 0xe9, 0xe9)));
+        memDc.DrawRoundedRectangle(logo_container_x, logo_container_y, logo_container_size, logo_container_size, logo_corner_radius);
+
+        wxBitmap logo_bmp = *bmp_cache.load_png("CoPrintSlicer_192px_transparent", logo_size, logo_size);
+        memDc.DrawBitmap(logo_bmp, logo_container_x + logo_padding, logo_container_y + logo_padding, true);
 
         // App title
         if (!m_constant_text.title.empty()) {
