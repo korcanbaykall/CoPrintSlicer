@@ -1274,7 +1274,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
-    const int right_placeholder_width = FromDIP(175);
+    const int right_placeholder_width = FromDIP(190);
+    const int right_placeholder_content_width = FromDIP(175);
     const int right_placeholder_height = FromDIP(320);
     const int right_placeholder_x = FromDIP(529);
     right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(32)), wxSize(right_placeholder_width, right_placeholder_height)));
@@ -1303,7 +1304,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *bottom_row_center_divider = new wxPanel(right_placeholder_box, wxID_ANY);
     bottom_row_center_divider->SetSize(wxRect(
-        wxPoint(right_placeholder_width / 2, FromDIP(240)),
+        wxPoint(right_placeholder_content_width / 2, FromDIP(240)),
         wxSize(FromDIP(1), right_placeholder_height - FromDIP(240))));
     bottom_row_center_divider->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(240)));
     bottom_row_center_divider->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(240)));
@@ -1376,7 +1377,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     const int right_value_margin = FromDIP(2);
     const int inter_value_gap = FromDIP(5);
-    const int value_right_edge = right_placeholder_width - right_value_margin;
+    const int value_right_edge = right_placeholder_content_width - right_value_margin;
 
     const int bed_unit_x = value_right_edge - bed_unit->GetBestSize().GetWidth();
     bed_unit->SetPosition(wxPoint(bed_unit_x, FromDIP(20)));
@@ -1466,7 +1467,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *bottom_left_placeholder_icon = new wxStaticBitmap(
         right_placeholder_box, wxID_ANY, idea_bmp);
     const wxSize bottom_left_icon_size = bottom_left_placeholder_icon->GetBestSize();
-    const int bottom_cell_width = right_placeholder_width / 2;
+    const int bottom_cell_width = right_placeholder_content_width / 2;
     const int bottom_cell_height = right_placeholder_height - FromDIP(240);
     const int bottom_left_icon_x = (bottom_cell_width - bottom_left_icon_size.GetWidth()) / 2;
     const int bottom_left_icon_y = FromDIP(240) + (bottom_cell_height - bottom_left_icon_size.GetHeight()) / 2;
