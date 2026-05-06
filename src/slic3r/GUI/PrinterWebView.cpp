@@ -1375,14 +1375,14 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_unit->SetForegroundColour(wxColour(220, 220, 220));
     fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
 
-    const int right_value_margin = FromDIP(2);
-    const int inter_value_gap = FromDIP(5);
-    const int value_right_edge = right_placeholder_content_width - right_value_margin;
+    const int temp_value_x = FromDIP(140);
+    const int temp_unit_x = FromDIP(210);
+    const int fan_value_x = FromDIP(190);
+    const int fan_unit_x = FromDIP(222);
+    const int speed_value_x = FromDIP(190);
 
-    const int bed_unit_x = value_right_edge - bed_unit->GetBestSize().GetWidth();
-    bed_unit->SetPosition(wxPoint(bed_unit_x, FromDIP(20)));
-    const int bed_value_x = bed_unit_x - inter_value_gap - bed_value->GetBestSize().GetWidth();
-    bed_value->SetPosition(wxPoint(bed_value_x - FromDIP(10), FromDIP(20)));
+    bed_value->SetPosition(wxPoint(temp_value_x, FromDIP(20)));
+    bed_unit->SetPosition(wxPoint(temp_unit_x, FromDIP(20)));
     auto bed_temp_handler = [this](wxMouseEvent &) {
         auto *dev_manager = wxGetApp().getDeviceManager();
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
@@ -1404,15 +1404,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     bed_value->Bind(wxEVT_LEFT_DOWN, bed_temp_handler);
     bed_unit->Bind(wxEVT_LEFT_DOWN, bed_temp_handler);
 
-    const int extruder_unit_x = value_right_edge - extruder_unit->GetBestSize().GetWidth();
-    extruder_unit->SetPosition(wxPoint(extruder_unit_x, FromDIP(80)));
-    const int extruder_value_x = extruder_unit_x - inter_value_gap - extruder_value->GetBestSize().GetWidth();
-    extruder_value->SetPosition(wxPoint(extruder_value_x - FromDIP(10), FromDIP(80)));
+    extruder_value->SetPosition(wxPoint(temp_value_x, FromDIP(80)));
+    extruder_unit->SetPosition(wxPoint(temp_unit_x, FromDIP(80)));
 
     const int fan_row_y = FromDIP(140);
-    const int fan_unit_x = value_right_edge - fan_unit->GetBestSize().GetWidth();
-    const int fan_value_width = fan_value->GetBestSize().GetWidth();
-    const int fan_value_x = fan_unit_x - inter_value_gap - fan_value_width;
     fan_value->SetPosition(wxPoint(fan_value_x, fan_row_y));
     fan_unit->SetPosition(wxPoint(fan_unit_x, fan_row_y));
 
@@ -1431,7 +1426,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     speed_value->SetForegroundColour(wxColour(220, 220, 220));
     speed_value->SetCursor(wxCursor(wxCURSOR_HAND));
     const int speed_row_y = FromDIP(200);
-    const int speed_value_x = std::min(fan_value_x, value_right_edge - speed_value->GetBestSize().GetWidth());
     speed_value->SetPosition(wxPoint(speed_value_x, speed_row_y));
     m_speed_display_label = speed_value;
     m_speed_popup_button = speed_value;
@@ -1443,7 +1437,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *right_placeholder_right_border = new wxPanel(right_placeholder_box, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
-        wxPoint(right_placeholder_width - FromDIP(1), FromDIP(1)),
+        wxPoint(right_placeholder_width - FromDIP(2), FromDIP(1)),
         wxSize(FromDIP(1), right_placeholder_height - FromDIP(2))));
     right_placeholder_right_border->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(2)));
     right_placeholder_right_border->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(2)));
@@ -1744,18 +1738,7 @@ void PrinterWebView::refresh_fan_value_display()
 
     if (m_fan_value_label != nullptr) {
         m_fan_value_label->SetLabelText(m_selected_fan_value);
-        const int right_placeholder_width = FromDIP(175);
-        const int right_value_margin = FromDIP(2);
-        const int inter_value_gap = FromDIP(5);
-        const int value_right_edge = right_placeholder_width - right_value_margin;
-        wxClientDC dc(m_fan_value_label);
-        dc.SetFont(m_fan_value_label->GetFont());
-        wxCoord fan_unit_width = 0;
-        wxCoord fan_unit_height = 0;
-        dc.GetTextExtent("%", &fan_unit_width, &fan_unit_height);
-        const int fan_unit_x = value_right_edge - fan_unit_width;
-        const int fan_value_x = fan_unit_x - inter_value_gap - m_fan_value_label->GetBestSize().GetWidth();
-        m_fan_value_label->SetPosition(wxPoint(fan_value_x, FromDIP(140)));
+        m_fan_value_label->SetPosition(wxPoint(FromDIP(190), FromDIP(140)));
     }
     Layout();
 }
@@ -1778,22 +1761,7 @@ void PrinterWebView::reset_placeholder_selections()
     m_selected_speed = "--";
     if (m_speed_display_label != nullptr) {
         m_speed_display_label->SetLabelText(m_selected_speed);
-        const int right_placeholder_width = FromDIP(175);
-        const int right_value_margin = FromDIP(2);
-        const int inter_value_gap = FromDIP(5);
-        const int value_right_edge = right_placeholder_width - right_value_margin;
-        wxClientDC dc(m_speed_display_label);
-        dc.SetFont(m_speed_display_label->GetFont());
-        wxCoord fan_unit_width = 0;
-        wxCoord fan_unit_height = 0;
-        wxCoord fan_value_width = 0;
-        wxCoord fan_value_height = 0;
-        dc.GetTextExtent("%", &fan_unit_width, &fan_unit_height);
-        dc.GetTextExtent("__", &fan_value_width, &fan_value_height);
-        const int fan_unit_x = value_right_edge - fan_unit_width;
-        const int aligned_speed_x = fan_unit_x - inter_value_gap - fan_value_width;
-        const int speed_value_x = std::min(aligned_speed_x, value_right_edge - m_speed_display_label->GetBestSize().GetWidth());
-        m_speed_display_label->SetPosition(wxPoint(speed_value_x, FromDIP(200)));
+        m_speed_display_label->SetPosition(wxPoint(FromDIP(190), FromDIP(200)));
     }
 
     dismiss_extruder_popup();
@@ -2261,22 +2229,7 @@ void PrinterWebView::rebuild_speed_popup()
             m_selected_speed = choice;
             if (m_speed_display_label != nullptr) {
                 m_speed_display_label->SetLabelText(m_selected_speed);
-                const int right_value_margin = FromDIP(2);
-                const int inter_value_gap = FromDIP(5);
-                const int right_placeholder_width = FromDIP(175);
-                const int value_right_edge = right_placeholder_width - right_value_margin;
-                wxClientDC dc(m_speed_display_label);
-                dc.SetFont(m_speed_display_label->GetFont());
-                wxCoord fan_unit_width = 0;
-                wxCoord fan_unit_height = 0;
-                wxCoord fan_value_width = 0;
-                wxCoord fan_value_height = 0;
-                dc.GetTextExtent("%", &fan_unit_width, &fan_unit_height);
-                dc.GetTextExtent("__", &fan_value_width, &fan_value_height);
-                const int fan_unit_x = value_right_edge - fan_unit_width;
-                const int aligned_speed_x = fan_unit_x - inter_value_gap - fan_value_width;
-                const int speed_value_x = std::min(aligned_speed_x, value_right_edge - m_speed_display_label->GetBestSize().GetWidth());
-                m_speed_display_label->SetPosition(wxPoint(speed_value_x, FromDIP(200)));
+                m_speed_display_label->SetPosition(wxPoint(FromDIP(190), FromDIP(200)));
             }
             auto *dev_manager = wxGetApp().getDeviceManager();
             MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
