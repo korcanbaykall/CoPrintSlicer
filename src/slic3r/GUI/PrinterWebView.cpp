@@ -1374,7 +1374,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     fan_unit->SetForegroundColour(wxColour(220, 220, 220));
     fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
 
-    const int right_value_margin = FromDIP(5);
+    const int right_value_margin = FromDIP(2);
     const int inter_value_gap = FromDIP(5);
     const int value_right_edge = right_placeholder_width - right_value_margin;
 
@@ -1513,7 +1513,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *right_main_column = new wxBoxSizer(wxVERTICAL);
     right_main_column->Add(right_container, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
-    right_main_column->AddSpacer(FromDIP(6));
+    right_main_column->AddSpacer(FromDIP(3));
     right_main_column->Add(upper_placeholder_box, 0, wxEXPAND);
     right_main_column->AddSpacer(FromDIP(10));
     right_main_column->Add(lower_placeholder_box, 0, wxEXPAND);
@@ -1744,7 +1744,7 @@ void PrinterWebView::refresh_fan_value_display()
     if (m_fan_value_label != nullptr) {
         m_fan_value_label->SetLabelText(m_selected_fan_value);
         const int right_placeholder_width = FromDIP(175);
-        const int right_value_margin = FromDIP(5);
+        const int right_value_margin = FromDIP(2);
         const int inter_value_gap = FromDIP(5);
         const int value_right_edge = right_placeholder_width - right_value_margin;
         wxClientDC dc(m_fan_value_label);
@@ -1778,7 +1778,7 @@ void PrinterWebView::reset_placeholder_selections()
     if (m_speed_display_label != nullptr) {
         m_speed_display_label->SetLabelText(m_selected_speed);
         const int right_placeholder_width = FromDIP(175);
-        const int right_value_margin = FromDIP(5);
+        const int right_value_margin = FromDIP(2);
         const int inter_value_gap = FromDIP(5);
         const int value_right_edge = right_placeholder_width - right_value_margin;
         wxClientDC dc(m_speed_display_label);
@@ -2260,7 +2260,7 @@ void PrinterWebView::rebuild_speed_popup()
             m_selected_speed = choice;
             if (m_speed_display_label != nullptr) {
                 m_speed_display_label->SetLabelText(m_selected_speed);
-                const int right_value_margin = FromDIP(5);
+                const int right_value_margin = FromDIP(2);
                 const int inter_value_gap = FromDIP(5);
                 const int right_placeholder_width = FromDIP(175);
                 const int value_right_edge = right_placeholder_width - right_value_margin;
