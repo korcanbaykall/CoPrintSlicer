@@ -85,6 +85,16 @@ static wxColour TEXT_LIGHT_FONT_COL  = wxColour(107, 107, 107);
 
 static wxImage fail_image;
 
+static bool is_moonraker_machine(MachineObject* obj)
+{
+    if (obj == nullptr || !obj->is_lan_mode_printer())
+        return false;
+
+    auto* agent = wxGetApp().getAgent();
+    return agent != nullptr && agent->get_printer_agent() != nullptr &&
+           agent->get_printer_agent()->get_agent_info().id == "moonraker";
+}
+
 
 /* size */
 #define PAGE_TITLE_HEIGHT FromDIP(36)
@@ -2768,7 +2778,7 @@ void StatusPanel::update(MachineObject *obj)
     }
 
     /*STUDIO-12573*/
-    if (!obj->is_fdm_type()) {
+    if (!obj->is_fdm_type() && !is_moonraker_machine(obj)) {
         m_switch_lamp->Enable(false);
     }
 
