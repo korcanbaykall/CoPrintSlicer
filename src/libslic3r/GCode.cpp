@@ -3436,6 +3436,9 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
             file.write_format("; total filament change = %i\n",
                 print.m_print_statistics.total_toolchanges);
         file.write_format("; total layers count = %i\n", m_layer_count);
+        file.write_format("; total layer number: %i\n", m_layer_count);
+        if (!print.objects().empty())
+            file.write_format("; layer_height = %.3f\n", print.objects().front()->config().layer_height.value);
         file.write_format(
             ";%s\n",
             GCodeProcessor::reserved_tag(

@@ -204,7 +204,9 @@ private:
     static constexpr uint64_t STATUS_UPDATE_INTERVAL_MS = 75;  // ~13 updates/sec; Moonraker can emit many notify_status_update frames
     std::atomic<uint64_t> ws_last_dispatch_ms{0};
     std::string last_print_state;  // Track state for immediate dispatch on change
-    std::string m_last_metadata_filename; // Track filename to detect when to re-fetch metadata
+    std::string m_last_metadata_filename;    // Last filename for which metadata was successfully fetched
+    std::string m_metadata_attempt_filename; // Filename currently being attempted (for retry tracking)
+    int         m_metadata_retry_count {0};  // Failed fetch attempts for the current filename
 
     // Connection thread management
     std::atomic<uint64_t>  connect_generation{0};

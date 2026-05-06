@@ -537,8 +537,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_box->SetBorderColorNormal(wxColour(55, 58, 64));
     preview_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     preview_box->SetBackgroundColour(wxColour(28, 30, 34));
-    preview_box->SetMinSize(wxSize(FromDIP(910), FromDIP(545)));
-    preview_box->SetMaxSize(wxSize(FromDIP(910), FromDIP(545)));
+    preview_box->SetMinSize(wxSize(FromDIP(880), FromDIP(545)));
+    preview_box->SetMaxSize(wxSize(FromDIP(880), FromDIP(545)));
     auto *preview_box_sizer = new wxBoxSizer(wxVERTICAL);
     preview_box_sizer->AddSpacer(FromDIP(15));
     auto *camera_label = new wxStaticText(preview_box, wxID_ANY, _L("Kamera"));
@@ -560,7 +560,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_right_frame->SetBackgroundColour(wxColour(96, 100, 108));
     preview_middle_frame->Add(preview_left_frame, 0, wxEXPAND);
     m_camera_webview = wxWebView::New(preview_box, wxID_ANY);
-    m_camera_webview->SetMinSize(wxSize(FromDIP(860), FromDIP(410)));
+    m_camera_webview->SetMinSize(wxSize(FromDIP(830), FromDIP(410)));
     m_camera_webview->SetBackgroundColour(*wxBLACK);
     m_camera_webview->SetPage(camera_stream_page({}), "");
     preview_middle_frame->Add(m_camera_webview, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
@@ -607,8 +607,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     progress_box->SetBorderColorNormal(wxColour(55, 58, 64));
     progress_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
     progress_box->SetBackgroundColour(wxColour(28, 30, 34));
-    progress_box->SetMinSize(wxSize(FromDIP(910), FromDIP(270)));
-    progress_box->SetMaxSize(wxSize(FromDIP(910), FromDIP(270)));
+    progress_box->SetMinSize(wxSize(FromDIP(880), FromDIP(270)));
+    progress_box->SetMaxSize(wxSize(FromDIP(880), FromDIP(270)));
     auto *progress_box_sizer = new wxBoxSizer(wxVERTICAL);
     auto *progress_title = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Yazd\xC4\xB1rma ilerlemesi"));
     progress_title->SetForegroundColour(wxColour(150, 156, 166));
@@ -643,12 +643,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *controls_col = new wxBoxSizer(wxVERTICAL);
     controls_col->AddSpacer(FromDIP(55));
-    m_active_file_name_value = new wxStaticText(progress_box, wxID_ANY, "N/A", wxDefaultPosition, wxSize(FromDIP(420), -1), wxST_ELLIPSIZE_END);
+    m_active_file_name_value = new wxStaticText(progress_box, wxID_ANY, "N/A", wxDefaultPosition, wxSize(FromDIP(390), -1), wxST_ELLIPSIZE_END);
     m_active_file_name_value->SetForegroundColour(wxColour(97, 211, 124));
     controls_col->Add(m_active_file_name_value, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
     
     auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
-    m_print_progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(645), FromDIP(12)), wxGA_SMOOTH);
+    m_print_progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(615), FromDIP(12)), wxGA_SMOOTH);
     m_print_progress_bar->SetValue(0);
     progress_controls_row->Add(m_print_progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(25));
     auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
@@ -685,7 +685,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     layer_info_row->Add(m_layer_printer_value, 0, wxALIGN_CENTER_VERTICAL);
     layer_info_row->AddSpacer(FromDIP(30));
     layer_info_row->Add(m_layer_file_value, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddSpacer(FromDIP(325));
+    layer_info_row->AddSpacer(FromDIP(295));
     m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("Tahmini biti\xC5\x9F s\xC3\xBCresi:"));
     m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
     m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
@@ -998,7 +998,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *right_container = new wxPanel(left_container, wxID_ANY);
     right_container->SetBackgroundColour(wxColour(28, 30, 34));
-    const int right_container_width = FromDIP(745);
+    const int right_container_width = FromDIP(775);
     const int right_container_height = FromDIP(430);
     right_container->SetSize(wxSize(right_container_width, right_container_height));
     right_container->SetMinSize(wxSize(right_container_width, -1));
@@ -1277,7 +1277,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int right_placeholder_height = FromDIP(320);
     const int right_placeholder_x = FromDIP(529);
     const int right_placeholder_width = right_container_width - right_placeholder_x - FromDIP(8);
-    const int right_placeholder_content_width = FromDIP(175);
+    const int right_placeholder_content_width = right_placeholder_width - FromDIP(5);
     right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(32)), wxSize(right_placeholder_width, right_placeholder_height)));
     right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
@@ -1441,13 +1441,13 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     speed_label->Bind(wxEVT_LEFT_DOWN, speed_popup_handler);
     speed_value->Bind(wxEVT_LEFT_DOWN, speed_popup_handler);
 
-    auto *right_placeholder_right_border = new wxPanel(right_container, wxID_ANY);
+    auto *right_placeholder_right_border = new wxPanel(right_placeholder_box, wxID_ANY);
     right_placeholder_right_border->SetSize(wxRect(
-        wxPoint(right_placeholder_x + right_placeholder_width - FromDIP(1), FromDIP(44)),
-        wxSize(FromDIP(1), right_placeholder_height - FromDIP(24))));
-    right_placeholder_right_border->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(24)));
-    right_placeholder_right_border->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(24)));
-    right_placeholder_right_border->SetBackgroundColour(wxColour(70, 74, 82));
+        wxPoint(right_placeholder_width - FromDIP(1), FromDIP(1)),
+        wxSize(FromDIP(1), right_placeholder_height - FromDIP(2))));
+    right_placeholder_right_border->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(2)));
+    right_placeholder_right_border->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(2)));
+    right_placeholder_right_border->SetBackgroundColour(wxColour(55, 58, 64));
 
     wxBitmap idea_bmp;
     {

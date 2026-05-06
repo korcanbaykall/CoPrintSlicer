@@ -2073,16 +2073,31 @@ void MoonrakerPrinterAgent::handle_ws_message(const std::string& dev_id, const s
                 status_cache["print_stats"]["filename"].is_string())
                 current_filename = status_cache["print_stats"]["filename"].get<std::string>();
         }
-        if (!current_filename.empty() && current_filename != m_last_metadata_filename) {
-            m_last_metadata_filename = current_filename;
-            nlohmann::json file_meta;
-            std::string    meta_error;
-            if (fetch_file_metadata(device_info.base_url, device_info.api_key, current_filename, file_meta, meta_error)) {
-                std::lock_guard<std::recursive_mutex> lock(payload_mutex);
-                status_cache["__file_metadata"] = file_meta;
-                BOOST_LOG_TRIVIAL(info) << "MoonrakerPrinterAgent: Fetched metadata for " << current_filename;
-            } else {
-                BOOST_LOG_TRIVIAL(warning) << "MoonrakerPrinterAgent: Metadata fetch failed for " << current_filename << ": " << meta_error;
+        if (!current_filename.empty()) {
+            if (current_filename != m_metadata_attempt_filename) {
+                // New file: reset retry counter and clear stale metadata
+                m_metadata_attempt_filename = current_filename;
+                m_metadata_retry_count      = 0;
+                if (current_filename != m_last_metadata_filename) {
+                    std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                    status_cache.erase("__file_metadata");
+                }
+            }
+            if (current_filename != m_last_metadata_filename && m_metadata_retry_count < 3) {
+                nlohmann::json file_meta;
+                std::string    meta_error;
+                if (fetch_file_metadata(device_info.base_url, device_info.api_key, current_filename, file_meta, meta_error)) {
+                    m_last_metadata_filename = current_filename;
+                    m_metadata_retry_count   = 0;
+                    std::lock_guard<std::recursive_mutex> lock(payload_mutex);
+                    status_cache["__file_metadata"] = file_meta;
+                    BOOST_LOG_TRIVIAL(info) << "MoonrakerPrinterAgent: Fetched metadata for " << current_filename;
+                } else {
+                    m_metadata_retry_count++;
+                    BOOST_LOG_TRIVIAL(warning) << "MoonrakerPrinterAgent: Metadata fetch failed for " << current_filename
+                                               << ": " << meta_error
+                                               << " (attempt " << m_metadata_retry_count << "/3)";
+                }
             }
         }
     }
@@ -2354,7 +2369,7 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
 
         // Estimated time from slicer metadata → use for remaining time and prediction
         double layer_count = 0.0;
-        if (total_layer <= 0 && json_number_value(meta, {"layer_count", "layers", "total_layer", "total_layers"}, layer_count))
+        if (total_layer <= 0 && json_number_value(meta, {"layer_count", "layers", "total_layer", "total_layers", "total_layers_count", "layers_count"}, layer_count))
             total_layer = std::max(0, static_cast<int>(layer_count));
 
         double layer_height = 0.0;
@@ -2362,6 +2377,9 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
         double object_height = 0.0;
         json_number_value(meta, {"layer_height"}, layer_height);
         json_number_value(meta, {"first_layer_height", "first_layer_extr_height"}, first_layer_height);
+        // Fallback: if layer_height not in metadata but first_layer_height is, use it as approximation
+        if (layer_height <= 0.0 && first_layer_height > 0.0)
+            layer_height = first_layer_height;
         if (total_layer <= 0 && json_number_value(meta, {"object_height", "max_z"}, object_height) && layer_height > 0.0) {
             const double first_height = first_layer_height > 0.0 ? first_layer_height : layer_height;
             total_layer = std::max(1, static_cast<int>(std::ceil((object_height - first_height) / layer_height)) + 1);
