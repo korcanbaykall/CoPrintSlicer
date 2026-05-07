@@ -1994,6 +1994,66 @@ void PrinterWebView::rebuild_printers_popup()
         });
     };
 
+    auto remove_local_machine = [this, dev_manager](MachineObject *machine) {
+        if (dev_manager == nullptr || machine == nullptr)
+            return;
+
+        const std::string dev_id = machine->get_dev_id();
+        const wxString    name   = from_u8(machine->get_dev_name());
+        const int answer = wxMessageBox(
+            wxString::Format("%s kayitli yazicisini silmek istiyor musunuz?", name),
+            "Yaziciyi Sil",
+            wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION,
+            this);
+        if (answer != wxYES)
+            return;
+
+        MachineObject *selected_machine = dev_manager->get_selected_machine();
+        if (selected_machine != nullptr && selected_machine->get_dev_id() == dev_id) {
+            selected_machine->disconnect();
+            selected_machine->set_online_state(false);
+            selected_machine->reset();
+            m_has_active_printer_connection = false;
+            dev_manager->set_selected_machine("");
+        }
+
+        if (wxGetApp().app_config != nullptr)
+            wxGetApp().app_config->erase_local_machine(dev_id);
+        dev_manager->erase_local_machine(dev_id);
+        delete machine;
+
+        rebuild_printers_popup();
+        refresh_layer_info_from_selected_machine();
+        Layout();
+    };
+
+    auto add_machine_line = [this, printers_popup_sizer, bind_machine_line, remove_local_machine, &local_machines](
+                                MachineObject *machine, const wxColour &color, int top = 12) {
+        if (machine == nullptr)
+            return;
+
+        auto *row = new wxPanel(m_printers_popup_panel, wxID_ANY);
+        row->SetBackgroundColour(wxColour(245, 245, 245));
+        auto *row_sizer = new wxBoxSizer(wxHORIZONTAL);
+        auto *name_label = new wxStaticText(row, wxID_ANY, from_u8(machine->get_dev_name()), wxDefaultPosition, wxSize(FromDIP(155), -1), wxST_ELLIPSIZE_END);
+        name_label->SetForegroundColour(color);
+        row_sizer->Add(name_label, 1, wxALIGN_CENTER_VERTICAL);
+
+        const bool is_saved_local_machine = local_machines.find(machine->get_dev_id()) != local_machines.end();
+        if (is_saved_local_machine) {
+            auto *delete_label = new wxStaticText(row, wxID_ANY, "Sil");
+            delete_label->SetForegroundColour(wxColour(180, 60, 60));
+            delete_label->SetCursor(wxCursor(wxCURSOR_HAND));
+            delete_label->Bind(wxEVT_LEFT_DOWN, [remove_local_machine, machine](wxMouseEvent &) { remove_local_machine(machine); });
+            row_sizer->AddSpacer(FromDIP(8));
+            row_sizer->Add(delete_label, 0, wxALIGN_CENTER_VERTICAL);
+        }
+
+        row->SetSizer(row_sizer);
+        bind_machine_line(name_label, machine);
+        printers_popup_sizer->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(top));
+    };
+
     std::map<std::string, MachineObject*> visible_my_machines;
     for (const auto &entry : my_machines) {
         if (entry.second == nullptr)
@@ -2024,7 +2084,7 @@ void PrinterWebView::rebuild_printers_popup()
                 auto *machine = entry.second;
                 if (machine == nullptr)
                     continue;
-                bind_machine_line(add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(20, 20, 20), false, 12), machine);
+                add_machine_line(machine, wxColour(20, 20, 20), 12);
             }
         }
 
@@ -2034,7 +2094,7 @@ void PrinterWebView::rebuild_printers_popup()
                 auto *machine = entry.second;
                 if (machine == nullptr)
                     continue;
-                bind_machine_line(add_popup_line(m_printers_popup_panel, from_u8(machine->get_dev_name()), wxColour(80, 80, 80), false, 12), machine);
+                add_machine_line(machine, wxColour(80, 80, 80), 12);
             }
         }
 
