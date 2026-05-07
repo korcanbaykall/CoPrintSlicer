@@ -1311,7 +1311,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int right_placeholder_height = FromDIP(240);
     const int right_placeholder_x = FromDIP(529);
     const int right_placeholder_width = FromDIP(205);
-    right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(44)), wxSize(right_placeholder_width, right_placeholder_height)));
+    right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(64)), wxSize(right_placeholder_width, right_placeholder_height)));
     right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetCornerRadius(FromDIP(12));
