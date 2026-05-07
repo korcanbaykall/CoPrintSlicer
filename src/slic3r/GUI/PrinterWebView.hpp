@@ -107,6 +107,7 @@ private:
     wxStaticText *m_connected_printer_status_label{ nullptr };
     wxStaticText *m_connected_printer_name_label{ nullptr };
     wxStaticText *m_connected_printer_logout_label{ nullptr };
+    bool m_has_active_printer_connection{ false };
     std::map<wxString, wxString> m_fan_values;
     wxStaticText *m_layer_file_value{ nullptr };
     wxStaticText *m_layer_label{ nullptr };

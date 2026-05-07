@@ -535,6 +535,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
             obj->set_online_state(false);
             obj->reset();
         }
+        m_has_active_printer_connection = false;
         if (dev_manager != nullptr)
             dev_manager->set_selected_machine("");
         rebuild_printers_popup();
@@ -1884,6 +1885,7 @@ void PrinterWebView::prompt_ip_connect()
         wxMessageBox("Yazici secilemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
         return;
     }
+    m_has_active_printer_connection = true;
     obj->command_request_push_all(true);
 
     dismiss_printers_popup();
@@ -1986,6 +1988,7 @@ void PrinterWebView::rebuild_printers_popup()
                 wxGetApp().mainframe->m_monitor->select_machine(dev_id);
             else if (dev_manager != nullptr)
                 dev_manager->set_selected_machine(dev_id);
+            m_has_active_printer_connection = true;
             machine->command_request_push_all(true);
             refresh_layer_info_from_selected_machine();
         });
@@ -2604,7 +2607,7 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
 
     if (m_connected_printer_panel != nullptr && m_connected_printer_status_label != nullptr && m_connected_printer_name_label != nullptr &&
         m_connected_printer_logout_label != nullptr) {
-        const bool has_connected_printer = obj != nullptr && obj->is_online();
+        const bool has_connected_printer = m_has_active_printer_connection && obj != nullptr && obj->is_online();
         if (has_connected_printer) {
             m_connected_printer_status_label->SetLabelText(wxString::FromUTF8("Ba\xC4\x9Fland\xC4\xB1:"));
             m_connected_printer_name_label->SetLabelText(from_u8(obj->get_dev_name()));
