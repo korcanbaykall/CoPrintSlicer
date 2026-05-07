@@ -527,7 +527,18 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_connected_printer_logout_label->SetCursor(wxCursor(wxCURSOR_HAND));
     m_connected_printer_logout_label->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) {
         dismiss_printers_popup();
-        wxGetApp().request_user_logout();
+        auto *dev_manager = wxGetApp().getDeviceManager();
+        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+        if (obj != nullptr) {
+            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: disconnect selected printer dev_id =" << obj->get_dev_id();
+            obj->disconnect();
+            obj->set_online_state(false);
+            obj->reset();
+        }
+        if (dev_manager != nullptr)
+            dev_manager->set_selected_machine("");
+        rebuild_printers_popup();
+        refresh_layer_info_from_selected_machine();
     });
     auto *connected_name_row = new wxBoxSizer(wxHORIZONTAL);
     connected_name_row->Add(m_connected_printer_name_label, 1, wxALIGN_CENTER_VERTICAL);
