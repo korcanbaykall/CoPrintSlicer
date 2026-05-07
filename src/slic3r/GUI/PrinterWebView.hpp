@@ -10,6 +10,7 @@
 #include <wx/image.h>
 #include <wx/webrequest.h>
 #include <wx/webview.h>
+#include "Widgets/ProgressBar.hpp"
 #include "Widgets/WebView.hpp"
 class wxStaticBitmap;
 class wxStaticText;
@@ -140,7 +141,7 @@ private:
     wxPanel *m_update_page{ nullptr };
     wxStaticText *m_update_percent_value{ nullptr };
     wxStaticBitmap *m_update_printer_bitmap{ nullptr };
-    wxGauge *m_print_progress_bar{ nullptr };
+    ProgressBar *m_print_progress_bar{ nullptr };
     wxGauge *m_update_progress_gauge{ nullptr };
     wxStaticText *m_update_release_note_link{ nullptr };
     wxStaticText *m_update_serial_value{ nullptr };
