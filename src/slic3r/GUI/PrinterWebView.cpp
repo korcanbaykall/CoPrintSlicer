@@ -522,11 +522,23 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     wxFont connected_name_font = m_connected_printer_name_label->GetFont();
     connected_name_font.SetWeight(wxFONTWEIGHT_BOLD);
     m_connected_printer_name_label->SetFont(connected_name_font);
+    m_connected_printer_logout_label = new wxStaticText(m_connected_printer_panel, wxID_ANY, wxString::FromUTF8("\xC3\x87\xC4\xB1k\xC4\xB1\xC5\x9F yap"));
+    m_connected_printer_logout_label->SetForegroundColour(wxColour(150, 156, 166));
+    m_connected_printer_logout_label->SetCursor(wxCursor(wxCURSOR_HAND));
+    m_connected_printer_logout_label->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) {
+        dismiss_printers_popup();
+        wxGetApp().request_user_logout();
+    });
+    auto *connected_name_row = new wxBoxSizer(wxHORIZONTAL);
+    connected_name_row->Add(m_connected_printer_name_label, 1, wxALIGN_CENTER_VERTICAL);
+    connected_name_row->AddSpacer(FromDIP(8));
+    connected_name_row->Add(m_connected_printer_logout_label, 0, wxALIGN_CENTER_VERTICAL);
     connected_printer_sizer->Add(m_connected_printer_status_label, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(19));
-    connected_printer_sizer->Add(m_connected_printer_name_label, 0, wxLEFT | wxRIGHT, FromDIP(19));
+    connected_printer_sizer->Add(connected_name_row, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(19));
     connected_printer_sizer->AddSpacer(FromDIP(10));
     m_connected_printer_panel->SetSizer(connected_printer_sizer);
     m_connected_printer_name_label->Hide();
+    m_connected_printer_logout_label->Hide();
     preview_menu_sizer->Add(m_connected_printer_panel, 0, wxEXPAND);
 
     add_preview_menu_item("Printers", 50, PrinterWebViewTab::Status, true);
@@ -2579,7 +2591,8 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     set_active_file_name(active_file_name_text(obj));
     update_preview_thumbnail(obj);
 
-    if (m_connected_printer_panel != nullptr && m_connected_printer_status_label != nullptr && m_connected_printer_name_label != nullptr) {
+    if (m_connected_printer_panel != nullptr && m_connected_printer_status_label != nullptr && m_connected_printer_name_label != nullptr &&
+        m_connected_printer_logout_label != nullptr) {
         const bool has_connected_printer = obj != nullptr && obj->is_online();
         if (has_connected_printer) {
             m_connected_printer_status_label->SetLabelText(wxString::FromUTF8("Ba\xC4\x9Fland\xC4\xB1:"));
@@ -2588,6 +2601,7 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
             m_connected_printer_status_label->SetLabelText(wxString::FromUTF8("Ba\xC4\x9Fl\xC4\xB1 yaz\xC4\xB1""c\xC4\xB1 yok"));
         }
         m_connected_printer_name_label->Show(has_connected_printer);
+        m_connected_printer_logout_label->Show(has_connected_printer);
         if (m_connected_printer_panel->GetParent() != nullptr) {
             m_connected_printer_panel->GetParent()->Layout();
             m_connected_printer_panel->GetParent()->Refresh();
