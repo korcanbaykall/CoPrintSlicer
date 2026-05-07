@@ -515,18 +515,18 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_connected_printer_panel = new wxPanel(preview_menu_panel, wxID_ANY);
     m_connected_printer_panel->SetBackgroundColour(wxColour(28, 30, 34));
     auto *connected_printer_sizer = new wxBoxSizer(wxVERTICAL);
-    auto *connected_caption = new wxStaticText(m_connected_printer_panel, wxID_ANY, wxString::FromUTF8("Bagland\xC4\xB1:"));
-    connected_caption->SetForegroundColour(wxColour(150, 156, 166));
+    m_connected_printer_status_label = new wxStaticText(m_connected_printer_panel, wxID_ANY, wxString::FromUTF8("Ba\xC4\x9Fl\xC4\xB1 yaz\xC4\xB1""c\xC4\xB1 yok"));
+    m_connected_printer_status_label->SetForegroundColour(wxColour(150, 156, 166));
     m_connected_printer_name_label = new wxStaticText(m_connected_printer_panel, wxID_ANY, "N/A", wxDefaultPosition, wxSize(FromDIP(185), -1), wxST_ELLIPSIZE_END);
     m_connected_printer_name_label->SetForegroundColour(wxColour(235, 235, 235));
     wxFont connected_name_font = m_connected_printer_name_label->GetFont();
     connected_name_font.SetWeight(wxFONTWEIGHT_BOLD);
     m_connected_printer_name_label->SetFont(connected_name_font);
-    connected_printer_sizer->Add(connected_caption, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(19));
+    connected_printer_sizer->Add(m_connected_printer_status_label, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(19));
     connected_printer_sizer->Add(m_connected_printer_name_label, 0, wxLEFT | wxRIGHT, FromDIP(19));
     connected_printer_sizer->AddSpacer(FromDIP(10));
     m_connected_printer_panel->SetSizer(connected_printer_sizer);
-    m_connected_printer_panel->Hide();
+    m_connected_printer_name_label->Hide();
     preview_menu_sizer->Add(m_connected_printer_panel, 0, wxEXPAND);
 
     add_preview_menu_item("Printers", 50, PrinterWebViewTab::Status, true);
@@ -2579,13 +2579,19 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     set_active_file_name(active_file_name_text(obj));
     update_preview_thumbnail(obj);
 
-    if (m_connected_printer_panel != nullptr && m_connected_printer_name_label != nullptr) {
-        const bool has_connected_printer = obj != nullptr;
-        if (has_connected_printer)
+    if (m_connected_printer_panel != nullptr && m_connected_printer_status_label != nullptr && m_connected_printer_name_label != nullptr) {
+        const bool has_connected_printer = obj != nullptr && obj->is_online();
+        if (has_connected_printer) {
+            m_connected_printer_status_label->SetLabelText(wxString::FromUTF8("Ba\xC4\x9Fland\xC4\xB1:"));
             m_connected_printer_name_label->SetLabelText(from_u8(obj->get_dev_name()));
-        m_connected_printer_panel->Show(has_connected_printer);
-        if (m_connected_printer_panel->GetParent() != nullptr)
+        } else {
+            m_connected_printer_status_label->SetLabelText(wxString::FromUTF8("Ba\xC4\x9Fl\xC4\xB1 yaz\xC4\xB1""c\xC4\xB1 yok"));
+        }
+        m_connected_printer_name_label->Show(has_connected_printer);
+        if (m_connected_printer_panel->GetParent() != nullptr) {
             m_connected_printer_panel->GetParent()->Layout();
+            m_connected_printer_panel->GetParent()->Refresh();
+        }
     }
 
     if (m_print_progress_bar != nullptr) {
