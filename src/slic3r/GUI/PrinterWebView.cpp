@@ -671,9 +671,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_print_progress_bar = new ProgressBar(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(615), FromDIP(14)));
     m_print_progress_bar->SetMinSize(wxSize(FromDIP(615), FromDIP(14)));
     m_print_progress_bar->SetMaxSize(wxSize(FromDIP(615), FromDIP(14)));
+    m_print_progress_bar->SetBackgroundColour(wxColour(28, 30, 34));
     m_print_progress_bar->SetRadius(FromDIP(7));
     m_print_progress_bar->SetProgressForedColour(wxColour(55, 58, 64));
-    m_print_progress_bar->SetProgressBackgroundColour(wxColour(97, 211, 124));
+    m_print_progress_bar->SetProgressBackgroundColour(wxColour(255, 255, 255));
     m_print_progress_bar->SetValue(0);
     progress_controls_row->Add(m_print_progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(25));
     m_pause_resume_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
