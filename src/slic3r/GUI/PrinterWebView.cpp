@@ -672,6 +672,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_print_progress_bar->SetValue(0);
     progress_controls_row->Add(m_print_progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(25));
     m_pause_resume_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
+    m_pause_resume_icon->SetMinSize(wxSize(FromDIP(20), FromDIP(20)));
     m_pause_resume_icon->SetCursor(wxCursor(wxCURSOR_HAND));
     m_pause_resume_icon->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
         auto *dev_manager = wxGetApp().getDeviceManager();
@@ -682,13 +683,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         if (obj->can_resume()) {
             BOOST_LOG_TRIVIAL(info) << "PrinterWebView: resume current print task dev_id =" << obj->get_dev_id();
             obj->command_task_resume();
-            if (m_pause_resume_icon != nullptr)
-                m_pause_resume_icon->SetBitmap(create_scaled_bitmap("pause", this, 20));
         } else {
             BOOST_LOG_TRIVIAL(info) << "PrinterWebView: pause current print task dev_id =" << obj->get_dev_id();
             obj->command_task_pause();
-            if (m_pause_resume_icon != nullptr)
-                m_pause_resume_icon->SetBitmap(create_scaled_bitmap("Vector", this, 20));
         }
     });
     progress_controls_row->Add(m_pause_resume_icon, 0, wxALIGN_CENTER_VERTICAL);
@@ -1311,7 +1308,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     const int right_placeholder_height = FromDIP(240);
     const int right_placeholder_x = FromDIP(529);
     const int right_placeholder_width = FromDIP(205);
-    right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(114)), wxSize(right_placeholder_width, right_placeholder_height)));
+    right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(120)), wxSize(right_placeholder_width, right_placeholder_height)));
     right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetCornerRadius(FromDIP(12));
@@ -2531,8 +2528,10 @@ void PrinterWebView::refresh_print_controls_from_selected_machine()
 
     auto *dev_manager = wxGetApp().getDeviceManager();
     auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-    const char *pause_icon_key = (obj != nullptr && obj->can_resume()) ? "Vector" : "pause";
-    m_pause_resume_icon->SetBitmap(create_scaled_bitmap(pause_icon_key, this, 20));
+    if (obj != nullptr && obj->can_resume())
+        m_pause_resume_icon->SetBitmap(create_scaled_bitmap("Vector", this, 16));
+    else
+        m_pause_resume_icon->SetBitmap(create_scaled_bitmap("pause", this, 20));
 }
 
 void PrinterWebView::refresh_layer_info_from_selected_machine()
