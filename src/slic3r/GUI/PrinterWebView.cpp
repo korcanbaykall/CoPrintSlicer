@@ -1957,7 +1957,28 @@ void PrinterWebView::rebuild_printers_popup()
 
     auto *search_box = new wxTextCtrl(m_printers_popup_panel, wxID_ANY, "", wxDefaultPosition, wxSize(FromDIP(210), -1));
     search_box->SetHint("Ara");
+    search_box->ChangeValue(m_printers_search_query);
+    search_box->Bind(wxEVT_TEXT, [this](wxCommandEvent &evt) {
+        m_printers_search_query = evt.GetString();
+        CallAfter([this]() {
+            rebuild_printers_popup();
+        });
+    });
     printers_popup_sizer->Add(search_box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
+
+    const wxString search_query = m_printers_search_query.Lower();
+    auto matches_search = [&search_query](MachineObject *machine) {
+        if (machine == nullptr)
+            return false;
+        if (search_query.empty())
+            return true;
+
+        wxString searchable;
+        searchable << from_u8(machine->get_dev_name()) << " "
+                   << from_u8(machine->get_dev_id()) << " "
+                   << from_u8(machine->get_dev_ip());
+        return searchable.Lower().Find(search_query) != wxNOT_FOUND;
+    };
 
     auto add_popup_line = [this, printers_popup_sizer](wxWindow *parent, const wxString &text, const wxColour &color, bool bold = false, int top = 16) {
         auto *line = new wxStaticText(parent, wxID_ANY, text);
@@ -2060,6 +2081,8 @@ void PrinterWebView::rebuild_printers_popup()
             continue;
         if (selected_machine != nullptr && entry.first == selected_machine->get_dev_id())
             continue;
+        if (!matches_search(entry.second))
+            continue;
         visible_my_machines.emplace(entry);
     }
 
@@ -2070,6 +2093,8 @@ void PrinterWebView::rebuild_printers_popup()
         if (visible_my_machines.find(entry.first) != visible_my_machines.end())
             continue;
         if (selected_machine != nullptr && entry.first == selected_machine->get_dev_id())
+            continue;
+        if (!matches_search(entry.second))
             continue;
         other_local_machines.emplace(entry);
     }
@@ -2098,6 +2123,9 @@ void PrinterWebView::rebuild_printers_popup()
             }
         }
 
+        if (!m_printers_search_query.empty() && visible_my_machines.empty() && other_local_machines.empty())
+            add_popup_line(m_printers_popup_panel, "Sonuc bulunamadi", wxColour(120, 120, 120), false, 14);
+
         auto *ip_line = add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 16);
         ip_line->SetCursor(wxCursor(wxCURSOR_HAND));
         ip_line->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { prompt_ip_connect(); });
@@ -2115,6 +2143,10 @@ void PrinterWebView::rebuild_printers_popup()
     m_printers_popup->SetClientSize(popup_size);
     m_printers_popup->SetSize(popup_size);
     m_printers_popup->Layout();
+    if (!m_printers_search_query.empty()) {
+        search_box->SetFocus();
+        search_box->SetInsertionPointEnd();
+    }
 }
 
 void PrinterWebView::rebuild_extruder_popup()
