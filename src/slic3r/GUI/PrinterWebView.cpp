@@ -1294,10 +1294,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
-    const int right_placeholder_height = FromDIP(320);
+    const int right_placeholder_height = FromDIP(240);
     const int right_placeholder_x = FromDIP(529);
     const int right_placeholder_width = FromDIP(205);
-    const int right_placeholder_content_width = right_placeholder_width - FromDIP(5);
     right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(32)), wxSize(right_placeholder_width, right_placeholder_height)));
     right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
     right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
@@ -1320,15 +1319,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     add_placeholder_line(60);
     add_placeholder_line(120);
     add_placeholder_line(180);
-    add_placeholder_line(240);
-
-    auto *bottom_row_center_divider = new wxPanel(right_placeholder_box, wxID_ANY);
-    bottom_row_center_divider->SetSize(wxRect(
-        wxPoint(right_placeholder_content_width / 2, FromDIP(240)),
-        wxSize(FromDIP(1), right_placeholder_height - FromDIP(240))));
-    bottom_row_center_divider->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(240)));
-    bottom_row_center_divider->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(240)));
-    bottom_row_center_divider->SetBackgroundColour(wxColour(55, 58, 64));
 
     auto *bed_label = new wxStaticText(right_placeholder_box, wxID_ANY, "Bed");
     bed_label->SetPosition(wxPoint(FromDIP(12), FromDIP(20)));
@@ -1462,59 +1452,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     right_placeholder_right_border->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(2)));
     right_placeholder_right_border->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(2)));
     right_placeholder_right_border->SetBackgroundColour(wxColour(55, 58, 64));
-
-    wxBitmap idea_bmp;
-    {
-        wxImage img;
-        if (img.LoadFile(from_u8(Slic3r::var("idea.png")), wxBITMAP_TYPE_PNG) && img.IsOk()) {
-            if (!img.HasAlpha()) img.InitAlpha();
-            for (int y = 0; y < img.GetHeight(); y++)
-                for (int x = 0; x < img.GetWidth(); x++)
-                    if (img.GetAlpha(x, y) > 0)
-                        img.SetRGB(x, y, 255, 255, 255);
-            const int px = FromDIP(40);
-            idea_bmp = wxBitmap(img.Scale(px, px, wxIMAGE_QUALITY_HIGH));
-        } else {
-            idea_bmp = create_scaled_bitmap("idea", this, 40);
-        }
-    }
-    auto *bottom_left_placeholder_icon = new wxStaticBitmap(
-        right_placeholder_box, wxID_ANY, idea_bmp);
-    const wxSize bottom_left_icon_size = bottom_left_placeholder_icon->GetBestSize();
-    const int bottom_cell_width = right_placeholder_content_width / 2;
-    const int bottom_cell_height = right_placeholder_height - FromDIP(240);
-    const int bottom_left_icon_x = (bottom_cell_width - bottom_left_icon_size.GetWidth()) / 2;
-    const int bottom_left_icon_y = FromDIP(240) + (bottom_cell_height - bottom_left_icon_size.GetHeight()) / 2;
-    bottom_left_placeholder_icon->SetPosition(wxPoint(bottom_left_icon_x, bottom_left_icon_y));
-    bottom_left_placeholder_icon->SetCursor(wxCursor(wxCURSOR_HAND));
-    bottom_left_placeholder_icon->Bind(wxEVT_LEFT_DOWN, [](wxMouseEvent &) {
-        auto *dev_manager = wxGetApp().getDeviceManager();
-        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj == nullptr || !obj->is_online() || obj->GetLamp() == nullptr) {
-            BOOST_LOG_TRIVIAL(warning) << "PrinterWebView lamp control ignored: no online selected printer";
-            return;
-        }
-
-        const bool light_on = obj->GetLamp()->IsChamberLightOn();
-        obj->GetLamp()->CtrlSetChamberLight(light_on ? DevLamp::LIGHT_EFFECT_OFF : DevLamp::LIGHT_EFFECT_ON);
-    });
-
-    auto *clear_all_button = new wxButton(
-        right_placeholder_box,
-        wxID_ANY,
-        "Clear All",
-        wxDefaultPosition,
-        wxSize(FromDIP(78), FromDIP(32)));
-    clear_all_button->SetMinSize(wxSize(FromDIP(78), FromDIP(32)));
-    clear_all_button->SetMaxSize(wxSize(FromDIP(78), FromDIP(32)));
-    clear_all_button->SetBackgroundColour(wxColour(28, 30, 34));
-    clear_all_button->SetForegroundColour(wxColour(220, 220, 220));
-    clear_all_button->SetWindowStyleFlag(wxBORDER_SIMPLE);
-    const int bottom_right_cell_x = bottom_cell_width;
-    const int clear_all_x = bottom_right_cell_x + (bottom_cell_width - clear_all_button->GetMinSize().GetWidth()) / 2;
-    const int clear_all_y = FromDIP(240) + (bottom_cell_height - clear_all_button->GetMinSize().GetHeight()) / 2;
-    clear_all_button->SetPosition(wxPoint(clear_all_x, clear_all_y));
-    clear_all_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { reset_placeholder_selections(); });
 
     right_container->SetSizer(right_sizer);
     right_container->Layout();
