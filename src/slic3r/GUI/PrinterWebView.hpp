@@ -66,6 +66,7 @@ public:
     void set_fallback_preview_thumbnail();
     void on_thumbnail_webrequest_state(wxWebRequestEvent &evt);
     void update_preview_thumbnail(const MachineObject *obj);
+    void refresh_print_controls_from_selected_machine();
     void refresh_layer_info_from_selected_machine();
     void refresh_update_page_from_selected_machine();
     void UpdateState();
@@ -105,6 +106,7 @@ private:
     wxStaticText *m_layer_file_value{ nullptr };
     wxStaticText *m_layer_label{ nullptr };
     wxStaticText *m_layer_printer_value{ nullptr };
+    wxStaticBitmap *m_pause_resume_icon{ nullptr };
     wxTimer *m_layer_refresh_timer{ nullptr };
     wxWindow *m_preview_printers_button{ nullptr };
     wxStaticBitmap *m_preview_thumbnail{ nullptr };

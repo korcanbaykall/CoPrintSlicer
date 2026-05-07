@@ -671,23 +671,37 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_print_progress_bar = new wxGauge(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(615), FromDIP(12)), wxGA_SMOOTH);
     m_print_progress_bar->SetValue(0);
     progress_controls_row->Add(m_print_progress_bar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(25));
-    auto *pause_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
-    pause_icon->SetCursor(wxCursor(wxCURSOR_HAND));
-    pause_icon->Bind(wxEVT_LEFT_UP, [](wxMouseEvent &) {
+    m_pause_resume_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
+    m_pause_resume_icon->SetCursor(wxCursor(wxCURSOR_HAND));
+    m_pause_resume_icon->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
         auto *dev_manager = wxGetApp().getDeviceManager();
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj != nullptr && obj->is_online())
+        if (obj == nullptr || !obj->is_online())
+            return;
+
+        if (obj->can_resume()) {
+            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: resume current print task dev_id =" << obj->get_dev_id();
+            obj->command_task_resume();
+            if (m_pause_resume_icon != nullptr)
+                m_pause_resume_icon->SetBitmap(create_scaled_bitmap("pause", this, 20));
+        } else {
+            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: pause current print task dev_id =" << obj->get_dev_id();
             obj->command_task_pause();
+            if (m_pause_resume_icon != nullptr)
+                m_pause_resume_icon->SetBitmap(create_scaled_bitmap("Vector", this, 20));
+        }
     });
-    progress_controls_row->Add(pause_icon, 0, wxALIGN_CENTER_VERTICAL);
+    progress_controls_row->Add(m_pause_resume_icon, 0, wxALIGN_CENTER_VERTICAL);
     progress_controls_row->AddSpacer(FromDIP(10));
     auto *stop_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("stop", this, 20));
     stop_icon->SetCursor(wxCursor(wxCURSOR_HAND));
     stop_icon->Bind(wxEVT_LEFT_UP, [](wxMouseEvent &) {
         auto *dev_manager = wxGetApp().getDeviceManager();
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj != nullptr && obj->is_online())
+        if (obj != nullptr && obj->is_online()) {
+            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: stop current print task dev_id =" << obj->get_dev_id();
             obj->command_task_abort();
+        }
     });
     progress_controls_row->Add(stop_icon, 0, wxALIGN_CENTER_VERTICAL);
     progress_controls_row->AddSpacer(FromDIP(5));
@@ -2510,11 +2524,23 @@ void PrinterWebView::update_preview_thumbnail(const MachineObject *obj)
     m_thumbnail_web_request.Start();
 }
 
+void PrinterWebView::refresh_print_controls_from_selected_machine()
+{
+    if (m_pause_resume_icon == nullptr)
+        return;
+
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+    const char *pause_icon_key = (obj != nullptr && obj->can_resume()) ? "Vector" : "pause";
+    m_pause_resume_icon->SetBitmap(create_scaled_bitmap(pause_icon_key, this, 20));
+}
+
 void PrinterWebView::refresh_layer_info_from_selected_machine()
 {
     auto *dev_manager = wxGetApp().getDeviceManager();
     auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
 
+    refresh_print_controls_from_selected_machine();
     set_active_file_name(active_file_name_text(obj));
     update_preview_thumbnail(obj);
 
