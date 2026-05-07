@@ -510,7 +510,25 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         preview_menu_sizer->Add(item_panel, 0, wxEXPAND);
     };
 
-    preview_menu_sizer->AddSpacer(FromDIP(35));
+    preview_menu_sizer->AddSpacer(FromDIP(18));
+
+    m_connected_printer_panel = new wxPanel(preview_menu_panel, wxID_ANY);
+    m_connected_printer_panel->SetBackgroundColour(wxColour(28, 30, 34));
+    auto *connected_printer_sizer = new wxBoxSizer(wxVERTICAL);
+    auto *connected_caption = new wxStaticText(m_connected_printer_panel, wxID_ANY, wxString::FromUTF8("Bagland\xC4\xB1:"));
+    connected_caption->SetForegroundColour(wxColour(150, 156, 166));
+    m_connected_printer_name_label = new wxStaticText(m_connected_printer_panel, wxID_ANY, "N/A", wxDefaultPosition, wxSize(FromDIP(185), -1), wxST_ELLIPSIZE_END);
+    m_connected_printer_name_label->SetForegroundColour(wxColour(235, 235, 235));
+    wxFont connected_name_font = m_connected_printer_name_label->GetFont();
+    connected_name_font.SetWeight(wxFONTWEIGHT_BOLD);
+    m_connected_printer_name_label->SetFont(connected_name_font);
+    connected_printer_sizer->Add(connected_caption, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(19));
+    connected_printer_sizer->Add(m_connected_printer_name_label, 0, wxLEFT | wxRIGHT, FromDIP(19));
+    connected_printer_sizer->AddSpacer(FromDIP(10));
+    m_connected_printer_panel->SetSizer(connected_printer_sizer);
+    m_connected_printer_panel->Hide();
+    preview_menu_sizer->Add(m_connected_printer_panel, 0, wxEXPAND);
+
     add_preview_menu_item("Printers", 50, PrinterWebViewTab::Status, true);
     add_preview_menu_item("Durum", 40, PrinterWebViewTab::Status);
     add_preview_menu_item("Depolama", 40, PrinterWebViewTab::Storage);
@@ -1789,6 +1807,18 @@ void PrinterWebView::prompt_ip_connect()
         dev_ip += ":7125";
     const std::string dev_id = dev_ip;
 
+    wxTextEntryDialog name_dialog(this, "Bu yazici icin gorunecek bir isim belirleyin.", "Yazici Adi", from_u8(dev_ip));
+    if (name_dialog.ShowModal() != wxID_OK)
+        return;
+
+    wxString name_value = name_dialog.GetValue();
+    name_value.Trim(true);
+    name_value.Trim(false);
+    if (name_value.empty()) {
+        wxMessageBox("Yazici adi bos olamaz.", "Yazici Adi", wxOK | wxICON_WARNING, this);
+        return;
+    }
+
     auto *dev_manager = wxGetApp().getDeviceManager();
     if (dev_manager == nullptr) {
         wxMessageBox("Device manager hazir degil.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
@@ -1817,7 +1847,7 @@ void PrinterWebView::prompt_ip_connect()
     BBLocalMachine machine;
     machine.dev_id = dev_id;
     machine.dev_ip = dev_ip;
-    machine.dev_name = dev_ip;
+    machine.dev_name = into_u8(name_value);
     machine.printer_type = "Moonraker";
 
     MachineObject *obj = dev_manager->insert_local_device(machine, "lan", "free", "", "");
@@ -2548,6 +2578,15 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     refresh_print_controls_from_selected_machine();
     set_active_file_name(active_file_name_text(obj));
     update_preview_thumbnail(obj);
+
+    if (m_connected_printer_panel != nullptr && m_connected_printer_name_label != nullptr) {
+        const bool has_connected_printer = obj != nullptr;
+        if (has_connected_printer)
+            m_connected_printer_name_label->SetLabelText(from_u8(obj->get_dev_name()));
+        m_connected_printer_panel->Show(has_connected_printer);
+        if (m_connected_printer_panel->GetParent() != nullptr)
+            m_connected_printer_panel->GetParent()->Layout();
+    }
 
     if (m_print_progress_bar != nullptr) {
         const int pct = (obj != nullptr && obj->mc_print_percent >= 0 && obj->mc_print_percent <= 100)
