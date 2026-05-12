@@ -1186,7 +1186,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     tool_col->Add(t2_btn, 0, wxBOTTOM, FromDIP(10));
     tool_col->Add(t3_btn, 0, wxBOTTOM, FromDIP(10));
     tool_col->Add(t4_btn, 0);
-    content_row->Add(tool_col, 0, wxTOP, FromDIP(10));
+    content_row->Add(tool_col, 0, wxTOP, FromDIP(18));
 
     auto icon_exists = [](const std::string &icon_name) {
         return wxFileName::FileExists(from_u8(Slic3r::var(icon_name + ".png"))) ||
@@ -1363,7 +1363,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     content_row->AddSpacer(FromDIP(20));
     content_row->Add(z_col, 0, wxALIGN_TOP | wxTOP, FromDIP(22));
     content_row->AddSpacer(FromDIP(20));
-    content_row->Add(step_container, 0, wxALIGN_TOP);
+    content_row->Add(step_container, 0, wxALIGN_TOP | wxTOP, FromDIP(18));
 
     auto make_speed_btn = [this](wxWindow *parent, const wxString &txt, bool active = false) {
         auto *btn = new Button(parent, txt);
@@ -1430,7 +1430,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     speed_container_sizer->Add(ultra_btn,  0, wxALIGN_CENTER_HORIZONTAL | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(10));
     speed_container->SetSizer(speed_container_sizer);
     content_row->AddSpacer(FromDIP(40));
-    content_row->Add(speed_container, 0, wxALIGN_TOP);
+    content_row->Add(speed_container, 0, wxALIGN_TOP | wxTOP, FromDIP(18));
 
     auto *movement_title_label = new wxStaticText(right_container, wxID_ANY, "Movement");
     movement_title_label->SetForegroundColour(wxColour(220, 220, 220));
@@ -1447,28 +1447,54 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     movement_sep->SetMaxSize(wxSize(-1, FromDIP(1)));
     movement_sep->SetBackgroundColour(wxColour(55, 58, 64));
 
-    auto make_col_label = [this, right_container](const wxString &txt, int min_w) -> wxStaticText * {
-        auto *lbl = new wxStaticText(right_container, wxID_ANY, txt);
+    auto make_movement_hdr_lbl = [this](wxWindow *parent, const wxString &txt,
+                                                         int width_dip, long style = wxALIGN_CENTER_HORIZONTAL) -> wxStaticText * {
+        auto *lbl = new wxStaticText(parent, wxID_ANY, txt, wxDefaultPosition,
+            width_dip > 0 ? wxSize(this->FromDIP(width_dip), -1) : wxDefaultSize, style);
         lbl->SetForegroundColour(wxColour(150, 155, 165));
         wxFont f = lbl->GetFont();
         if (f.GetPointSize() > 1)
             f.SetPointSize(f.GetPointSize() - 1);
         lbl->SetFont(f);
-        lbl->SetMinSize(wxSize(this->FromDIP(min_w), -1));
         return lbl;
     };
+
+    const wxColour movement_hdr_bg(22, 24, 29);
     auto *col_labels = new wxBoxSizer(wxHORIZONTAL);
-    col_labels->AddSpacer(FromDIP(12));
-    col_labels->Add(make_col_label("Tool Selection", 92), 0);
+    {
+        // "Tool" / "Selection" — centered over T column (matches tool button width 92 DIP).
+        auto *tool_cell = new wxPanel(right_container);
+        tool_cell->SetBackgroundColour(movement_hdr_bg);
+        tool_cell->SetMinSize(wxSize(FromDIP(92), -1));
+        auto *tool_vs = new wxBoxSizer(wxVERTICAL);
+        tool_vs->Add(make_movement_hdr_lbl(tool_cell, "Tool", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
+        tool_vs->Add(make_movement_hdr_lbl(tool_cell, "Selection", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
+        tool_cell->SetSizer(tool_vs);
+        col_labels->Add(tool_cell, 0);
+    }
     col_labels->AddSpacer(FromDIP(20));
-    col_labels->Add(make_col_label("Move X,Y Axis", 300), 0);
+    {
+        // "Move X,Y" / "Axis" — centered over joystick (xy_square 300 DIP).
+        auto *xy_cell = new wxPanel(right_container);
+        xy_cell->SetBackgroundColour(movement_hdr_bg);
+        xy_cell->SetMinSize(wxSize(FromDIP(300), -1));
+        auto *xy_vs = new wxBoxSizer(wxVERTICAL);
+        xy_vs->Add(make_movement_hdr_lbl(xy_cell, "Move X,Y", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
+        xy_vs->Add(make_movement_hdr_lbl(xy_cell, "Axis", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
+        xy_cell->SetSizer(xy_vs);
+        col_labels->Add(xy_cell, 0);
+    }
     col_labels->AddSpacer(FromDIP(20));
-    col_labels->Add(make_col_label("Move Z Axis", 90), 0);
+    {
+        // Match z_col width (~FromDIP(92)); center "Move Z Axis" above the Z stack.
+        auto *move_z_lbl = make_movement_hdr_lbl(right_container, "Move Z Axis", 92, wxALIGN_CENTER_HORIZONTAL);
+        col_labels->Add(move_z_lbl, 0);
+    }
 
     // Center the label row + control row as one unit so left/right outer margins match.
     auto *movement_body = new wxBoxSizer(wxVERTICAL);
-    movement_body->Add(col_labels, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(6));
-    movement_body->Add(content_row, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP | wxBOTTOM, FromDIP(12));
+    movement_body->Add(col_labels, 0, wxALIGN_LEFT | wxTOP, FromDIP(6));
+    movement_body->Add(content_row, 0, wxALIGN_LEFT | wxTOP | wxBOTTOM, FromDIP(12));
     auto *movement_body_wrap = new wxBoxSizer(wxHORIZONTAL);
     movement_body_wrap->AddStretchSpacer(1);
     movement_body_wrap->Add(movement_body, 0);
