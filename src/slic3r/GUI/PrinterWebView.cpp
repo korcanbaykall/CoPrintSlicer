@@ -30,6 +30,7 @@
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
 #include <wx/graphics.h>
+#include <wx/dcgraph.h>
 
 #include <algorithm>
 #include <array>
@@ -228,7 +229,7 @@ enum class AxisControlAction {
     YPlus
 };
 
-// Printer status mini-cards: dark header strip with uniform corner radius (all four corners).
+// Printer status mini-cards: dark header — rounded top corners only; bottom edge straight (separator).
 class PsCardHeaderPanel : public wxPanel
 {
 public:
@@ -238,6 +239,9 @@ public:
         , m_corner_radius(corner_radius)
     {
         SetBackgroundStyle(wxBG_STYLE_PAINT);
+        SetBackgroundColour(fill);
+        SetDoubleBuffered(true);
+        Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent &) {});
         Bind(wxEVT_PAINT, &PsCardHeaderPanel::on_paint, this);
     }
 
@@ -249,12 +253,46 @@ private:
         if (rect.width <= 0 || rect.height <= 0)
             return;
 
-        const double r = std::min(m_corner_radius, std::min(rect.width * 0.5, rect.height * 0.5));
-        const int    ri = std::max(1, static_cast<int>(r + 0.5));
+        static constexpr double kPi = 3.14159265358979323846;
+        const double x = rect.x;
+        const double y = rect.y;
+        const double w = rect.width;
+        const double h = rect.height;
+        const double r = std::min(m_corner_radius, std::min(w * 0.5, h * 0.5));
+
+        dc.SetBackground(wxBrush(m_fill));
+        dc.Clear();
+
+        wxGCDC gdc(dc);
+        wxGraphicsContext *gctx = gdc.GetGraphicsContext();
+        if (gctx) {
+            gctx->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+            wxGraphicsPath path = gctx->CreatePath();
+            path.MoveToPoint(x, y + h);
+            path.AddLineToPoint(x, y + r);
+            path.AddArc(x + r, y + r, r, kPi, 1.5 * kPi, true);
+            path.AddLineToPoint(x + w - r, y);
+            path.AddArc(x + w - r, y + r, r, 1.5 * kPi, 2.0 * kPi, true);
+            path.AddLineToPoint(x + w, y + h);
+            path.CloseSubpath();
+            gctx->SetBrush(wxBrush(m_fill));
+            gctx->SetPen(wxPen(m_fill, 1));
+            gctx->FillPath(path);
+
+            const int ri = std::max(1, static_cast<int>(r + 0.5));
+            dc.SetBrush(wxBrush(m_fill));
+            dc.SetPen(*wxTRANSPARENT_PEN);
+            wxPoint left_tri[3]  = { wxPoint(rect.x, rect.y), wxPoint(rect.x, rect.y + ri), wxPoint(rect.x + ri, rect.y) };
+            wxPoint right_tri[3] = { wxPoint(rect.x + rect.width - ri, rect.y), wxPoint(rect.x + rect.width, rect.y),
+                wxPoint(rect.x + rect.width, rect.y + ri) };
+            dc.DrawPolygon(3, left_tri);
+            dc.DrawPolygon(3, right_tri);
+            return;
+        }
 
         dc.SetBrush(wxBrush(m_fill));
-        dc.SetPen(*wxTRANSPARENT_PEN);
-        dc.DrawRoundedRectangle(rect, ri);
+        dc.SetPen(wxPen(m_fill, 1));
+        dc.DrawRectangle(rect);
     }
 
     wxColour m_fill;
@@ -1750,17 +1788,17 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         auto *card = new StaticBox(printer_status_box, wxID_ANY);
         card->SetMinSize(wxSize(-1, this->FromDIP(110)));
         card->SetMaxSize(wxSize(-1, this->FromDIP(110)));
-        card->SetCornerRadius(this->FromDIP(8));
+        card->SetCornerRadius(this->FromDIP(10));
         card->SetBorderWidth(1);
         card->SetBorderColorNormal(active ? wxColour(44, 182, 125) : wxColour(55, 58, 64));
         card->SetBackgroundColorNormal(ps_card_body_bg);
         card->SetBackgroundColour(ps_card_body_bg);
         return card;
     };
-    auto make_ps_header = [this](wxWindow *parent, const wxString &txt, bool active) -> wxStaticText * {
+    auto make_ps_header = [this, ps_card_header_bg](wxWindow *parent, const wxString &txt, bool active) -> wxStaticText * {
         auto *lbl = new wxStaticText(parent, wxID_ANY, txt);
         lbl->SetForegroundColour(active ? wxColour(220, 220, 220) : wxColour(120, 125, 135));
-        lbl->SetBackgroundStyle(wxBG_STYLE_TRANSPARENT);
+        lbl->SetBackgroundColour(ps_card_header_bg);
         wxFont f = lbl->GetFont();
         f.SetWeight(wxFONTWEIGHT_BOLD);
         lbl->SetFont(f);
