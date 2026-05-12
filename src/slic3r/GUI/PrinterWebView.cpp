@@ -546,47 +546,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     preview_menu_panel->SetMaxSize(wxSize(FromDIP(259), -1));
     auto *preview_menu_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto add_preview_menu_item = [this, preview_menu_panel, preview_menu_sizer](const wxString &text, int height, PrinterWebViewTab tab, bool clickable = false) {
-        auto *item_panel = new wxPanel(preview_menu_panel, wxID_ANY);
-        item_panel->SetBackgroundColour(wxColour(28, 30, 34));
-        item_panel->SetMinSize(wxSize(-1, FromDIP(height)));
-        item_panel->SetMaxSize(wxSize(-1, FromDIP(height)));
-        item_panel->SetCursor(wxCursor(wxCURSOR_HAND));
-        auto *item_sizer = new wxBoxSizer(wxHORIZONTAL);
-
-        auto *active_strip = new wxPanel(item_panel, wxID_ANY);
-        active_strip->SetMinSize(wxSize(FromDIP(3), -1));
-        active_strip->SetMaxSize(wxSize(FromDIP(3), -1));
-        active_strip->SetBackgroundColour(wxColour(28, 30, 34));
-        item_sizer->Add(active_strip, 0, wxEXPAND);
-        item_sizer->AddSpacer(FromDIP(16));
-
-        auto *label = new wxStaticText(item_panel, wxID_ANY, text);
-        label->SetForegroundColour(wxColour(235, 235, 235));
-        label->SetCursor(wxCursor(wxCURSOR_HAND));
-        item_sizer->Add(label, 0, wxALIGN_CENTER_VERTICAL);
-        item_sizer->AddStretchSpacer(1);
-
-        auto *chevron = new wxStaticText(item_panel, wxID_ANY, ">");
-        chevron->SetForegroundColour(wxColour(130, 130, 130));
-        chevron->SetCursor(wxCursor(wxCURSOR_HAND));
-        item_sizer->Add(chevron, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(16));
-
-        item_panel->SetSizer(item_sizer);
-        if (clickable) {
-            m_preview_printers_button = item_panel;
-            item_panel->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { toggle_printers_popup(); });
-            label->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { toggle_printers_popup(); });
-            chevron->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { toggle_printers_popup(); });
-        } else {
-            m_sidebar_items.push_back({ tab, item_panel, active_strip, label, chevron });
-            item_panel->Bind(wxEVT_LEFT_DOWN, [this, tab](wxMouseEvent &) { select_tab(tab); });
-            label->Bind(wxEVT_LEFT_DOWN, [this, tab](wxMouseEvent &) { select_tab(tab); });
-            chevron->Bind(wxEVT_LEFT_DOWN, [this, tab](wxMouseEvent &) { select_tab(tab); });
-        }
-        preview_menu_sizer->Add(item_panel, 0, wxEXPAND);
-    };
-
     preview_menu_sizer->AddSpacer(FromDIP(18));
 
     m_connected_printer_panel = new wxPanel(preview_menu_panel, wxID_ANY);
@@ -669,10 +628,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         preview_menu_sizer->Add(printers_item, 0, wxEXPAND);
     }
 
-    add_preview_menu_item("Durum", 40, PrinterWebViewTab::Status);
-    add_preview_menu_item("Depolama", 40, PrinterWebViewTab::Storage);
-    add_preview_menu_item("Guncelle", 40, PrinterWebViewTab::Update);
-    add_preview_menu_item("Asistan", 40, PrinterWebViewTab::Assistant);
     preview_menu_sizer->AddStretchSpacer(1);
     preview_menu_panel->SetSizer(preview_menu_sizer);
 
