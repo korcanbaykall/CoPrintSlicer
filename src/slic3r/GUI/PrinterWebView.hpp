@@ -133,7 +133,6 @@ private:
     wxStaticText *m_ps_t4_fan_label{ nullptr };
     wxPanel *m_connected_printer_panel{ nullptr };
     wxStaticText *m_connected_printer_status_label{ nullptr };
-    wxStaticText *m_connected_printer_name_label{ nullptr };
     wxStaticText *m_connected_printer_logout_label{ nullptr };
     bool m_has_active_printer_connection{ false };
     std::map<wxString, wxString> m_fan_values;
