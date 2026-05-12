@@ -1474,27 +1474,34 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     }
     col_labels->AddSpacer(FromDIP(20));
     {
-        // "Move X,Y" / "Axis" — centered over joystick (xy_square 300 DIP).
+        // "Move" / "X,Y axis" — centered over joystick (xy_square 300 DIP).
         auto *xy_cell = new wxPanel(right_container);
         xy_cell->SetBackgroundColour(movement_hdr_bg);
         xy_cell->SetMinSize(wxSize(FromDIP(300), -1));
         auto *xy_vs = new wxBoxSizer(wxVERTICAL);
-        xy_vs->Add(make_movement_hdr_lbl(xy_cell, "Move X,Y", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
-        xy_vs->Add(make_movement_hdr_lbl(xy_cell, "Axis", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
+        xy_vs->Add(make_movement_hdr_lbl(xy_cell, "Move", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
+        xy_vs->Add(make_movement_hdr_lbl(xy_cell, "X,Y axis", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
         xy_cell->SetSizer(xy_vs);
         col_labels->Add(xy_cell, 0);
     }
     col_labels->AddSpacer(FromDIP(20));
     {
-        // Match z_col width (~FromDIP(92)); center "Move Z Axis" above the Z stack.
-        auto *move_z_lbl = make_movement_hdr_lbl(right_container, "Move Z Axis", 92, wxALIGN_CENTER_HORIZONTAL);
-        col_labels->Add(move_z_lbl, 0);
+        // "Move" / "Z axis" — centered over Z column (~92 DIP).
+        auto *z_cell_hdr = new wxPanel(right_container);
+        z_cell_hdr->SetBackgroundColour(movement_hdr_bg);
+        z_cell_hdr->SetMinSize(wxSize(FromDIP(92), -1));
+        auto *z_vs = new wxBoxSizer(wxVERTICAL);
+        z_vs->Add(make_movement_hdr_lbl(z_cell_hdr, "Move", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
+        z_vs->Add(make_movement_hdr_lbl(z_cell_hdr, "Z axis", 0, wxALIGN_CENTER_HORIZONTAL), 0, wxEXPAND);
+        z_cell_hdr->SetSizer(z_vs);
+        col_labels->Add(z_cell_hdr, 0);
     }
 
     // Center the label row + control row as one unit so left/right outer margins match.
     auto *movement_body = new wxBoxSizer(wxVERTICAL);
     movement_body->Add(col_labels, 0, wxALIGN_LEFT | wxTOP, FromDIP(6));
-    movement_body->Add(content_row, 0, wxALIGN_LEFT | wxTOP | wxBOTTOM, FromDIP(12));
+    // Bring headers closer to controls (was 12 DIP gap).
+    movement_body->Add(content_row, 0, wxALIGN_LEFT | wxBOTTOM, FromDIP(12));
     auto *movement_body_wrap = new wxBoxSizer(wxHORIZONTAL);
     movement_body_wrap->AddStretchSpacer(1);
     movement_body_wrap->Add(movement_body, 0);
