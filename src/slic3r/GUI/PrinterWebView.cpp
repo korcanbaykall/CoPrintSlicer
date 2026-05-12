@@ -228,7 +228,7 @@ enum class AxisControlAction {
     YPlus
 };
 
-// Printer status mini-cards: dark header strip with rounded top corners only (flat bottom on separator).
+// Printer status mini-cards: dark header strip with uniform corner radius (all four corners).
 class PsCardHeaderPanel : public wxPanel
 {
 public:
@@ -249,32 +249,12 @@ private:
         if (rect.width <= 0 || rect.height <= 0)
             return;
 
-        static constexpr double kPi = 3.14159265358979323846;
-        const double x = rect.x;
-        const double y = rect.y;
-        const double w = rect.width;
-        const double h = rect.height;
-        const double r = std::min(m_corner_radius, std::min(w * 0.5, h * 0.5));
+        const double r = std::min(m_corner_radius, std::min(rect.width * 0.5, rect.height * 0.5));
+        const int    ri = std::max(1, static_cast<int>(r + 0.5));
 
-        std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
-        if (!gc) {
-            dc.SetBackground(wxBrush(m_fill));
-            dc.Clear();
-            return;
-        }
-
-        gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
-        wxGraphicsPath path = gc->CreatePath();
-        path.MoveToPoint(x, y + h);
-        path.AddLineToPoint(x, y + r);
-        path.AddArc(x + r, y + r, r, kPi, 1.5 * kPi, true);
-        path.AddLineToPoint(x + w - r, y);
-        path.AddArc(x + w - r, y + r, r, 1.5 * kPi, 2.0 * kPi, true);
-        path.AddLineToPoint(x + w, y + h);
-        path.CloseSubpath();
-        gc->SetBrush(wxBrush(m_fill));
-        gc->SetPen(*wxTRANSPARENT_PEN);
-        gc->FillPath(path);
+        dc.SetBrush(wxBrush(m_fill));
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.DrawRoundedRectangle(rect, ri);
     }
 
     wxColour m_fill;
@@ -1810,7 +1790,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         return row;
     };
     auto add_ps_title_strip = [this, ps_card_header_bg, &make_ps_header](wxBoxSizer *card_sizer, wxWindow *card, const wxString &title, bool active) {
-        const double hdr_corner_r = this->FromDIP(12);
+        const double hdr_corner_r = this->FromDIP(10);
         auto *header_panel = new PsCardHeaderPanel(card, ps_card_header_bg, hdr_corner_r);
         auto *header_sz = new wxBoxSizer(wxVERTICAL);
         header_sz->Add(make_ps_header(header_panel, title, active), 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(8));
