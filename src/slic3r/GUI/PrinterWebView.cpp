@@ -642,6 +642,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_speed_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
     rebuild_speed_popup();
 
+    m_filament_tool_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
+    m_filament_tool_popup_panel = new wxPanel(m_filament_tool_popup, wxID_ANY);
+    m_filament_tool_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
+    rebuild_filament_tool_popup();
+
     auto *content_host = new wxPanel(this, wxID_ANY);
     content_host->SetBackgroundColour(wxColour(28, 30, 34));
     auto *content_host_sizer = new wxBoxSizer(wxVERTICAL);
@@ -1096,6 +1101,17 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     mf_sizer->Add(tool_selector, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
     mf_sizer->AddSpacer(FromDIP(10));
 
+    m_filament_tool_popup_button = tool_selector;
+    m_filament_tool_color_dot    = tool_color_dot;
+    m_filament_tool_name_lbl     = tool_name_lbl;
+    m_selected_filament_tool     = 0;
+
+    auto open_filament_tool_menu = [this](wxMouseEvent &) { toggle_filament_tool_popup(); };
+    tool_selector->Bind(wxEVT_LEFT_DOWN, open_filament_tool_menu);
+    tool_color_dot->Bind(wxEVT_LEFT_DOWN, open_filament_tool_menu);
+    tool_name_lbl->Bind(wxEVT_LEFT_DOWN, open_filament_tool_menu);
+    dropdown_arrow->Bind(wxEVT_LEFT_DOWN, open_filament_tool_menu);
+
     // Load button
     auto *load_btn = new Button(upper_placeholder_box, _L("Load"));
     load_btn->SetMinSize(wxSize(-1, FromDIP(40)));
@@ -1107,8 +1123,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         auto *dev_manager = wxGetApp().getDeviceManager();
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
         if (obj == nullptr || !obj->is_online()) return;
-        BOOST_LOG_TRIVIAL(info) << "PrinterWebView: load filament";
-        obj->command_ams_change_filament(true, "0", "0");
+        const std::string slot = wxString::Format("%d", m_selected_filament_tool).ToStdString();
+        BOOST_LOG_TRIVIAL(info) << "PrinterWebView: load filament tool slot " << slot;
+        obj->command_ams_change_filament(true, "0", slot);
     });
     mf_sizer->Add(load_btn, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
     mf_sizer->AddSpacer(FromDIP(8));
@@ -1124,8 +1141,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         auto *dev_manager = wxGetApp().getDeviceManager();
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
         if (obj == nullptr || !obj->is_online()) return;
-        BOOST_LOG_TRIVIAL(info) << "PrinterWebView: unload filament";
-        obj->command_ams_change_filament(false, "0", "0");
+        const std::string slot = wxString::Format("%d", m_selected_filament_tool).ToStdString();
+        BOOST_LOG_TRIVIAL(info) << "PrinterWebView: unload filament (selected tool slot " << slot << ")";
+        obj->command_ams_change_filament(false, "0", slot);
     });
     mf_sizer->Add(unload_btn, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
 
@@ -1946,6 +1964,7 @@ PrinterWebView::~PrinterWebView()
     dismiss_extruder_popup();
     dismiss_fan_popup();
     dismiss_speed_popup();
+    dismiss_filament_tool_popup();
     if (m_thumbnail_web_request.IsOk())
         m_thumbnail_web_request.Cancel();
     if (m_layer_refresh_timer != nullptr) {
@@ -2153,6 +2172,11 @@ void PrinterWebView::reset_placeholder_selections()
     dismiss_extruder_popup();
     dismiss_fan_popup();
     dismiss_speed_popup();
+    dismiss_filament_tool_popup();
+
+    m_selected_filament_tool = 0;
+    apply_filament_tool_selection(0);
+
     Layout();
 }
 
@@ -2747,6 +2771,159 @@ void PrinterWebView::rebuild_speed_popup()
     m_speed_popup->SetClientSize(popup_size);
     m_speed_popup->SetSize(popup_size);
     m_speed_popup->Layout();
+}
+
+void PrinterWebView::apply_filament_tool_selection(int tool_index)
+{
+    if (tool_index < 0 || tool_index > 3)
+        tool_index = 0;
+    m_selected_filament_tool = tool_index;
+
+    static const wxColour k_filament_tool_colors[4] = {
+        wxColour(214, 181, 46),
+        wxColour(57, 145, 212),
+        wxColour(217, 101, 43),
+        wxColour(164, 207, 42),
+    };
+    const wxColour c = k_filament_tool_colors[tool_index];
+
+    if (m_filament_tool_color_dot != nullptr) {
+        m_filament_tool_color_dot->SetBackgroundColorNormal(c);
+        m_filament_tool_color_dot->SetBackgroundColour(c);
+        m_filament_tool_color_dot->Refresh();
+    }
+    if (m_filament_tool_name_lbl != nullptr)
+        m_filament_tool_name_lbl->SetLabelText(wxString::Format("Tool %d", tool_index + 1));
+}
+
+void PrinterWebView::dismiss_filament_tool_popup()
+{
+    if (m_filament_tool_popup != nullptr && m_filament_tool_popup->IsShown())
+        m_filament_tool_popup->Dismiss();
+}
+
+void PrinterWebView::toggle_filament_tool_popup()
+{
+    if (m_filament_tool_popup == nullptr || m_filament_tool_popup_button == nullptr)
+        return;
+
+    rebuild_filament_tool_popup();
+
+    if (m_filament_tool_popup->IsShown()) {
+        m_filament_tool_popup->Dismiss();
+        return;
+    }
+
+    const wxPoint screen_pos = m_filament_tool_popup_button->ClientToScreen(
+        wxPoint(0, m_filament_tool_popup_button->GetSize().GetHeight() + FromDIP(8)));
+    m_filament_tool_popup->Position(screen_pos, wxSize(0, 0));
+    m_filament_tool_popup->Popup(m_filament_tool_popup_button);
+}
+
+void PrinterWebView::rebuild_filament_tool_popup()
+{
+    if (m_filament_tool_popup == nullptr || m_filament_tool_popup_panel == nullptr)
+        return;
+
+    if (auto *old_sizer = m_filament_tool_popup_panel->GetSizer()) {
+        m_filament_tool_popup_panel->SetSizer(nullptr, false);
+        delete old_sizer;
+    }
+    m_filament_tool_popup_panel->DestroyChildren();
+
+    static const wxColour k_colors[4] = {
+        wxColour(214, 181, 46),
+        wxColour(57, 145, 212),
+        wxColour(217, 101, 43),
+        wxColour(164, 207, 42),
+    };
+
+    const int popup_width = FromDIP(200);
+
+    auto *root = new wxBoxSizer(wxVERTICAL);
+    auto *popup_box = new StaticBox(m_filament_tool_popup_panel, wxID_ANY);
+    popup_box->SetMinSize(wxSize(popup_width, -1));
+    popup_box->SetCornerRadius(FromDIP(10));
+    popup_box->SetBorderWidth(1);
+    popup_box->SetBorderColorNormal(wxColour(55, 58, 64));
+    popup_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
+    popup_box->SetBackgroundColour(wxColour(22, 24, 29));
+
+    auto *inner = new wxBoxSizer(wxVERTICAL);
+    inner->AddSpacer(FromDIP(6));
+
+    for (int i = 0; i < 4; ++i) {
+        if (i > 0) {
+            auto *sep = new wxPanel(popup_box, wxID_ANY);
+            sep->SetMinSize(wxSize(-1, FromDIP(1)));
+            sep->SetMaxSize(wxSize(-1, FromDIP(1)));
+            sep->SetBackgroundColour(wxColour(55, 58, 64));
+            inner->Add(sep, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
+        }
+
+        auto *row = new wxPanel(popup_box, wxID_ANY);
+        row->SetBackgroundColour(wxColour(34, 36, 40));
+        row->SetCursor(wxCursor(wxCURSOR_HAND));
+        auto *hs = new wxBoxSizer(wxHORIZONTAL);
+
+        auto *dot = new StaticBox(row, wxID_ANY);
+        dot->SetMinSize(wxSize(FromDIP(14), FromDIP(14)));
+        dot->SetMaxSize(wxSize(FromDIP(14), FromDIP(14)));
+        dot->SetCornerRadius(FromDIP(7));
+        dot->SetBorderWidth(0);
+        dot->SetBackgroundColorNormal(k_colors[i]);
+        dot->SetBackgroundColour(k_colors[i]);
+
+        auto *lab = new wxStaticText(row, wxID_ANY, wxString::Format("Tool %d", i + 1));
+        lab->SetForegroundColour(wxColour(220, 220, 220));
+        wxFont lf = lab->GetFont();
+        lf.SetWeight(wxFONTWEIGHT_BOLD);
+        lab->SetFont(lf);
+
+        hs->Add(dot, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(12));
+        hs->AddSpacer(FromDIP(10));
+        hs->Add(lab, 1, wxALIGN_CENTER_VERTICAL);
+
+        wxStaticText *mark = nullptr;
+        if (i == m_selected_filament_tool) {
+            mark = new wxStaticText(row, wxID_ANY, wxString::FromUTF8("\xe2\x9c\x93"));
+            mark->SetForegroundColour(wxColour(44, 181, 90));
+            hs->Add(mark, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
+        } else {
+            hs->AddSpacer(FromDIP(24));
+        }
+
+        row->SetSizer(hs);
+
+        auto bind_pick = [this, i](wxWindow *w) {
+            w->Bind(wxEVT_LEFT_DOWN, [this, i](wxMouseEvent &) {
+                apply_filament_tool_selection(i);
+                dismiss_filament_tool_popup();
+                Layout();
+            });
+        };
+        bind_pick(row);
+        bind_pick(dot);
+        bind_pick(lab);
+        if (mark != nullptr)
+            bind_pick(mark);
+
+        inner->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(8));
+    }
+
+    inner->AddSpacer(FromDIP(6));
+    popup_box->SetSizer(inner);
+
+    root->Add(popup_box, 0, wxEXPAND | wxALL, FromDIP(4));
+    m_filament_tool_popup_panel->SetSizer(root);
+    root->Fit(m_filament_tool_popup_panel);
+    m_filament_tool_popup_panel->Layout();
+
+    const wxSize popup_size = m_filament_tool_popup_panel->GetBestSize();
+    m_filament_tool_popup_panel->SetSize(popup_size);
+    m_filament_tool_popup->SetClientSize(popup_size);
+    m_filament_tool_popup->SetSize(popup_size);
+    m_filament_tool_popup->Layout();
 }
 
 void PrinterWebView::select_tab(PrinterWebViewTab tab)
