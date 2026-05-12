@@ -273,7 +273,7 @@ private:
             static constexpr double kPi = 3.14159265358979323846;
             gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
             gc->SetBrush(wxBrush(m_fill));
-            gc->SetPen(wxPen(m_fill, 1));
+            gc->SetPen(*wxTRANSPARENT_PEN);
 
             // Top-left and top-right rounded only; bottom edge of header stays straight.
             wxGraphicsPath path = gc->CreatePath();
@@ -1809,10 +1809,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         card->SetBackgroundColour(ps_card_body_bg);
         return card;
     };
-    auto make_ps_header = [this, ps_card_header_bg](wxWindow *parent, const wxString &txt, bool active) -> wxStaticText * {
-        auto *lbl = new wxStaticText(parent, wxID_ANY, txt);
+    auto make_ps_header = [this](wxWindow *parent, const wxString &txt, bool active) -> wxStaticText * {
+        auto *lbl = new wxStaticText(parent, wxID_ANY, txt, wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE);
         lbl->SetForegroundColour(active ? wxColour(220, 220, 220) : wxColour(120, 125, 135));
-        lbl->SetBackgroundColour(ps_card_header_bg);
+        // Do not paint an opaque label background — it would hide PsCardHeaderPanel's rounded top corners.
+        lbl->SetBackgroundStyle(wxBG_STYLE_TRANSPARENT);
         wxFont f = lbl->GetFont();
         f.SetWeight(wxFONTWEIGHT_BOLD);
         lbl->SetFont(f);
@@ -2837,7 +2838,7 @@ void PrinterWebView::rebuild_filament_tool_popup()
         wxColour(164, 207, 42),
     };
 
-    const int popup_width = FromDIP(200);
+    const int popup_width = FromDIP(280);
 
     auto *outer = new wxBoxSizer(wxVERTICAL);
     auto *popup_box = new StaticBox(m_filament_tool_popup_panel, wxID_ANY);
@@ -2853,24 +2854,32 @@ void PrinterWebView::rebuild_filament_tool_popup()
     for (int i = 0; i < 4; ++i) {
         auto *row = new wxPanel(popup_box, wxID_ANY);
         row->SetBackgroundColour(wxColour(35, 38, 43));
+        row->SetMinSize(wxSize(-1, FromDIP(48)));
         row->SetCursor(wxCursor(wxCURSOR_HAND));
         auto *hs = new wxBoxSizer(wxHORIZONTAL);
 
         auto *dot = new StaticBox(row, wxID_ANY);
-        dot->SetMinSize(wxSize(FromDIP(14), FromDIP(14)));
-        dot->SetMaxSize(wxSize(FromDIP(14), FromDIP(14)));
-        dot->SetCornerRadius(FromDIP(7));
+        dot->SetMinSize(wxSize(FromDIP(20), FromDIP(20)));
+        dot->SetMaxSize(wxSize(FromDIP(20), FromDIP(20)));
+        dot->SetCornerRadius(FromDIP(10));
         dot->SetBorderWidth(0);
         dot->SetBackgroundColorNormal(k_tool_colors[i]);
         dot->SetBackgroundColour(k_tool_colors[i]);
 
         auto *lbl = new wxStaticText(row, wxID_ANY, wxString::Format("Tool %d", i + 1));
         lbl->SetForegroundColour(wxColour(220, 220, 220));
+        {
+            wxFont f = lbl->GetFont();
+            if (f.GetPointSize() > 1)
+                f.SetPointSize(f.GetPointSize() + 2);
+            f.SetWeight(wxFONTWEIGHT_BOLD);
+            lbl->SetFont(f);
+        }
         lbl->SetCursor(wxCursor(wxCURSOR_HAND));
 
-        hs->Add(dot, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(12));
-        hs->Add(lbl, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
-        hs->AddSpacer(FromDIP(10));
+        hs->Add(dot, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(16));
+        hs->Add(lbl, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(14));
+        hs->AddSpacer(FromDIP(16));
         row->SetSizer(hs);
 
         const auto on_pick = [this, i](wxMouseEvent &) {
@@ -2881,13 +2890,13 @@ void PrinterWebView::rebuild_filament_tool_popup()
         lbl->Bind(wxEVT_LEFT_DOWN, on_pick);
         dot->Bind(wxEVT_LEFT_DOWN, on_pick);
 
-        box_sz->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(i == 0 ? 10 : 6));
+        box_sz->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(i == 0 ? 14 : 8));
     }
 
-    box_sz->AddSpacer(FromDIP(10));
+    box_sz->AddSpacer(FromDIP(14));
     popup_box->SetSizer(box_sz);
 
-    outer->Add(popup_box, 1, wxEXPAND | wxALL, FromDIP(4));
+    outer->Add(popup_box, 1, wxEXPAND | wxALL, FromDIP(8));
     m_filament_tool_popup_panel->SetSizer(outer);
     outer->Fit(m_filament_tool_popup_panel);
     m_filament_tool_popup_panel->Layout();
