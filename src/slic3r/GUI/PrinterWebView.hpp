@@ -19,6 +19,7 @@ class wxGauge;
 class StaticBox;
 class Button;
 namespace Slic3r {
+struct BBLocalMachine;
 class MachineObject;
 
 namespace GUI {
@@ -81,11 +82,16 @@ public:
     void OnError(wxWebViewEvent &evt);
     void OnLoaded(wxWebViewEvent &evt);
 
+    /** Used by Add Printer flow (dialog + LAN discovery). Returns false on failure. */
+    bool finish_add_moonraker_printer(const BBLocalMachine &machine, bool use_ssl);
+
 private:
     void apply_filament_tool_selection(int tool_index);
     void prompt_ps_target_temperature(bool is_bed, int extruder_index);
     void show_toolhead_temperature_dialog(int active_extruder_index);
     void show_filament_load_wizard();
+    void show_add_printer_dialog();
+    void show_printer_card_actions_menu(wxWindow *anchor, MachineObject *machine);
     void ensure_camera_webview_created();
     void ensure_storage_page_created();
     struct SidebarItem {

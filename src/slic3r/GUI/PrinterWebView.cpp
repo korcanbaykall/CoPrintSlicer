@@ -31,6 +31,9 @@
 #include <wx/textdlg.h>
 #include <wx/dialog.h>
 #include <wx/button.h>
+#include <wx/menu.h>
+#include <wx/notebook.h>
+#include <wx/scrolwin.h>
 
 #include <string>
 #include <wx/graphics.h>
@@ -627,7 +630,45 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_connected_printer_logout_label->Hide();
     preview_menu_sizer->Add(m_connected_printer_panel, 0, wxEXPAND);
 
-    add_preview_menu_item("Printers", 50, PrinterWebViewTab::Status, true);
+    {
+        auto *printers_item = new wxPanel(preview_menu_panel, wxID_ANY);
+        printers_item->SetBackgroundColour(wxColour(28, 30, 34));
+        printers_item->SetMinSize(wxSize(-1, FromDIP(50)));
+        printers_item->SetMaxSize(wxSize(-1, FromDIP(50)));
+        printers_item->SetCursor(wxCursor(wxCURSOR_HAND));
+        auto *printers_item_sizer = new wxBoxSizer(wxHORIZONTAL);
+        auto *printers_active_strip = new wxPanel(printers_item, wxID_ANY);
+        printers_active_strip->SetMinSize(wxSize(FromDIP(3), -1));
+        printers_active_strip->SetMaxSize(wxSize(FromDIP(3), -1));
+        printers_active_strip->SetBackgroundColour(wxColour(28, 30, 34));
+        printers_item_sizer->Add(printers_active_strip, 0, wxEXPAND);
+        printers_item_sizer->AddSpacer(FromDIP(16));
+        auto *printers_label = new wxStaticText(printers_item, wxID_ANY, "Printers");
+        printers_label->SetForegroundColour(wxColour(235, 235, 235));
+        printers_label->SetCursor(wxCursor(wxCURSOR_HAND));
+        printers_item_sizer->Add(printers_label, 0, wxALIGN_CENTER_VERTICAL);
+        printers_item_sizer->AddStretchSpacer(1);
+        auto *printers_add = new wxStaticText(printers_item, wxID_ANY, "+ Add");
+        printers_add->SetForegroundColour(wxColour(72, 199, 108));
+        printers_add->SetCursor(wxCursor(wxCURSOR_HAND));
+        printers_item_sizer->Add(printers_add, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(6));
+        auto *printers_chevron = new wxStaticText(printers_item, wxID_ANY, ">");
+        printers_chevron->SetForegroundColour(wxColour(130, 130, 130));
+        printers_chevron->SetCursor(wxCursor(wxCURSOR_HAND));
+        printers_item_sizer->Add(printers_chevron, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(16));
+        printers_item->SetSizer(printers_item_sizer);
+        m_preview_printers_button = printers_item;
+        auto toggle_popup = [this](wxMouseEvent &) { toggle_printers_popup(); };
+        printers_item->Bind(wxEVT_LEFT_DOWN, toggle_popup);
+        printers_label->Bind(wxEVT_LEFT_DOWN, toggle_popup);
+        printers_chevron->Bind(wxEVT_LEFT_DOWN, toggle_popup);
+        printers_add->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &evt) {
+            evt.StopPropagation();
+            show_add_printer_dialog();
+        });
+        preview_menu_sizer->Add(printers_item, 0, wxEXPAND);
+    }
+
     add_preview_menu_item("Durum", 40, PrinterWebViewTab::Status);
     add_preview_menu_item("Depolama", 40, PrinterWebViewTab::Storage);
     add_preview_menu_item("Guncelle", 40, PrinterWebViewTab::Update);
@@ -637,7 +678,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     m_printers_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
     m_printers_popup_panel = new wxPanel(m_printers_popup, wxID_ANY);
-    m_printers_popup_panel->SetBackgroundColour(wxColour(245, 245, 245));
+    m_printers_popup_panel->SetBackgroundColour(wxColour(255, 255, 255));
     rebuild_printers_popup();
 
     m_extruder_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
@@ -2222,6 +2263,380 @@ void PrinterWebView::dismiss_speed_popup()
         m_speed_popup->Dismiss();
 }
 
+bool PrinterWebView::finish_add_moonraker_printer(const BBLocalMachine &machine, bool use_ssl)
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    if (dev_manager == nullptr) {
+        wxMessageBox("Device manager hazir degil.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return false;
+    }
+
+    auto *agent = wxGetApp().getAgent();
+    if (agent == nullptr) {
+        wxMessageBox("Network agent hazir degil.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return false;
+    }
+
+    const auto current_printer_agent = agent->get_printer_agent();
+    const bool needs_moonraker_agent = current_printer_agent == nullptr ||
+        current_printer_agent->get_agent_info().id != "moonraker";
+    if (needs_moonraker_agent) {
+        auto moonraker_agent = NetworkAgentFactory::create_printer_agent_by_id(
+            "moonraker", agent->get_cloud_agent(), Slic3r::data_dir());
+        if (moonraker_agent == nullptr) {
+            wxMessageBox("Moonraker network agent baslatilamadi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+            return false;
+        }
+        agent->set_printer_agent(moonraker_agent);
+    }
+
+    MachineObject *obj = dev_manager->insert_local_device(machine, "lan", "free", "", "");
+    if (obj == nullptr) {
+        wxMessageBox("Yazici yerel cihaz listesine eklenemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return false;
+    }
+
+    obj->local_use_ssl = use_ssl;
+    if (!dev_manager->set_selected_machine(machine.dev_id)) {
+        wxMessageBox("Yazici secilemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
+        return false;
+    }
+    m_has_active_printer_connection = true;
+    obj->command_request_push_all(true);
+
+    dismiss_printers_popup();
+    rebuild_printers_popup();
+    refresh_layer_info_from_selected_machine();
+    Layout();
+    return true;
+}
+
+void PrinterWebView::show_printer_card_actions_menu(wxWindow *anchor, MachineObject *machine)
+{
+    if (anchor == nullptr || machine == nullptr)
+        return;
+
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    const auto local_machines = dev_manager ? dev_manager->get_local_machinelist() : std::map<std::string, MachineObject*>();
+    const bool can_remove = local_machines.find(machine->get_dev_id()) != local_machines.end();
+
+    wxMenu menu;
+    menu.Append(1, _L("Edit printer"));
+    if (can_remove)
+        menu.Append(2, _L("Delete printer"));
+
+    const wxPoint screen_pos = anchor->ClientToScreen(wxPoint(0, anchor->GetSize().GetHeight()));
+    const int sel = GetPopupMenuSelectionFromUser(menu, screen_pos);
+    if (sel == 1) {
+        wxTextEntryDialog dlg(this, _L("Printer display name"), _L("Edit printer"), from_u8(machine->get_dev_name()));
+        if (dlg.ShowModal() != wxID_OK)
+            return;
+        wxString v = dlg.GetValue();
+        v.Trim(true);
+        v.Trim(false);
+        if (v.empty())
+            return;
+        const std::string new_name = into_u8(v);
+        if (machine->is_lan_mode_printer()) {
+            machine->set_dev_name(new_name);
+            DeviceManager::update_local_machine(*machine);
+        } else if (dev_manager != nullptr) {
+            dev_manager->modify_device_name(machine->get_dev_id(), new_name);
+            machine->set_dev_name(new_name);
+        } else {
+            machine->set_dev_name(new_name);
+        }
+        rebuild_printers_popup();
+        refresh_layer_info_from_selected_machine();
+        Layout();
+    } else if (sel == 2 && can_remove) {
+        const std::string dev_id = machine->get_dev_id();
+        const wxString    name   = from_u8(machine->get_dev_name());
+        const int answer = wxMessageBox(
+            wxString::Format(_L("Remove printer \"%s\" from this computer?"), name),
+            _L("Delete printer"),
+            wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION,
+            this);
+        if (answer != wxYES)
+            return;
+
+        MachineObject *selected_machine = dev_manager != nullptr ? dev_manager->get_selected_machine() : nullptr;
+        if (selected_machine != nullptr && selected_machine->get_dev_id() == dev_id) {
+            selected_machine->disconnect();
+            selected_machine->set_online_state(false);
+            selected_machine->reset();
+            m_has_active_printer_connection = false;
+            if (dev_manager != nullptr)
+                dev_manager->set_selected_machine("");
+        }
+
+        if (wxGetApp().app_config != nullptr)
+            wxGetApp().app_config->erase_local_machine(dev_id);
+        if (dev_manager != nullptr)
+            dev_manager->erase_local_machine(dev_id);
+        delete machine;
+
+        rebuild_printers_popup();
+        refresh_layer_info_from_selected_machine();
+        Layout();
+    }
+}
+
+void PrinterWebView::show_add_printer_dialog()
+{
+    dismiss_printers_popup();
+
+    struct AddPrinterDialog : public wxDialog
+    {
+        explicit AddPrinterDialog(wxWindow *parent, PrinterWebView *owner)
+            : wxDialog(parent, wxID_ANY, _L("Add Printer"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
+            , m_owner(owner)
+        {
+            SetBackgroundColour(wxColour(255, 255, 255));
+            auto *root = new wxBoxSizer(wxVERTICAL);
+
+            auto *header = new wxBoxSizer(wxHORIZONTAL);
+            auto *close_btn = new wxButton(this, wxID_CANCEL, "X", wxDefaultPosition, wxSize(FromDIP(28), FromDIP(28)));
+            close_btn->SetToolTip(_L("Close"));
+            header->Add(close_btn, 0, wxLEFT | wxTOP, FromDIP(8));
+            header->AddStretchSpacer(1);
+            auto *title = new wxStaticText(this, wxID_ANY, _L("Add Printer"));
+            wxFont tf = title->GetFont();
+            tf.SetPointSize(tf.GetPointSize() + 1);
+            tf.SetWeight(wxFONTWEIGHT_BOLD);
+            title->SetFont(tf);
+            header->Add(title, 0, wxALIGN_CENTER_VERTICAL);
+            header->AddStretchSpacer(1);
+            header->AddSpacer(FromDIP(36));
+            root->Add(header, 0, wxEXPAND | wxBOTTOM, FromDIP(4));
+
+            m_notebook = new wxNotebook(this, wxID_ANY);
+            m_notebook->SetBackgroundColour(wxColour(255, 255, 255));
+
+            m_auto_page = new wxPanel(m_notebook, wxID_ANY);
+            m_auto_page->SetBackgroundColour(wxColour(255, 255, 255));
+            auto *auto_sz = new wxBoxSizer(wxVERTICAL);
+            auto *search_row = new wxBoxSizer(wxHORIZONTAL);
+            m_auto_status = new wxStaticText(m_auto_page, wxID_ANY, _L("Searching for printers on your network..."));
+            search_row->Add(m_auto_status, 1, wxALIGN_CENTER_VERTICAL);
+            auto *refresh_btn = new wxButton(m_auto_page, wxID_ANY, _L("Refresh"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+            search_row->Add(refresh_btn, 0, wxALIGN_CENTER_VERTICAL);
+            auto_sz->Add(search_row, 0, wxEXPAND | wxALL, FromDIP(10));
+            m_auto_list = new wxScrolledWindow(m_auto_page, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL);
+            m_auto_list->SetScrollRate(FromDIP(8), FromDIP(8));
+            m_auto_list->SetBackgroundColour(wxColour(255, 255, 255));
+            m_auto_list_sizer = new wxBoxSizer(wxVERTICAL);
+            m_auto_list->SetSizer(m_auto_list_sizer);
+            auto_sz->Add(m_auto_list, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
+            auto_sz->Add(build_hint_panel(m_auto_page, _L("Make sure your printer is powered on and connected to the same network."), false), 0,
+                wxEXPAND | wxALL, FromDIP(10));
+            auto_sz->Add(build_hint_panel(m_auto_page, _L("Can't find your printer? Try IP Connect or Manual Setup."), true), 0,
+                wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(10));
+            m_auto_page->SetSizer(auto_sz);
+
+            m_ip_page = new wxPanel(m_notebook, wxID_ANY);
+            m_ip_page->SetBackgroundColour(wxColour(255, 255, 255));
+            auto *ip_sz = new wxBoxSizer(wxVERTICAL);
+            ip_sz->Add(new wxStaticText(m_ip_page, wxID_ANY, _L("Enter your printer's IP address")), 0, wxALL, FromDIP(10));
+            auto *ip_row = new wxBoxSizer(wxHORIZONTAL);
+            m_ip_field = new wxTextCtrl(m_ip_page, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0);
+            m_ip_field->SetHint(_L("Type IP address..."));
+            ip_row->Add(m_ip_field, 1, wxALIGN_CENTER_VERTICAL);
+            auto *ip_add = new wxButton(m_ip_page, wxID_ANY, _L("Add"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+            const wxColour green(40, 167, 69);
+            ip_add->SetForegroundColour(green);
+            ip_row->Add(ip_add, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(6));
+            ip_sz->Add(ip_row, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
+            m_ip_status = new wxStaticText(m_ip_page, wxID_ANY, "");
+            m_ip_status->SetForegroundColour(wxColour(120, 120, 120));
+            ip_sz->Add(m_ip_status, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(8));
+            ip_sz->Add(build_hint_panel(m_ip_page, _L("Make sure your printer is powered on and connected to the same network."), false), 0,
+                wxEXPAND | wxALL, FromDIP(10));
+            m_ip_page->SetSizer(ip_sz);
+
+            m_manual_page = new wxPanel(m_notebook, wxID_ANY);
+            m_manual_page->SetBackgroundColour(wxColour(255, 255, 255));
+            auto *man_sz = new wxBoxSizer(wxVERTICAL);
+            man_sz->Add(new wxStaticText(m_manual_page, wxID_ANY,
+                              _L("Manual setup opens the classic IP and name dialogs step by step.")),
+                0, wxALL, FromDIP(12));
+            auto *open_manual = new wxButton(m_manual_page, wxID_ANY, _L("Start manual setup"));
+            man_sz->Add(open_manual, 0, wxLEFT | wxRIGHT, FromDIP(12));
+            man_sz->AddStretchSpacer(1);
+            m_manual_page->SetSizer(man_sz);
+
+            m_notebook->AddPage(m_auto_page, _L("Auto Connect"));
+            m_notebook->AddPage(m_ip_page, _L("IP Connect"));
+            m_notebook->AddPage(m_manual_page, _L("Manual Setup"));
+
+            root->Add(m_notebook, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(8));
+
+            auto *bottom = new wxBoxSizer(wxVERTICAL);
+            auto add_bottom_row = [&](PrinterWebViewTab tab, const wxString &label) {
+                auto *row = new wxPanel(this, wxID_ANY);
+                row->SetBackgroundColour(wxColour(248, 249, 250));
+                row->SetCursor(wxCursor(wxCURSOR_HAND));
+                auto *hs = new wxBoxSizer(wxHORIZONTAL);
+                hs->AddSpacer(FromDIP(12));
+                auto *lbl = new wxStaticText(row, wxID_ANY, label);
+                lbl->SetCursor(wxCursor(wxCURSOR_HAND));
+                hs->Add(lbl, 1, wxALIGN_CENTER_VERTICAL);
+                auto *chv = new wxStaticText(row, wxID_ANY, ">");
+                chv->SetForegroundColour(wxColour(130, 130, 130));
+                chv->SetCursor(wxCursor(wxCURSOR_HAND));
+                hs->Add(chv, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
+                row->SetSizer(hs);
+                auto go = [this, owner, tab](wxMouseEvent &) {
+                    EndModal(wxID_OK);
+                    if (owner != nullptr)
+                        owner->CallAfter([owner, tab]() { owner->select_tab(tab); });
+                };
+                row->Bind(wxEVT_LEFT_DOWN, go);
+                lbl->Bind(wxEVT_LEFT_DOWN, go);
+                chv->Bind(wxEVT_LEFT_DOWN, go);
+                bottom->Add(row, 0, wxEXPAND | wxTOP, FromDIP(6));
+            };
+            add_bottom_row(PrinterWebViewTab::Update, _L("System Upgrade"));
+            add_bottom_row(PrinterWebViewTab::Storage, _L("Media"));
+            root->Add(bottom, 0, wxEXPAND | wxALL, FromDIP(8));
+
+            SetSizer(root);
+
+            refresh_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { rebuild_auto_list(); });
+            ip_add->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { try_ip_add(); });
+            m_ip_field->Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent &) { try_ip_add(); });
+            open_manual->Bind(wxEVT_BUTTON, [this, owner](wxCommandEvent &) {
+                EndModal(wxID_OK);
+                if (owner != nullptr)
+                    owner->CallAfter([owner]() { owner->prompt_ip_connect(); });
+            });
+
+            SetSize(wxSize(FromDIP(360), FromDIP(420)));
+            rebuild_auto_list();
+        }
+
+        wxPanel *build_hint_panel(wxWindow *parent, const wxString &text, bool green_bg)
+        {
+            auto *p = new wxPanel(parent, wxID_ANY);
+            p->SetBackgroundColour(green_bg ? wxColour(220, 248, 230) : wxColour(240, 240, 242));
+            auto *s = new wxBoxSizer(wxHORIZONTAL);
+            s->AddSpacer(FromDIP(8));
+            auto *t = new wxStaticText(p, wxID_ANY, text);
+            t->Wrap(FromDIP(300));
+            s->Add(t, 1, wxALL, FromDIP(10));
+            p->SetSizer(s);
+            return p;
+        }
+
+        void rebuild_auto_list()
+        {
+            if (m_auto_list_sizer == nullptr || m_owner == nullptr)
+                return;
+            m_auto_list_sizer->Clear(true);
+            auto *dev_manager = wxGetApp().getDeviceManager();
+            if (dev_manager != nullptr)
+                dev_manager->start_refresher();
+
+            const auto locals = dev_manager ? dev_manager->get_local_machinelist() : std::map<std::string, MachineObject*>();
+            const wxColour green(40, 167, 69);
+            for (const auto &it : locals) {
+                MachineObject *obj = it.second;
+                if (obj == nullptr)
+                    continue;
+                auto *row = new wxPanel(m_auto_list, wxID_ANY);
+                row->SetBackgroundColour(wxColour(255, 255, 255));
+                row->SetCursor(wxCursor(wxCURSOR_HAND));
+                auto *hs = new wxBoxSizer(wxHORIZONTAL);
+                hs->AddSpacer(FromDIP(8));
+                auto *vs = new wxBoxSizer(wxVERTICAL);
+                auto *name = new wxStaticText(row, wxID_ANY, from_u8(obj->get_dev_name()));
+                wxFont nf = name->GetFont();
+                nf.SetWeight(wxFONTWEIGHT_BOLD);
+                name->SetFont(nf);
+                vs->Add(name, 0);
+                wxString ip = from_u8(obj->get_dev_ip());
+                if (!ip.empty())
+                    vs->Add(new wxStaticText(row, wxID_ANY, ip), 0);
+                hs->Add(vs, 1, wxALIGN_CENTER_VERTICAL);
+                auto *add_b = new wxButton(row, wxID_ANY, _L("Add"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+                add_b->SetForegroundColour(green);
+                hs->Add(add_b, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+                row->SetSizer(hs);
+                add_b->Bind(wxEVT_BUTTON, [this, obj](wxCommandEvent &) {
+                    BBLocalMachine machine;
+                    machine.dev_id = obj->get_dev_id();
+                    machine.dev_ip = obj->get_dev_ip();
+                    machine.dev_name = obj->get_dev_name();
+                    machine.printer_type = obj->printer_type.empty() ? std::string("Moonraker") : obj->printer_type;
+                    if (m_owner != nullptr && m_owner->finish_add_moonraker_printer(machine, obj->local_use_ssl))
+                        EndModal(wxID_OK);
+                });
+                m_auto_list_sizer->Add(row, 0, wxEXPAND | wxBOTTOM, FromDIP(6));
+            }
+            if (locals.empty()) {
+                auto *empty = new wxStaticText(m_auto_list, wxID_ANY, _L("No printers discovered yet. Tap Refresh."));
+                m_auto_list_sizer->Add(empty, 0, wxALL, FromDIP(8));
+            }
+            m_auto_list->FitInside();
+            m_auto_list->Layout();
+        }
+
+        void try_ip_add()
+        {
+            wxString ip_value = m_ip_field->GetValue();
+            ip_value.Trim(true);
+            ip_value.Trim(false);
+            if (ip_value.empty()) {
+                wxMessageBox(_L("IP address cannot be empty."), _L("IP Connect"), wxOK | wxICON_WARNING, this);
+                return;
+            }
+
+            wxTextEntryDialog name_dialog(this, _L("Display name for this printer"), _L("Printer name"), ip_value);
+            if (name_dialog.ShowModal() != wxID_OK)
+                return;
+            wxString name_value = name_dialog.GetValue();
+            name_value.Trim(true);
+            name_value.Trim(false);
+            if (name_value.empty()) {
+                wxMessageBox(_L("Printer name cannot be empty."), _L("Printer name"), wxOK | wxICON_WARNING, this);
+                return;
+            }
+
+            std::string host = into_u8(ip_value);
+            const bool has_scheme = host.rfind("http://", 0) == 0 || host.rfind("https://", 0) == 0;
+            const std::string normalized_host = MachineObject::dev_id_from_address(host);
+            std::string dev_ip = normalized_host;
+            if (!has_scheme && normalized_host.find(':') == std::string::npos)
+                dev_ip += ":7125";
+            const std::string dev_id = dev_ip;
+
+            BBLocalMachine machine;
+            machine.dev_id = dev_id;
+            machine.dev_ip = dev_ip;
+            machine.dev_name = into_u8(name_value);
+            machine.printer_type = "Moonraker";
+
+            m_ip_status->SetLabelText(_L("Connecting to printer..."));
+            if (m_owner != nullptr && m_owner->finish_add_moonraker_printer(machine, host.rfind("https://", 0) == 0))
+                EndModal(wxID_OK);
+        }
+
+        PrinterWebView *m_owner{ nullptr };
+        wxNotebook *m_notebook{ nullptr };
+        wxPanel *m_auto_page{ nullptr };
+        wxPanel *m_ip_page{ nullptr };
+        wxPanel *m_manual_page{ nullptr };
+        wxStaticText *m_auto_status{ nullptr };
+        wxScrolledWindow *m_auto_list{ nullptr };
+        wxBoxSizer *m_auto_list_sizer{ nullptr };
+        wxTextCtrl *m_ip_field{ nullptr };
+        wxStaticText *m_ip_status{ nullptr };
+    };
+
+    AddPrinterDialog dlg(this, this);
+    dlg.ShowModal();
+}
+
 void PrinterWebView::prompt_ip_connect()
 {
     wxTextEntryDialog ip_dialog(this, "Yazicinin IP adresini veya Moonraker adresini girin.", "IP Adresi ile Baglan");
@@ -2256,55 +2671,13 @@ void PrinterWebView::prompt_ip_connect()
         return;
     }
 
-    auto *dev_manager = wxGetApp().getDeviceManager();
-    if (dev_manager == nullptr) {
-        wxMessageBox("Device manager hazir degil.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
-        return;
-    }
-
-    auto *agent = wxGetApp().getAgent();
-    if (agent == nullptr) {
-        wxMessageBox("Network agent hazir degil.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
-        return;
-    }
-
-    const auto current_printer_agent = agent->get_printer_agent();
-    const bool needs_moonraker_agent = current_printer_agent == nullptr ||
-        current_printer_agent->get_agent_info().id != "moonraker";
-    if (needs_moonraker_agent) {
-        auto moonraker_agent = NetworkAgentFactory::create_printer_agent_by_id(
-            "moonraker", agent->get_cloud_agent(), Slic3r::data_dir());
-        if (moonraker_agent == nullptr) {
-            wxMessageBox("Moonraker network agent baslatilamadi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
-            return;
-        }
-        agent->set_printer_agent(moonraker_agent);
-    }
-
     BBLocalMachine machine;
     machine.dev_id = dev_id;
     machine.dev_ip = dev_ip;
     machine.dev_name = into_u8(name_value);
     machine.printer_type = "Moonraker";
 
-    MachineObject *obj = dev_manager->insert_local_device(machine, "lan", "free", "", "");
-    if (obj == nullptr) {
-        wxMessageBox("Yazici yerel cihaz listesine eklenemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
-        return;
-    }
-
-    obj->local_use_ssl = host.rfind("https://", 0) == 0;
-    if (!dev_manager->set_selected_machine(dev_id)) {
-        wxMessageBox("Yazici secilemedi.", "IP Adresi ile Baglan", wxOK | wxICON_ERROR, this);
-        return;
-    }
-    m_has_active_printer_connection = true;
-    obj->command_request_push_all(true);
-
-    dismiss_printers_popup();
-    rebuild_printers_popup();
-    refresh_layer_info_from_selected_machine();
-    Layout();
+    finish_add_moonraker_printer(machine, host.rfind("https://", 0) == 0);
 }
 
 void PrinterWebView::rebuild_printers_popup()
@@ -2318,66 +2691,75 @@ void PrinterWebView::rebuild_printers_popup()
     }
     m_printers_popup_panel->DestroyChildren();
 
+    m_printers_popup_panel->SetBackgroundColour(wxColour(255, 255, 255));
+    m_printers_popup_panel->SetMinSize(wxSize(FromDIP(288), -1));
+
     auto *printers_popup_sizer = new wxBoxSizer(wxVERTICAL);
     auto *dev_manager = wxGetApp().getDeviceManager();
     auto *selected_machine = dev_manager ? dev_manager->get_selected_machine() : nullptr;
     const auto my_machines = dev_manager ? dev_manager->get_my_machine_list() : std::map<std::string, MachineObject*>();
     const auto local_machines = dev_manager ? dev_manager->get_local_machinelist() : std::map<std::string, MachineObject*>();
-    const bool has_any_machine = selected_machine != nullptr || !my_machines.empty() || !local_machines.empty();
 
-    m_printers_popup_panel->SetMinSize(wxSize(FromDIP(238), -1));
+    const wxColour k_green(40, 167, 69);
+    const wxColour k_muted(120, 120, 120);
+    const wxColour k_card_border(232, 232, 232);
+
+    auto *header = new wxBoxSizer(wxHORIZONTAL);
+    header->AddSpacer(FromDIP(12));
+    auto *title = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("Printers"));
+    wxFont title_font = title->GetFont();
+    title_font.SetWeight(wxFONTWEIGHT_BOLD);
+    title->SetFont(title_font);
+    title->SetForegroundColour(wxColour(28, 28, 28));
+    header->Add(title, 0, wxALIGN_CENTER_VERTICAL);
+    header->AddStretchSpacer(1);
+    auto *add_link = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("+ Add"));
+    add_link->SetForegroundColour(k_green);
+    add_link->SetCursor(wxCursor(wxCURSOR_HAND));
+    add_link->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &evt) {
+        evt.StopPropagation();
+        show_add_printer_dialog();
+    });
+    header->Add(add_link, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
+    printers_popup_sizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10));
 
     if (selected_machine != nullptr) {
-        auto *printer_current_panel = new wxPanel(m_printers_popup_panel, wxID_ANY);
-        printer_current_panel->SetBackgroundColour(wxColour(245, 245, 245));
-        auto *printer_current_row = new wxBoxSizer(wxHORIZONTAL);
-        printer_current_row->AddSpacer(FromDIP(12));
-        printer_current_row->Add(new wxStaticBitmap(printer_current_panel, wxID_ANY, create_scaled_bitmap("printer_preview_BL-P001", this, 18)), 0, wxALIGN_CENTER_VERTICAL);
-        printer_current_row->AddSpacer(FromDIP(10));
-
-        auto *current_printer_label = new wxStaticText(printer_current_panel, wxID_ANY, from_u8(selected_machine->get_dev_name()));
-        current_printer_label->SetForegroundColour(wxColour(20, 20, 20));
-        printer_current_row->Add(current_printer_label, 0, wxALIGN_CENTER_VERTICAL);
-        printer_current_row->AddStretchSpacer(1);
-
-        auto *logout_label = new wxStaticText(printer_current_panel, wxID_ANY, wxString::FromUTF8("C\xC4\xB1k\xC4\xB1\xC5\x9F"));
-        logout_label->SetForegroundColour(wxColour(110, 110, 110));
+        auto *acct_row = new wxBoxSizer(wxHORIZONTAL);
+        acct_row->AddSpacer(FromDIP(12));
+        acct_row->Add(new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap("printer_preview_BL-P001", this, 16)), 0, wxALIGN_CENTER_VERTICAL);
+        acct_row->AddSpacer(FromDIP(8));
+        auto *nm = new wxStaticText(m_printers_popup_panel, wxID_ANY, from_u8(selected_machine->get_dev_name()));
+        nm->SetForegroundColour(wxColour(45, 45, 45));
+        acct_row->Add(nm, 1, wxALIGN_CENTER_VERTICAL);
+        auto *logout_label = new wxStaticText(m_printers_popup_panel, wxID_ANY, wxString::FromUTF8("C\xC4\xB1k\xC4\xB1\xC5\x9F"));
+        logout_label->SetForegroundColour(k_muted);
         logout_label->SetCursor(wxCursor(wxCURSOR_HAND));
-        printer_current_row->Add(logout_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(6));
-
-        auto *logout_icon = new wxStaticBitmap(printer_current_panel, wxID_ANY, create_scaled_bitmap("menu_exit", this, 14));
+        acct_row->Add(logout_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(4));
+        auto *logout_icon = new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap("menu_exit", this, 14));
         logout_icon->SetCursor(wxCursor(wxCURSOR_HAND));
-        printer_current_row->Add(logout_icon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
-
+        acct_row->Add(logout_icon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
         auto logout_handler = [this](wxMouseEvent &) {
             dismiss_printers_popup();
             wxGetApp().request_user_logout();
         };
         logout_label->Bind(wxEVT_LEFT_DOWN, logout_handler);
         logout_icon->Bind(wxEVT_LEFT_DOWN, logout_handler);
-
-        printer_current_panel->SetSizer(printer_current_row);
-        printers_popup_sizer->Add(printer_current_panel, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(12));
-
+        printers_popup_sizer->Add(acct_row, 0, wxEXPAND | wxBOTTOM, FromDIP(6));
         auto *header_divider = new wxPanel(m_printers_popup_panel, wxID_ANY);
         header_divider->SetMinSize(wxSize(-1, FromDIP(1)));
         header_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
-        header_divider->SetBackgroundColour(wxColour(220, 220, 220));
+        header_divider->SetBackgroundColour(k_card_border);
         printers_popup_sizer->Add(header_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
     }
 
-    printers_popup_sizer->AddSpacer(FromDIP(5));
-
-    auto *search_box = new wxTextCtrl(m_printers_popup_panel, wxID_ANY, "", wxDefaultPosition, wxSize(FromDIP(210), -1));
-    search_box->SetHint("Ara");
+    auto *search_box = new wxTextCtrl(m_printers_popup_panel, wxID_ANY, "", wxDefaultPosition, wxSize(-1, FromDIP(28)));
+    search_box->SetHint(_L("Search"));
     search_box->ChangeValue(m_printers_search_query);
     search_box->Bind(wxEVT_TEXT, [this](wxCommandEvent &evt) {
         m_printers_search_query = evt.GetString();
-        CallAfter([this]() {
-            rebuild_printers_popup();
-        });
+        CallAfter([this]() { rebuild_printers_popup(); });
     });
-    printers_popup_sizer->Add(search_box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
+    printers_popup_sizer->Add(search_box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(10));
 
     const wxString search_query = m_printers_search_query.Lower();
     auto matches_search = [&search_query](MachineObject *machine) {
@@ -2385,167 +2767,188 @@ void PrinterWebView::rebuild_printers_popup()
             return false;
         if (search_query.empty())
             return true;
-
         wxString searchable;
-        searchable << from_u8(machine->get_dev_name()) << " "
-                   << from_u8(machine->get_dev_id()) << " "
-                   << from_u8(machine->get_dev_ip());
+        searchable << from_u8(machine->get_dev_name()) << " " << from_u8(machine->get_dev_id()) << " " << from_u8(machine->get_dev_ip());
         return searchable.Lower().Find(search_query) != wxNOT_FOUND;
     };
 
-    auto add_popup_line = [this, printers_popup_sizer](wxWindow *parent, const wxString &text, const wxColour &color, bool bold = false, int top = 16) {
-        auto *line = new wxStaticText(parent, wxID_ANY, text);
-        line->SetForegroundColour(color);
-        if (bold) {
-            wxFont font = line->GetFont();
-            font.SetWeight(wxFONTWEIGHT_BOLD);
-            line->SetFont(font);
-        }
-        printers_popup_sizer->Add(line, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(top));
-        return line;
-    };
-
-    auto add_ip_connect_line = [&]() {
-        auto *line = add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 14);
-        line->SetCursor(wxCursor(wxCURSOR_HAND));
-        line->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { prompt_ip_connect(); });
-    };
-
-    auto bind_machine_line = [this, dev_manager](wxStaticText *line, MachineObject *machine) {
-        if (line == nullptr || machine == nullptr)
-            return;
-        line->SetCursor(wxCursor(wxCURSOR_HAND));
-        line->Bind(wxEVT_LEFT_DOWN, [this, dev_manager, machine](wxMouseEvent &) {
-            const std::string dev_id = machine->get_dev_id();
-            dismiss_printers_popup();
-            if (wxGetApp().mainframe != nullptr && wxGetApp().mainframe->m_monitor != nullptr)
-                wxGetApp().mainframe->m_monitor->select_machine(dev_id);
-            else if (dev_manager != nullptr)
-                dev_manager->set_selected_machine(dev_id);
-            m_has_active_printer_connection = true;
-            machine->command_request_push_all(true);
-            refresh_layer_info_from_selected_machine();
-        });
-    };
-
-    auto remove_local_machine = [this, dev_manager](MachineObject *machine) {
-        if (dev_manager == nullptr || machine == nullptr)
-            return;
-
-        const std::string dev_id = machine->get_dev_id();
-        const wxString    name   = from_u8(machine->get_dev_name());
-        const int answer = wxMessageBox(
-            wxString::Format("%s kayitli yazicisini silmek istiyor musunuz?", name),
-            "Yaziciyi Sil",
-            wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION,
-            this);
-        if (answer != wxYES)
-            return;
-
-        MachineObject *selected_machine = dev_manager->get_selected_machine();
-        if (selected_machine != nullptr && selected_machine->get_dev_id() == dev_id) {
-            selected_machine->disconnect();
-            selected_machine->set_online_state(false);
-            selected_machine->reset();
-            m_has_active_printer_connection = false;
-            dev_manager->set_selected_machine("");
-        }
-
-        if (wxGetApp().app_config != nullptr)
-            wxGetApp().app_config->erase_local_machine(dev_id);
-        dev_manager->erase_local_machine(dev_id);
-        delete machine;
-
-        rebuild_printers_popup();
-        refresh_layer_info_from_selected_machine();
-        Layout();
-    };
-
-    auto add_machine_line = [this, printers_popup_sizer, bind_machine_line, remove_local_machine, &local_machines](
-                                MachineObject *machine, const wxColour &color, int top = 12) {
+    auto select_machine_fn = [this, dev_manager](MachineObject *machine) {
         if (machine == nullptr)
             return;
-
-        auto *row = new wxPanel(m_printers_popup_panel, wxID_ANY);
-        row->SetBackgroundColour(wxColour(245, 245, 245));
-        auto *row_sizer = new wxBoxSizer(wxHORIZONTAL);
-        auto *name_label = new wxStaticText(row, wxID_ANY, from_u8(machine->get_dev_name()), wxDefaultPosition, wxSize(FromDIP(155), -1), wxST_ELLIPSIZE_END);
-        name_label->SetForegroundColour(color);
-        row_sizer->Add(name_label, 1, wxALIGN_CENTER_VERTICAL);
-
-        const bool is_saved_local_machine = local_machines.find(machine->get_dev_id()) != local_machines.end();
-        if (is_saved_local_machine) {
-            auto *delete_label = new wxStaticText(row, wxID_ANY, "Sil");
-            delete_label->SetForegroundColour(wxColour(180, 60, 60));
-            delete_label->SetCursor(wxCursor(wxCURSOR_HAND));
-            delete_label->Bind(wxEVT_LEFT_DOWN, [remove_local_machine, machine](wxMouseEvent &) { remove_local_machine(machine); });
-            row_sizer->AddSpacer(FromDIP(8));
-            row_sizer->Add(delete_label, 0, wxALIGN_CENTER_VERTICAL);
-        }
-
-        row->SetSizer(row_sizer);
-        bind_machine_line(name_label, machine);
-        printers_popup_sizer->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(top));
+        const std::string dev_id = machine->get_dev_id();
+        dismiss_printers_popup();
+        if (wxGetApp().mainframe != nullptr && wxGetApp().mainframe->m_monitor != nullptr)
+            wxGetApp().mainframe->m_monitor->select_machine(dev_id);
+        else if (dev_manager != nullptr)
+            dev_manager->set_selected_machine(dev_id);
+        m_has_active_printer_connection = true;
+        machine->command_request_push_all(true);
+        refresh_layer_info_from_selected_machine();
     };
 
-    std::map<std::string, MachineObject*> visible_my_machines;
+    std::map<std::string, MachineObject*> all_by_id;
     for (const auto &entry : my_machines) {
-        if (entry.second == nullptr)
-            continue;
-        if (selected_machine != nullptr && entry.first == selected_machine->get_dev_id())
-            continue;
-        if (!matches_search(entry.second))
-            continue;
-        visible_my_machines.emplace(entry);
+        if (entry.second != nullptr)
+            all_by_id[entry.first] = entry.second;
     }
-
-    std::map<std::string, MachineObject*> other_local_machines;
     for (const auto &entry : local_machines) {
-        if (entry.second == nullptr)
+        if (entry.second != nullptr && all_by_id.find(entry.first) == all_by_id.end())
+            all_by_id[entry.first] = entry.second;
+    }
+    if (selected_machine != nullptr)
+        all_by_id[selected_machine->get_dev_id()] = selected_machine;
+
+    std::vector<MachineObject *> sorted;
+    sorted.reserve(all_by_id.size());
+    for (const auto &entry : all_by_id) {
+        if (entry.second != nullptr && matches_search(entry.second))
+            sorted.push_back(entry.second);
+    }
+    std::sort(sorted.begin(), sorted.end(), [](MachineObject *a, MachineObject *b) {
+        if (a == nullptr || b == nullptr)
+            return a != nullptr;
+        return a->get_dev_name() < b->get_dev_name();
+    });
+
+    std::vector<MachineObject *> online_list;
+    std::vector<MachineObject *> offline_list;
+    for (MachineObject *m : sorted) {
+        if (m == nullptr)
             continue;
-        if (visible_my_machines.find(entry.first) != visible_my_machines.end())
-            continue;
-        if (selected_machine != nullptr && entry.first == selected_machine->get_dev_id())
-            continue;
-        if (!matches_search(entry.second))
-            continue;
-        other_local_machines.emplace(entry);
+        if (m->is_online())
+            online_list.push_back(m);
+        else
+            offline_list.push_back(m);
     }
 
-    if (!has_any_machine) {
-        add_popup_line(m_printers_popup_panel, "Cihaz ekle +", wxColour(20, 20, 20), true, 18);
-        add_ip_connect_line();
-    } else {
-        if (!visible_my_machines.empty()) {
-            add_popup_line(m_printers_popup_panel, "Cihazim", wxColour(120, 120, 120), false, 18);
-            for (const auto &entry : visible_my_machines) {
-                auto *machine = entry.second;
-                if (machine == nullptr)
-                    continue;
-                add_machine_line(machine, wxColour(20, 20, 20), 12);
-            }
+    auto add_section_title = [&](const wxString &text) {
+        auto *lab = new wxStaticText(m_printers_popup_panel, wxID_ANY, text);
+        lab->SetForegroundColour(k_muted);
+        wxFont f = lab->GetFont();
+        f.SetPointSize((std::max)(8, f.GetPointSize() - 1));
+        lab->SetFont(f);
+        printers_popup_sizer->Add(lab, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(14));
+    };
+
+    auto add_printer_card = [&](MachineObject *machine) {
+        if (machine == nullptr)
+            return;
+        const bool online = machine->is_online();
+        auto *card = new wxPanel(m_printers_popup_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_THEME);
+        card->SetBackgroundColour(wxColour(255, 255, 255));
+        card->SetCursor(wxCursor(wxCURSOR_HAND));
+        auto *hs = new wxBoxSizer(wxHORIZONTAL);
+        hs->AddSpacer(FromDIP(10));
+        auto *printer_bmp = new wxStaticBitmap(card, wxID_ANY, create_scaled_bitmap("printer_preview_BL-P001", this, 22));
+        hs->Add(printer_bmp, 0, wxALIGN_CENTER_VERTICAL);
+        hs->AddSpacer(FromDIP(10));
+        auto *vs = new wxBoxSizer(wxVERTICAL);
+        auto *name_lbl = new wxStaticText(card, wxID_ANY, from_u8(machine->get_dev_name()), wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END);
+        wxFont nf = name_lbl->GetFont();
+        nf.SetWeight(wxFONTWEIGHT_BOLD);
+        name_lbl->SetFont(nf);
+        name_lbl->SetForegroundColour(wxColour(28, 28, 28));
+        vs->Add(name_lbl, 0);
+        auto *status_row = new wxBoxSizer(wxHORIZONTAL);
+        auto *dot = new wxStaticText(card, wxID_ANY, wxString::FromUTF8("\xE2\x97\x8F"));
+        dot->SetForegroundColour(online ? k_green : wxColour(180, 180, 180));
+        status_row->Add(dot, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(4));
+        auto *st = new wxStaticText(card, wxID_ANY, online ? _L("Connected") : _L("Offline"));
+        st->SetForegroundColour(online ? k_green : k_muted);
+        status_row->Add(st, 0, wxALIGN_CENTER_VERTICAL);
+        vs->Add(status_row, 0);
+        wxString ip = from_u8(machine->get_dev_ip());
+        wxStaticText *ip_lbl = nullptr;
+        if (!ip.empty()) {
+            ip_lbl = new wxStaticText(card, wxID_ANY, ip);
+            ip_lbl->SetForegroundColour(k_muted);
+            wxFont ip_font = ip_lbl->GetFont();
+            ip_font.SetPointSize((std::max)(8, ip_font.GetPointSize() - 1));
+            ip_lbl->SetFont(ip_font);
+            vs->Add(ip_lbl, 0);
         }
+        hs->Add(vs, 1, wxALIGN_CENTER_VERTICAL);
+        auto *more = new wxStaticText(card, wxID_ANY, "...");
+        more->SetForegroundColour(k_muted);
+        more->SetCursor(wxCursor(wxCURSOR_HAND));
+        hs->Add(more, 0, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, FromDIP(6));
+        auto *chev = new wxStaticText(card, wxID_ANY, ">");
+        chev->SetForegroundColour(wxColour(160, 160, 160));
+        chev->SetCursor(wxCursor(wxCURSOR_HAND));
+        hs->Add(chev, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
+        card->SetSizer(hs);
 
-        if (!other_local_machines.empty()) {
-            add_popup_line(m_printers_popup_panel, "Diger Cihazlar", wxColour(120, 120, 120), false, 18);
-            for (const auto &entry : other_local_machines) {
-                auto *machine = entry.second;
-                if (machine == nullptr)
-                    continue;
-                add_machine_line(machine, wxColour(80, 80, 80), 12);
-            }
-        }
+        auto pick = [select_machine_fn, machine](wxMouseEvent &) { select_machine_fn(machine); };
+        card->Bind(wxEVT_LEFT_DOWN, pick);
+        name_lbl->Bind(wxEVT_LEFT_DOWN, pick);
+        st->Bind(wxEVT_LEFT_DOWN, pick);
+        dot->Bind(wxEVT_LEFT_DOWN, pick);
+        if (ip_lbl != nullptr)
+            ip_lbl->Bind(wxEVT_LEFT_DOWN, pick);
+        printer_bmp->Bind(wxEVT_LEFT_DOWN, pick);
+        chev->Bind(wxEVT_LEFT_DOWN, pick);
+        more->Bind(wxEVT_LEFT_DOWN, [this, more, machine](wxMouseEvent &evt) {
+            evt.StopPropagation();
+            show_printer_card_actions_menu(more, machine);
+        });
+        printers_popup_sizer->Add(card, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(8));
+    };
 
-        if (!m_printers_search_query.empty() && visible_my_machines.empty() && other_local_machines.empty())
-            add_popup_line(m_printers_popup_panel, "Sonuc bulunamadi", wxColour(120, 120, 120), false, 14);
-
-        auto *ip_line = add_popup_line(m_printers_popup_panel, "+ IP Adresi ile Baglan", wxColour(20, 20, 20), true, 16);
-        ip_line->SetCursor(wxCursor(wxCURSOR_HAND));
-        ip_line->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { prompt_ip_connect(); });
+    if (!online_list.empty()) {
+        add_section_title(_L("Active printers"));
+        for (MachineObject *m : online_list)
+            add_printer_card(m);
+    }
+    if (!offline_list.empty()) {
+        add_section_title(_L("Offline printers"));
+        for (MachineObject *m : offline_list)
+            add_printer_card(m);
+    }
+    if (sorted.empty()) {
+        auto *empty = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("No printers found. Use + Add or add by IP."));
+        empty->SetForegroundColour(k_muted);
+        printers_popup_sizer->Add(empty, 0, wxALL, FromDIP(14));
+    } else if (!m_printers_search_query.empty() && online_list.empty() && offline_list.empty()) {
+        auto *empty = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("No results"));
+        empty->SetForegroundColour(k_muted);
+        printers_popup_sizer->Add(empty, 0, wxALL, FromDIP(14));
     }
 
-    add_popup_line(m_printers_popup_panel, "Cihazlarimi bulamiyor musunuz?", wxColour(38, 94, 190), false, 16);
-    printers_popup_sizer->AddSpacer(FromDIP(10));
+    auto *add_printer_btn = new wxButton(m_printers_popup_panel, wxID_ANY, _L("+ Add Printer"));
+    add_printer_btn->SetMinSize(wxSize(-1, FromDIP(40)));
+    add_printer_btn->SetBackgroundColour(wxColour(255, 255, 255));
+    add_printer_btn->SetForegroundColour(k_green);
+    add_printer_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { show_add_printer_dialog(); });
+    printers_popup_sizer->Add(add_printer_btn, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(14));
+
+    auto add_nav_row = [&](PrinterWebViewTab tab, const wxString &label) {
+        auto *row = new wxPanel(m_printers_popup_panel, wxID_ANY);
+        row->SetBackgroundColour(wxColour(248, 249, 250));
+        row->SetCursor(wxCursor(wxCURSOR_HAND));
+        auto *r = new wxBoxSizer(wxHORIZONTAL);
+        r->AddSpacer(FromDIP(12));
+        auto *t = new wxStaticText(row, wxID_ANY, label);
+        t->SetForegroundColour(wxColour(40, 40, 40));
+        t->SetCursor(wxCursor(wxCURSOR_HAND));
+        r->Add(t, 1, wxALIGN_CENTER_VERTICAL);
+        auto *c = new wxStaticText(row, wxID_ANY, ">");
+        c->SetForegroundColour(wxColour(130, 130, 130));
+        c->SetCursor(wxCursor(wxCURSOR_HAND));
+        r->Add(c, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
+        row->SetSizer(r);
+        auto go = [this, tab](wxMouseEvent &) {
+            dismiss_printers_popup();
+            select_tab(tab);
+        };
+        row->Bind(wxEVT_LEFT_DOWN, go);
+        t->Bind(wxEVT_LEFT_DOWN, go);
+        c->Bind(wxEVT_LEFT_DOWN, go);
+        printers_popup_sizer->Add(row, 0, wxEXPAND | wxTOP, FromDIP(8));
+    };
+    add_nav_row(PrinterWebViewTab::Update, _L("System Upgrade"));
+    add_nav_row(PrinterWebViewTab::Storage, _L("Media"));
+
+    printers_popup_sizer->AddSpacer(FromDIP(12));
 
     m_printers_popup_panel->SetSizer(printers_popup_sizer);
     printers_popup_sizer->Fit(m_printers_popup_panel);
