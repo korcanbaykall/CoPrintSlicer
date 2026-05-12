@@ -239,13 +239,12 @@ public:
     {
         SetBackgroundStyle(wxBG_STYLE_PAINT);
         Bind(wxEVT_PAINT, &PsCardHeaderPanel::on_paint, this);
-        Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent &) {});
     }
 
 private:
     void on_paint(wxPaintEvent &)
     {
-        wxAutoBufferedPaintDC dc(this);
+        wxPaintDC dc(this);
         const wxRect rect = GetClientRect();
         if (rect.width <= 0 || rect.height <= 0)
             return;
@@ -1769,8 +1768,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto make_ps_card = [this, printer_status_box, ps_card_body_bg](bool active) -> StaticBox * {
         auto *card = new StaticBox(printer_status_box, wxID_ANY);
-        card->SetMinSize(wxSize(-1, this->FromDIP(115)));
-        card->SetMaxSize(wxSize(-1, this->FromDIP(115)));
+        card->SetMinSize(wxSize(-1, this->FromDIP(110)));
+        card->SetMaxSize(wxSize(-1, this->FromDIP(110)));
         card->SetCornerRadius(this->FromDIP(8));
         card->SetBorderWidth(1);
         card->SetBorderColorNormal(active ? wxColour(44, 182, 125) : wxColour(55, 58, 64));
@@ -1781,6 +1780,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto make_ps_header = [this](wxWindow *parent, const wxString &txt, bool active) -> wxStaticText * {
         auto *lbl = new wxStaticText(parent, wxID_ANY, txt);
         lbl->SetForegroundColour(active ? wxColour(220, 220, 220) : wxColour(120, 125, 135));
+        lbl->SetBackgroundStyle(wxBG_STYLE_TRANSPARENT);
         wxFont f = lbl->GetFont();
         f.SetWeight(wxFONTWEIGHT_BOLD);
         lbl->SetFont(f);
