@@ -1465,10 +1465,18 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     col_labels->AddSpacer(FromDIP(20));
     col_labels->Add(make_col_label("Move Z Axis", 90), 0);
 
+    // Center the label row + control row as one unit so left/right outer margins match.
+    auto *movement_body = new wxBoxSizer(wxVERTICAL);
+    movement_body->Add(col_labels, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(6));
+    movement_body->Add(content_row, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP | wxBOTTOM, FromDIP(12));
+    auto *movement_body_wrap = new wxBoxSizer(wxHORIZONTAL);
+    movement_body_wrap->AddStretchSpacer(1);
+    movement_body_wrap->Add(movement_body, 0);
+    movement_body_wrap->AddStretchSpacer(1);
+
     right_sizer->Add(movement_title_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(8));
     right_sizer->Add(movement_sep, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
-    right_sizer->Add(col_labels, 0, wxEXPAND | wxTOP, FromDIP(6));
-    right_sizer->Add(content_row, 0, wxALL, FromDIP(12));
+    right_sizer->Add(movement_body_wrap, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(12));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
     const int right_placeholder_height = FromDIP(240);
@@ -1668,15 +1676,18 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *ps_grid = new wxBoxSizer(wxHORIZONTAL);
 
-    auto make_ps_card = [this, printer_status_box](bool active) -> StaticBox * {
+    const wxColour ps_card_body_bg(35, 38, 43);
+    const wxColour ps_card_header_bg(22, 24, 29);
+
+    auto make_ps_card = [this, printer_status_box, ps_card_body_bg](bool active) -> StaticBox * {
         auto *card = new StaticBox(printer_status_box, wxID_ANY);
         card->SetMinSize(wxSize(-1, this->FromDIP(115)));
         card->SetMaxSize(wxSize(-1, this->FromDIP(115)));
         card->SetCornerRadius(this->FromDIP(8));
         card->SetBorderWidth(1);
         card->SetBorderColorNormal(active ? wxColour(44, 182, 125) : wxColour(55, 58, 64));
-        card->SetBackgroundColorNormal(wxColour(35, 38, 43));
-        card->SetBackgroundColour(wxColour(35, 38, 43));
+        card->SetBackgroundColorNormal(ps_card_body_bg);
+        card->SetBackgroundColour(ps_card_body_bg);
         return card;
     };
     auto make_ps_header = [this](wxWindow *parent, const wxString &txt, bool active) -> wxStaticText * {
@@ -1710,6 +1721,14 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         row->Add(lbl, 0, wxALIGN_CENTER_VERTICAL);
         return row;
     };
+    auto add_ps_title_strip = [this, ps_card_header_bg, &make_ps_header](wxBoxSizer *card_sizer, wxWindow *card, const wxString &title, bool active) {
+        auto *header_panel = new wxPanel(card);
+        header_panel->SetBackgroundColour(ps_card_header_bg);
+        auto *header_sz = new wxBoxSizer(wxVERTICAL);
+        header_sz->Add(make_ps_header(header_panel, title, active), 0, wxALIGN_CENTER_HORIZONTAL | wxTOP | wxBOTTOM, FromDIP(8));
+        header_panel->SetSizer(header_sz);
+        card_sizer->Add(header_panel, 0, wxEXPAND);
+    };
 
     // Tool 1–4 cards, then Build Plate
     struct PsToolCol { wxString name; bool active; wxStaticText **temp; wxStaticText **fan; };
@@ -1725,7 +1744,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
             ps_grid->AddSpacer(FromDIP(20));
         auto *card = make_ps_card(tc.active);
         auto *card_sizer = new wxBoxSizer(wxVERTICAL);
-        card_sizer->Add(make_ps_header(card, tc.name, tc.active), 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(8));
+        add_ps_title_strip(card_sizer, card, tc.name, tc.active);
         {
             auto *sep = new wxPanel(card, wxID_ANY);
             sep->SetMinSize(wxSize(-1, FromDIP(1)));
@@ -1751,7 +1770,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         ps_grid->AddSpacer(FromDIP(20));
         auto *card = make_ps_card(false);
         auto *card_sizer = new wxBoxSizer(wxVERTICAL);
-        card_sizer->Add(make_ps_header(card, "Build Plate", false), 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(8));
+        add_ps_title_strip(card_sizer, card, "Build Plate", false);
         {
             auto *sep = new wxPanel(card, wxID_ANY);
             sep->SetMinSize(wxSize(-1, FromDIP(1)));
