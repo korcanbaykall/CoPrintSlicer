@@ -253,7 +253,6 @@ private:
         if (rect.width <= 0 || rect.height <= 0)
             return;
 
-        static constexpr double kPi = 3.14159265358979323846;
         const double x = rect.x;
         const double y = rect.y;
         const double w = rect.width;
@@ -263,36 +262,27 @@ private:
         dc.SetBackground(wxBrush(m_fill));
         dc.Clear();
 
+        // Top cap: short rounded rect (height 2r) gives reliable rounded upper corners on all backends.
         wxGCDC gdc(dc);
         wxGraphicsContext *gctx = gdc.GetGraphicsContext();
         if (gctx) {
             gctx->SetAntialiasMode(wxANTIALIAS_DEFAULT);
-            wxGraphicsPath path = gctx->CreatePath();
-            path.MoveToPoint(x, y + h);
-            path.AddLineToPoint(x, y + r);
-            path.AddArc(x + r, y + r, r, kPi, 1.5 * kPi, true);
-            path.AddLineToPoint(x + w - r, y);
-            path.AddArc(x + w - r, y + r, r, 1.5 * kPi, 2.0 * kPi, true);
-            path.AddLineToPoint(x + w, y + h);
-            path.CloseSubpath();
             gctx->SetBrush(wxBrush(m_fill));
             gctx->SetPen(wxPen(m_fill, 1));
-            gctx->FillPath(path);
-
-            const int ri = std::max(1, static_cast<int>(r + 0.5));
-            dc.SetBrush(wxBrush(m_fill));
-            dc.SetPen(*wxTRANSPARENT_PEN);
-            wxPoint left_tri[3]  = { wxPoint(rect.x, rect.y), wxPoint(rect.x, rect.y + ri), wxPoint(rect.x + ri, rect.y) };
-            wxPoint right_tri[3] = { wxPoint(rect.x + rect.width - ri, rect.y), wxPoint(rect.x + rect.width, rect.y),
-                wxPoint(rect.x + rect.width, rect.y + ri) };
-            dc.DrawPolygon(3, left_tri);
-            dc.DrawPolygon(3, right_tri);
+            const double cap_h = std::min(2.0 * r, h);
+            gctx->DrawRoundedRectangle(x, y, w, cap_h, r);
+            if (h > cap_h)
+                gctx->DrawRectangle(x, y + cap_h, w, h - cap_h);
             return;
         }
 
+        const int ri = std::max(1, static_cast<int>(r + 0.5));
+        const int cap_hi = std::min(ri * 2, rect.height);
         dc.SetBrush(wxBrush(m_fill));
         dc.SetPen(wxPen(m_fill, 1));
-        dc.DrawRectangle(rect);
+        dc.DrawRoundedRectangle(rect.x, rect.y, rect.width, cap_hi, ri);
+        if (rect.height > cap_hi)
+            dc.DrawRectangle(rect.x, rect.y + cap_hi, rect.width, rect.height - cap_hi);
     }
 
     wxColour m_fill;
