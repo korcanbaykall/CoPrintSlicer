@@ -32,7 +32,8 @@
 #include <wx/dialog.h>
 #include <wx/button.h>
 #include <wx/menu.h>
-#include <wx/notebook.h>
+#include <wx/simplebook.h>
+#include <wx/artprov.h>
 #include <wx/scrolwin.h>
 
 #include <string>
@@ -2351,32 +2352,81 @@ void PrinterWebView::show_add_printer_dialog()
 
     struct AddPrinterDialog : public wxDialog
     {
+        void apply_tab_selection(int idx)
+        {
+            m_tab_index = idx;
+            const wxColour k_accent(40, 167, 69);
+            for (int i = 0; i < 3; ++i) {
+                if (m_tab_lbl[i] == nullptr || m_tab_under[i] == nullptr)
+                    continue;
+                const bool on = (i == idx);
+                m_tab_lbl[i]->SetForegroundColour(on ? k_accent : wxColour(72, 72, 78));
+                wxFont f = m_tab_lbl[i]->GetFont();
+                f.SetWeight(on ? wxFONTWEIGHT_BOLD : wxFONTWEIGHT_NORMAL);
+                m_tab_lbl[i]->SetFont(f);
+                m_tab_under[i]->SetBackgroundColour(on ? k_accent : wxColour(255, 255, 255));
+            }
+            if (m_book != nullptr)
+                m_book->ChangeSelection(static_cast<size_t>(idx));
+            Refresh();
+        }
+
         explicit AddPrinterDialog(wxWindow *parent, PrinterWebView *owner)
             : wxDialog(parent, wxID_ANY, _L("Add Printer"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
             , m_owner(owner)
         {
             SetBackgroundColour(wxColour(255, 255, 255));
+            const wxColour k_accent(40, 167, 69);
             auto *root = new wxBoxSizer(wxVERTICAL);
 
             auto *header = new wxBoxSizer(wxHORIZONTAL);
             auto *close_btn = new wxButton(this, wxID_CANCEL, "X", wxDefaultPosition, wxSize(FromDIP(28), FromDIP(28)));
             close_btn->SetToolTip(_L("Close"));
-            header->Add(close_btn, 0, wxLEFT | wxTOP, FromDIP(8));
-            header->AddStretchSpacer(1);
+            header->Add(close_btn, 0, wxLEFT | wxTOP, FromDIP(10));
             auto *title = new wxStaticText(this, wxID_ANY, _L("Add Printer"));
             wxFont tf = title->GetFont();
             tf.SetPointSize(tf.GetPointSize() + 1);
             tf.SetWeight(wxFONTWEIGHT_BOLD);
             title->SetFont(tf);
-            header->Add(title, 0, wxALIGN_CENTER_VERTICAL);
-            header->AddStretchSpacer(1);
-            header->AddSpacer(FromDIP(36));
-            root->Add(header, 0, wxEXPAND | wxBOTTOM, FromDIP(4));
+            title->SetForegroundColour(wxColour(28, 28, 28));
+            header->Add(title, 1, wxALIGN_CENTER_VERTICAL | wxALIGN_CENTER_HORIZONTAL);
+            header->AddSpacer(FromDIP(38));
+            root->Add(header, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(4));
+            auto *header_line = new wxPanel(this, wxID_ANY);
+            header_line->SetMinSize(wxSize(-1, FromDIP(1)));
+            header_line->SetMaxSize(wxSize(-1, FromDIP(1)));
+            header_line->SetBackgroundColour(wxColour(232, 232, 235));
+            root->Add(header_line, 0, wxEXPAND);
 
-            m_notebook = new wxNotebook(this, wxID_ANY);
-            m_notebook->SetBackgroundColour(wxColour(255, 255, 255));
+            m_tab_area = new wxPanel(this, wxID_ANY);
+            m_tab_area->SetBackgroundColour(wxColour(255, 255, 255));
+            auto *tab_hs = new wxBoxSizer(wxHORIZONTAL);
+            const wxString tab_titles[3] = { _L("Auto Connect"), _L("IP Connect"), _L("Manual Setup") };
+            for (int i = 0; i < 3; ++i) {
+                auto *cell = new wxPanel(m_tab_area, wxID_ANY);
+                cell->SetBackgroundColour(wxColour(255, 255, 255));
+                auto *vs = new wxBoxSizer(wxVERTICAL);
+                m_tab_lbl[i] = new wxStaticText(cell, wxID_ANY, tab_titles[i]);
+                m_tab_lbl[i]->SetCursor(wxCursor(wxCURSOR_HAND));
+                vs->Add(m_tab_lbl[i], 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(10));
+                m_tab_under[i] = new wxPanel(cell, wxID_ANY);
+                m_tab_under[i]->SetMinSize(wxSize(-1, FromDIP(2)));
+                m_tab_under[i]->SetMaxSize(wxSize(-1, FromDIP(2)));
+                vs->Add(m_tab_under[i], 0, wxEXPAND | wxTOP, FromDIP(6));
+                cell->SetSizer(vs);
+                const int idx = i;
+                auto pick_tab = [this, idx](wxMouseEvent &) { apply_tab_selection(idx); };
+                cell->Bind(wxEVT_LEFT_DOWN, pick_tab);
+                m_tab_lbl[i]->Bind(wxEVT_LEFT_DOWN, pick_tab);
+                tab_hs->Add(cell, 1, wxEXPAND);
+            }
+            m_tab_area->SetSizer(tab_hs);
+            root->Add(m_tab_area, 0, wxEXPAND | wxLEFT | wxRIGHT);
 
-            m_auto_page = new wxPanel(m_notebook, wxID_ANY);
+            m_book = new wxSimplebook(this, wxID_ANY);
+            m_book->SetBackgroundColour(wxColour(255, 255, 255));
+
+            m_auto_page = new wxPanel(m_book, wxID_ANY);
             m_auto_page->SetBackgroundColour(wxColour(255, 255, 255));
             auto *auto_sz = new wxBoxSizer(wxVERTICAL);
             auto *search_row = new wxBoxSizer(wxHORIZONTAL);
@@ -2391,33 +2441,49 @@ void PrinterWebView::show_add_printer_dialog()
             m_auto_list_sizer = new wxBoxSizer(wxVERTICAL);
             m_auto_list->SetSizer(m_auto_list_sizer);
             auto_sz->Add(m_auto_list, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
-            auto_sz->Add(build_hint_panel(m_auto_page, _L("Make sure your printer is powered on and connected to the same network."), false), 0,
+            auto_sz->Add(build_hint_panel(m_auto_page, _L("Make sure your printer is powered on and connected to the same network."), false, true), 0,
                 wxEXPAND | wxALL, FromDIP(10));
-            auto_sz->Add(build_hint_panel(m_auto_page, _L("Can't find your printer? Try IP Connect or Manual Setup."), true), 0,
+            auto_sz->Add(build_hint_panel(m_auto_page, _L("Can't find your printer? Try IP Connect or Manual Setup."), true, false), 0,
                 wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(10));
             m_auto_page->SetSizer(auto_sz);
 
-            m_ip_page = new wxPanel(m_notebook, wxID_ANY);
+            m_ip_page = new wxPanel(m_book, wxID_ANY);
             m_ip_page->SetBackgroundColour(wxColour(255, 255, 255));
             auto *ip_sz = new wxBoxSizer(wxVERTICAL);
-            ip_sz->Add(new wxStaticText(m_ip_page, wxID_ANY, _L("Enter your printer's IP address")), 0, wxALL, FromDIP(10));
-            auto *ip_row = new wxBoxSizer(wxHORIZONTAL);
-            m_ip_field = new wxTextCtrl(m_ip_page, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0);
+            ip_sz->Add(new wxStaticText(m_ip_page, wxID_ANY, _L("Enter your printer's IP address")), 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
+
+            auto *ip_shell = new StaticBox(m_ip_page, wxID_ANY);
+            ip_shell->SetCornerRadius(static_cast<double>(FromDIP(10)));
+            ip_shell->SetBorderWidth(FromDIP(1));
+            ip_shell->SetBorderColorNormal(wxColour(210, 210, 215));
+            ip_shell->SetBackgroundColorNormal(wxColour(255, 255, 255));
+            ip_shell->SetBackgroundColour(wxColour(255, 255, 255));
+            auto *ip_inner = new wxBoxSizer(wxHORIZONTAL);
+            m_ip_field = new wxTextCtrl(ip_shell, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
+            m_ip_field->SetBackgroundColour(wxColour(255, 255, 255));
             m_ip_field->SetHint(_L("Type IP address..."));
-            ip_row->Add(m_ip_field, 1, wxALIGN_CENTER_VERTICAL);
-            auto *ip_add = new wxButton(m_ip_page, wxID_ANY, _L("Add"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-            const wxColour green(40, 167, 69);
-            ip_add->SetForegroundColour(green);
-            ip_row->Add(ip_add, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(6));
-            ip_sz->Add(ip_row, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
-            m_ip_status = new wxStaticText(m_ip_page, wxID_ANY, "");
-            m_ip_status->SetForegroundColour(wxColour(120, 120, 120));
-            ip_sz->Add(m_ip_status, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(8));
-            ip_sz->Add(build_hint_panel(m_ip_page, _L("Make sure your printer is powered on and connected to the same network."), false), 0,
+            ip_inner->Add(m_ip_field, 1, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT | wxTOP | wxBOTTOM, FromDIP(8));
+            auto *ip_add = new wxButton(ip_shell, wxID_ANY, _L("Add"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+            ip_add->SetBackgroundColour(wxColour(232, 246, 238));
+            ip_add->SetForegroundColour(k_accent);
+            ip_inner->Add(ip_add, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+            ip_shell->SetSizer(ip_inner);
+            ip_sz->Add(ip_shell, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(10));
+
+            auto *ip_stat_row = new wxBoxSizer(wxHORIZONTAL);
+            m_ip_status = new wxStaticText(m_ip_page, wxID_ANY, wxString());
+            m_ip_status->SetForegroundColour(wxColour(72, 72, 76));
+            ip_stat_row->Add(m_ip_status, 0, wxALIGN_CENTER_VERTICAL);
+            ip_stat_row->AddStretchSpacer(1);
+            auto *ip_refresh = new wxButton(m_ip_page, wxID_ANY, wxString::FromUTF8("\xE2\x86\xBB"), wxDefaultPosition, wxSize(FromDIP(32), FromDIP(28)), wxBU_EXACTFIT);
+            ip_refresh->SetToolTip(_L("Retry"));
+            ip_stat_row->Add(ip_refresh, 0, wxALIGN_CENTER_VERTICAL);
+            ip_sz->Add(ip_stat_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(10));
+            ip_sz->Add(build_hint_panel(m_ip_page, _L("Make sure your printer is powered on and connected to the same network."), false, true), 0,
                 wxEXPAND | wxALL, FromDIP(10));
             m_ip_page->SetSizer(ip_sz);
 
-            m_manual_page = new wxPanel(m_notebook, wxID_ANY);
+            m_manual_page = new wxPanel(m_book, wxID_ANY);
             m_manual_page->SetBackgroundColour(wxColour(255, 255, 255));
             auto *man_sz = new wxBoxSizer(wxVERTICAL);
             man_sz->Add(new wxStaticText(m_manual_page, wxID_ANY,
@@ -2428,34 +2494,79 @@ void PrinterWebView::show_add_printer_dialog()
             man_sz->AddStretchSpacer(1);
             m_manual_page->SetSizer(man_sz);
 
-            m_notebook->AddPage(m_auto_page, _L("Auto Connect"));
-            m_notebook->AddPage(m_ip_page, _L("IP Connect"));
-            m_notebook->AddPage(m_manual_page, _L("Manual Setup"));
+            m_book->AddPage(m_auto_page, wxString(), false);
+            m_book->AddPage(m_ip_page, wxString(), false);
+            m_book->AddPage(m_manual_page, wxString(), false);
+            root->Add(m_book, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
 
-            root->Add(m_notebook, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
+            auto add_footer_row = [&](PrinterWebViewTab tab, const wxString &label, wxArtID art_id) {
+                auto *row = new wxPanel(this, wxID_ANY);
+                row->SetBackgroundColour(wxColour(246, 247, 248));
+                row->SetCursor(wxCursor(wxCURSOR_HAND));
+                row->SetMinSize(wxSize(-1, FromDIP(44)));
+                auto *r = new wxBoxSizer(wxHORIZONTAL);
+                r->AddSpacer(FromDIP(12));
+                wxBitmap ib = wxArtProvider::GetBitmap(art_id, wxART_CMN_DIALOG, wxSize(FromDIP(20), FromDIP(20)));
+                if (ib.IsOk())
+                    r->Add(new wxStaticBitmap(row, wxID_ANY, ib), 0, wxALIGN_CENTER_VERTICAL);
+                else
+                    r->AddSpacer(FromDIP(20));
+                r->AddSpacer(FromDIP(8));
+                auto *lbl = new wxStaticText(row, wxID_ANY, label);
+                lbl->SetForegroundColour(wxColour(40, 40, 44));
+                lbl->SetCursor(wxCursor(wxCURSOR_HAND));
+                r->Add(lbl, 1, wxALIGN_CENTER_VERTICAL);
+                auto *ch = new wxStaticText(row, wxID_ANY, ">");
+                ch->SetForegroundColour(wxColour(130, 130, 130));
+                ch->SetCursor(wxCursor(wxCURSOR_HAND));
+                r->Add(ch, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(14));
+                row->SetSizer(r);
+                auto go = [this, owner, tab](wxMouseEvent &) {
+                    EndModal(wxID_OK);
+                    if (owner != nullptr)
+                        owner->CallAfter([owner, tab]() { owner->select_tab(tab); });
+                };
+                row->Bind(wxEVT_LEFT_DOWN, go);
+                lbl->Bind(wxEVT_LEFT_DOWN, go);
+                ch->Bind(wxEVT_LEFT_DOWN, go);
+                root->Add(row, 0, wxEXPAND | wxTOP, FromDIP(2));
+            };
+            add_footer_row(PrinterWebViewTab::Update, _L("System Upgrade"), wxART_FILE_SAVE);
+            add_footer_row(PrinterWebViewTab::Storage, _L("Media"), wxART_FOLDER_OPEN);
 
             SetSizer(root);
 
             refresh_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { rebuild_auto_list(); });
             ip_add->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { try_ip_add(); });
             m_ip_field->Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent &) { try_ip_add(); });
+            ip_refresh->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { try_ip_add(); });
             open_manual->Bind(wxEVT_BUTTON, [this, owner](wxCommandEvent &) {
                 EndModal(wxID_OK);
                 if (owner != nullptr)
                     owner->CallAfter([owner]() { owner->prompt_ip_connect(); });
             });
 
-            SetSize(wxSize(FromDIP(360), FromDIP(380)));
+            SetSize(wxSize(FromDIP(380), FromDIP(480)));
             rebuild_auto_list();
+            apply_tab_selection(1);
         }
 
-        wxPanel *build_hint_panel(wxWindow *parent, const wxString &text, bool green_bg)
+        wxPanel *build_hint_panel(wxWindow *parent, const wxString &text, bool green_bg, bool with_info_icon = false)
         {
             auto *p = new wxPanel(parent, wxID_ANY);
             p->SetBackgroundColour(green_bg ? wxColour(220, 248, 230) : wxColour(240, 240, 242));
             auto *s = new wxBoxSizer(wxHORIZONTAL);
             s->AddSpacer(FromDIP(8));
+            if (with_info_icon) {
+                wxBitmap tip = wxArtProvider::GetBitmap(wxART_INFORMATION, wxART_CMN_DIALOG, wxSize(FromDIP(18), FromDIP(18)));
+                if (tip.IsOk())
+                    s->Add(new wxStaticBitmap(p, wxID_ANY, tip), 0, wxALIGN_CENTER_VERTICAL | wxTOP | wxBOTTOM, FromDIP(8));
+                else
+                    s->AddSpacer(FromDIP(18));
+                s->AddSpacer(FromDIP(6));
+            }
             auto *t = new wxStaticText(p, wxID_ANY, text);
+            t->SetForegroundColour(wxColour(55, 55, 58));
             t->Wrap(FromDIP(300));
             s->Add(t, 1, wxALL, FromDIP(10));
             p->SetSizer(s);
@@ -2519,6 +2630,8 @@ void PrinterWebView::show_add_printer_dialog()
 
         void try_ip_add()
         {
+            if (m_ip_status != nullptr)
+                m_ip_status->SetLabelText(wxString());
             wxString ip_value = m_ip_field->GetValue();
             ip_value.Trim(true);
             ip_value.Trim(false);
@@ -2552,13 +2665,18 @@ void PrinterWebView::show_add_printer_dialog()
             machine.dev_name = into_u8(name_value);
             machine.printer_type = "Moonraker";
 
-            m_ip_status->SetLabelText(_L("Connecting to printer..."));
+            if (m_ip_status != nullptr)
+                m_ip_status->SetLabelText(_L("Connecting to printer..."));
             if (m_owner != nullptr && m_owner->finish_add_moonraker_printer(machine, host.rfind("https://", 0) == 0))
                 EndModal(wxID_OK);
         }
 
         PrinterWebView *m_owner{ nullptr };
-        wxNotebook *m_notebook{ nullptr };
+        wxSimplebook *m_book{ nullptr };
+        wxPanel *m_tab_area{ nullptr };
+        wxStaticText *m_tab_lbl[3]{ nullptr, nullptr, nullptr };
+        wxPanel *m_tab_under[3]{ nullptr, nullptr, nullptr };
+        int m_tab_index{ 0 };
         wxPanel *m_auto_page{ nullptr };
         wxPanel *m_ip_page{ nullptr };
         wxPanel *m_manual_page{ nullptr };
@@ -2639,27 +2757,6 @@ void PrinterWebView::rebuild_printers_popup()
     const wxColour k_green(40, 167, 69);
     const wxColour k_muted(120, 120, 120);
     const wxColour k_card_border(232, 232, 232);
-
-    auto *header = new wxBoxSizer(wxHORIZONTAL);
-    header->AddSpacer(FromDIP(12));
-    header->Add(new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap(k_cprint_printer_nav_bitmap, this, 22)), 0, wxALIGN_CENTER_VERTICAL);
-    header->AddSpacer(FromDIP(8));
-    auto *title = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("Printers"));
-    wxFont title_font = title->GetFont();
-    title_font.SetWeight(wxFONTWEIGHT_BOLD);
-    title->SetFont(title_font);
-    title->SetForegroundColour(wxColour(28, 28, 28));
-    header->Add(title, 0, wxALIGN_CENTER_VERTICAL);
-    header->AddStretchSpacer(1);
-    auto *add_link = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("+ Add"));
-    add_link->SetForegroundColour(k_green);
-    add_link->SetCursor(wxCursor(wxCURSOR_HAND));
-    add_link->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &evt) {
-        evt.StopPropagation();
-        show_add_printer_dialog();
-    });
-    header->Add(add_link, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
-    printers_popup_sizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10));
 
     if (selected_machine != nullptr) {
         auto *acct_row = new wxBoxSizer(wxHORIZONTAL);
@@ -2818,7 +2915,9 @@ void PrinterWebView::rebuild_printers_popup()
         chev->SetForegroundColour(wxColour(160, 160, 160));
         chev->SetCursor(wxCursor(wxCURSOR_HAND));
         hs->Add(chev, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
-        card->SetSizer(hs);
+        auto *card_outer = new wxBoxSizer(wxVERTICAL);
+        card_outer->Add(hs, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10));
+        card->SetSizer(card_outer);
 
         auto pick = [select_machine_fn, machine](wxMouseEvent &) { select_machine_fn(machine); };
         card->Bind(wxEVT_LEFT_DOWN, pick);
