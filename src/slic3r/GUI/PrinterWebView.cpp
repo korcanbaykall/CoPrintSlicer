@@ -2758,25 +2758,7 @@ void PrinterWebView::rebuild_printers_popup()
     const wxColour k_muted(120, 120, 120);
     const wxColour k_card_border(232, 232, 232);
 
-    auto *search_box = new wxTextCtrl(m_printers_popup_panel, wxID_ANY, "", wxDefaultPosition, wxSize(-1, FromDIP(28)));
-    search_box->SetHint(_L("Search"));
-    search_box->ChangeValue(m_printers_search_query);
-    search_box->Bind(wxEVT_TEXT, [this](wxCommandEvent &evt) {
-        m_printers_search_query = evt.GetString();
-        CallAfter([this]() { rebuild_printers_popup(); });
-    });
-    printers_popup_sizer->Add(search_box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(10));
-
-    const wxString search_query = m_printers_search_query.Lower();
-    auto matches_search = [&search_query](MachineObject *machine) {
-        if (machine == nullptr)
-            return false;
-        if (search_query.empty())
-            return true;
-        wxString searchable;
-        searchable << from_u8(machine->get_dev_name()) << " " << from_u8(machine->get_dev_id()) << " " << from_u8(machine->get_dev_ip());
-        return searchable.Lower().Find(search_query) != wxNOT_FOUND;
-    };
+    printers_popup_sizer->AddSpacer(FromDIP(10));
 
     auto select_machine_fn = [this, dev_manager](MachineObject *machine) {
         if (machine == nullptr)
@@ -2807,7 +2789,7 @@ void PrinterWebView::rebuild_printers_popup()
     std::vector<MachineObject *> sorted;
     sorted.reserve(all_by_id.size());
     for (const auto &entry : all_by_id) {
-        if (entry.second != nullptr && matches_search(entry.second))
+        if (entry.second != nullptr)
             sorted.push_back(entry.second);
     }
     std::sort(sorted.begin(), sorted.end(), [](MachineObject *a, MachineObject *b) {
@@ -2877,7 +2859,8 @@ void PrinterWebView::rebuild_printers_popup()
         chev->SetCursor(wxCursor(wxCURSOR_HAND));
         hs->Add(chev, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
         auto *card_outer = new wxBoxSizer(wxVERTICAL);
-        card_outer->Add(hs, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10));
+        // Extra vertical padding (+30px at 96 DPI via FromDIP) for taller cards
+        card_outer->Add(hs, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10) + FromDIP(15));
         card->SetSizer(card_outer);
 
         auto pick = [select_machine_fn, machine](wxMouseEvent &) { select_machine_fn(machine); };
@@ -2906,10 +2889,6 @@ void PrinterWebView::rebuild_printers_popup()
     }
     if (sorted.empty()) {
         auto *empty = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("No printers found. Use + Add or add by IP."));
-        empty->SetForegroundColour(k_muted);
-        printers_popup_sizer->Add(empty, 0, wxALL, FromDIP(14));
-    } else if (!m_printers_search_query.empty() && online_list.empty() && offline_list.empty()) {
-        auto *empty = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("No results"));
         empty->SetForegroundColour(k_muted);
         printers_popup_sizer->Add(empty, 0, wxALL, FromDIP(14));
     }
@@ -2947,10 +2926,6 @@ void PrinterWebView::rebuild_printers_popup()
     m_printers_popup->SetClientSize(popup_size);
     m_printers_popup->SetSize(popup_size);
     m_printers_popup->Layout();
-    if (!m_printers_search_query.empty()) {
-        search_box->SetFocus();
-        search_box->SetInsertionPointEnd();
-    }
 }
 
 void PrinterWebView::rebuild_extruder_popup()

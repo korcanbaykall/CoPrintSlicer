@@ -157,7 +157,6 @@ private:
     wxString m_preview_thumbnail_url;
     wxPopupTransientWindow *m_printers_popup{ nullptr };
     wxPanel *m_printers_popup_panel{ nullptr };
-    wxString m_printers_search_query;
     wxString m_selected_extruder{ "Extruder" };
     wxString m_selected_fan{ "Fan" };
     wxString m_selected_fan_value{ "__" };
