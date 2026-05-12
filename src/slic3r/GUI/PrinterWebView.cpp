@@ -29,12 +29,16 @@
 #include <wx/stattext.h>
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
+#include <wx/dialog.h>
+
+#include <string>
 #include <wx/graphics.h>
 #include <wx/dcgraph.h>
 #include <wx/event.h>
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <functional>
 
 #include <slic3r/GUI/Widgets/WebView.hpp>
@@ -1049,6 +1053,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         mf_title->SetFont(f);
     }
     mf_sizer->Add(mf_title, 0, wxLEFT | wxTOP, FromDIP(12));
+    m_manage_filament_title = mf_title;
     mf_sizer->AddSpacer(FromDIP(6));
 
     auto *mf_sep = new wxPanel(upper_placeholder_box, wxID_ANY);
@@ -1095,6 +1100,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     m_filament_tool_color_dot = tool_color_dot;
     m_filament_tool_name_lbl  = tool_name_lbl;
+    m_filament_tool_selector   = tool_selector;
     m_selected_filament_tool  = 0;
 
     // Load button
@@ -1104,13 +1110,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     load_btn->SetBorderWidth(0);
     load_btn->SetBackgroundColorNormal(wxColour(65, 68, 75));
     load_btn->SetTextColorNormal(wxColour(220, 220, 220));
-    load_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
-        auto *dev_manager = wxGetApp().getDeviceManager();
-        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj == nullptr || !obj->is_online()) return;
-        BOOST_LOG_TRIVIAL(info) << "PrinterWebView: load filament (slot 0)";
-        obj->command_ams_change_filament(true, "0", "0");
-    });
+    load_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) { show_filament_load_wizard(); });
     mf_sizer->Add(load_btn, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
     mf_sizer->AddSpacer(FromDIP(8));
 
@@ -1124,11 +1124,15 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     unload_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
         auto *dev_manager = wxGetApp().getDeviceManager();
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj == nullptr || !obj->is_online()) return;
-        BOOST_LOG_TRIVIAL(info) << "PrinterWebView: unload filament (slot 0)";
-        obj->command_ams_change_filament(false, "0", "0");
+        if (obj == nullptr || !obj->is_online() || obj->is_in_printing()) return;
+        const std::string slot = std::to_string(m_selected_filament_tool);
+        BOOST_LOG_TRIVIAL(info) << "PrinterWebView: unload filament slot=" << slot;
+        obj->command_ams_change_filament(false, "0", slot);
     });
     mf_sizer->Add(unload_btn, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
+
+    m_filament_load_btn   = load_btn;
+    m_filament_unload_btn = unload_btn;
 
     mf_sizer->AddStretchSpacer(1);
     filament_qt_sizer->Add(mf_sizer, 224, wxEXPAND);
@@ -1854,6 +1858,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
         auto *temp_lbl = make_ps_value(card, "-- / --", tc.active);
         *tc.temp = temp_lbl;
+        temp_lbl->SetCursor(wxCursor(wxCURSOR_HAND));
+        const int nozzle_idx = i;
+        temp_lbl->Bind(wxEVT_LEFT_DOWN, [this, nozzle_idx](wxMouseEvent &) { prompt_ps_target_temperature(false, nozzle_idx); });
         card_sizer->Add(make_icon_row(card, "tool_temperature_white", temp_lbl), 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(8));
 
         auto *fan_lbl = make_ps_value(card, "--%", tc.active);
@@ -1880,6 +1887,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
         auto *bed_temp_lbl = make_ps_value(card, "-- / --", false);
         m_ps_bed_temp_label = bed_temp_lbl;
+        bed_temp_lbl->SetCursor(wxCursor(wxCURSOR_HAND));
+        bed_temp_lbl->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { prompt_ps_target_temperature(true, 0); });
         card_sizer->Add(make_icon_row(card, "bed_heating", bed_temp_lbl), 0, wxALIGN_CENTER_HORIZONTAL | wxTOP | wxBOTTOM, FromDIP(13));
 
         card->SetSizer(card_sizer);
@@ -2845,6 +2854,113 @@ void PrinterWebView::apply_filament_tool_selection(int tool_index)
         m_filament_tool_name_lbl->SetLabelText(wxString::Format("Tool %d", tool_index + 1));
 }
 
+void PrinterWebView::prompt_ps_target_temperature(bool is_bed, int extruder_index)
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+    if (obj == nullptr || !obj->is_online())
+        return;
+
+    extruder_index = std::max(0, std::min(3, extruder_index));
+
+    long min_t = 0;
+    long max_t = 300;
+    long cur = 0;
+    wxString caption;
+    wxString msg;
+
+    if (is_bed) {
+        caption = _L("Tabla hedef sicakligi");
+        msg = _L("Yeni tabla hedef sicakligini girin (°C).");
+        if (obj->GetBed() != nullptr)
+            cur = static_cast<long>(std::nearbyint(static_cast<double>(obj->GetBed()->GetBedTempTarget())));
+        max_t = obj->get_bed_temperature_limit();
+        if (obj->bed_temp_range.size() >= 2) {
+            min_t = obj->bed_temp_range[0];
+            max_t = obj->bed_temp_range[1];
+        }
+    } else {
+        caption = wxString::Format(_L("Nozul %d hedef sicakligi"), extruder_index + 1);
+        msg = _L("Yeni nozul hedef sicakligini girin (°C).");
+        if (obj->GetExtderSystem() != nullptr)
+            cur = static_cast<long>(std::nearbyint(static_cast<double>(obj->GetExtderSystem()->GetNozzleTempTarget(extruder_index))));
+        if (obj->nozzle_temp_range.size() >= 2) {
+            min_t = obj->nozzle_temp_range[0];
+            max_t = obj->nozzle_temp_range[1];
+        }
+    }
+
+    wxTextEntryDialog dlg(this, msg, caption, wxString::Format("%ld", cur));
+    if (dlg.ShowModal() != wxID_OK)
+        return;
+    long v = 0;
+    if (!dlg.GetValue().ToLong(&v))
+        return;
+    v = std::max(min_t, std::min(max_t, v));
+    if (is_bed)
+        obj->command_set_bed(static_cast<int>(v));
+    else
+        obj->command_set_nozzle_new(extruder_index, static_cast<int>(v));
+}
+
+void PrinterWebView::show_filament_load_wizard()
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+    if (obj == nullptr || !obj->is_online() || obj->is_in_printing())
+        return;
+
+    wxDialog wizard(this, wxID_ANY, _L("Filament yukleme"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER);
+    wizard.SetBackgroundColour(wxColour(40, 42, 48));
+
+    auto *outer = new wxBoxSizer(wxVERTICAL);
+    auto *msg = new wxStaticText(&wizard, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END);
+    msg->SetForegroundColour(wxColour(220, 220, 220));
+    msg->Wrap(FromDIP(380));
+
+    int step = 0;
+    const auto refresh_text = [&]() {
+        if (step == 0)
+            msg->SetLabel(_L("1/3: Nozul isiniyor. Hedef sicakliga ulastiginda Ileri'ye basin."));
+        else if (step == 1)
+            msg->SetLabel(_L("2/3: Nozul hazirsa filament yukleme komutunu gondermek icin Ileri'ye basin."));
+        else
+            msg->SetLabel(_L("3/3: Filament uctan duzgun ciktiysa Tamam ile kapatin."));
+    };
+    refresh_text();
+
+    outer->Add(msg, 0, wxEXPAND | wxALL, FromDIP(16));
+
+    auto *btn_row = new wxBoxSizer(wxHORIZONTAL);
+    auto *btn_next = new wxButton(&wizard, wxID_ANY, _L("Ileri"));
+    auto *btn_cancel = new wxButton(&wizard, wxID_ANY, _L("Iptal"));
+    btn_row->AddStretchSpacer(1);
+    btn_row->Add(btn_next, 0, wxRIGHT, FromDIP(8));
+    btn_row->Add(btn_cancel, 0);
+    outer->Add(btn_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(16));
+    wizard.SetSizer(outer);
+    wizard.Fit();
+
+    btn_next->Bind(wxEVT_BUTTON, [&](wxCommandEvent &) {
+        if (step == 0) {
+            step = 1;
+            refresh_text();
+        } else if (step == 1) {
+            const std::string slot = std::to_string(m_selected_filament_tool);
+            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: load wizard send command slot=" << slot;
+            obj->command_ams_change_filament(true, "0", slot);
+            step = 2;
+            refresh_text();
+            btn_next->SetLabel(_L("Tamam"));
+        } else {
+            wizard.EndModal(wxID_OK);
+        }
+    });
+    btn_cancel->Bind(wxEVT_BUTTON, [&](wxCommandEvent &) { wizard.EndModal(wxID_CANCEL); });
+
+    wizard.ShowModal();
+}
+
 void PrinterWebView::ensure_storage_page_created()
 {
     if (m_storage_page != nullptr || m_storage_placeholder == nullptr)
@@ -3188,6 +3304,17 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
 
     refresh_print_controls_from_selected_machine();
+
+    if (m_filament_load_btn != nullptr && m_filament_unload_btn != nullptr) {
+        const bool allow_filament_ops = obj != nullptr && obj->is_online() && !obj->is_in_printing();
+        m_filament_load_btn->Enable(allow_filament_ops);
+        m_filament_unload_btn->Enable(allow_filament_ops);
+        if (m_filament_tool_selector != nullptr)
+            m_filament_tool_selector->Enable(allow_filament_ops);
+        if (m_manage_filament_title != nullptr)
+            m_manage_filament_title->Enable(allow_filament_ops);
+    }
+
     set_active_file_name(active_file_name_text(obj));
     update_preview_thumbnail(obj);
 

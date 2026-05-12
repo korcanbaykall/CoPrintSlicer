@@ -17,6 +17,7 @@ class wxStaticText;
 class wxPopupTransientWindow;
 class wxGauge;
 class StaticBox;
+class Button;
 namespace Slic3r {
 class MachineObject;
 
@@ -79,6 +80,8 @@ public:
 
 private:
     void apply_filament_tool_selection(int tool_index);
+    void prompt_ps_target_temperature(bool is_bed, int extruder_index);
+    void show_filament_load_wizard();
     void ensure_camera_webview_created();
     void ensure_storage_page_created();
     struct SidebarItem {
@@ -158,6 +161,10 @@ private:
     wxPanel *m_storage_placeholder{ nullptr };
     StaticBox *m_filament_tool_color_dot{ nullptr };
     wxStaticText *m_filament_tool_name_lbl{ nullptr };
+    wxStaticText *m_manage_filament_title{ nullptr };
+    StaticBox *m_filament_tool_selector{ nullptr };
+    Button *m_filament_load_btn{ nullptr };
+    Button *m_filament_unload_btn{ nullptr };
     int m_selected_filament_tool{ 0 };
     wxPanel *m_status_page{ nullptr };
     CloudTaskManagerPage *m_storage_page{ nullptr };
