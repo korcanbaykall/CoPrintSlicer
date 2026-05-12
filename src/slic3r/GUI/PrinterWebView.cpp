@@ -29,6 +29,7 @@
 #include <wx/stattext.h>
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
+#include <wx/graphics.h>
 
 #include <algorithm>
 #include <array>
@@ -227,6 +228,59 @@ enum class AxisControlAction {
     YPlus
 };
 
+// Printer status mini-cards: dark header strip with rounded top corners only (flat bottom on separator).
+class PsCardHeaderPanel : public wxPanel
+{
+public:
+    PsCardHeaderPanel(wxWindow *parent, const wxColour &fill, double corner_radius)
+        : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE)
+        , m_fill(fill)
+        , m_corner_radius(corner_radius)
+    {
+        SetBackgroundStyle(wxBG_STYLE_PAINT);
+        Bind(wxEVT_PAINT, &PsCardHeaderPanel::on_paint, this);
+        Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent &) {});
+    }
+
+private:
+    void on_paint(wxPaintEvent &)
+    {
+        wxAutoBufferedPaintDC dc(this);
+        const wxRect rect = GetClientRect();
+        if (rect.width <= 0 || rect.height <= 0)
+            return;
+
+        static constexpr double kPi = 3.14159265358979323846;
+        const double x = rect.x;
+        const double y = rect.y;
+        const double w = rect.width;
+        const double h = rect.height;
+        const double r = std::min(m_corner_radius, std::min(w * 0.5, h * 0.5));
+
+        std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
+        if (!gc) {
+            dc.SetBackground(wxBrush(m_fill));
+            dc.Clear();
+            return;
+        }
+
+        gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+        wxGraphicsPath path = gc->CreatePath();
+        path.MoveToPoint(x, y + h);
+        path.AddLineToPoint(x, y + r);
+        path.AddArc(x + r, y + r, r, kPi, 1.5 * kPi, true);
+        path.AddLineToPoint(x + w - r, y);
+        path.AddArc(x + w - r, y + r, r, 1.5 * kPi, 2.0 * kPi, true);
+        path.AddLineToPoint(x + w, y + h);
+        path.CloseSubpath();
+        gc->SetBrush(wxBrush(m_fill));
+        gc->SetPen(*wxTRANSPARENT_PEN);
+        gc->FillPath(path);
+    }
+
+    wxColour m_fill;
+    double   m_corner_radius;
+};
 
 // Single-panel D-pad: draws all 4 directional arrows in one wxPanel to avoid
 // the panel-overlap artifact that occurs when 4 separate child panels are used.
@@ -1756,10 +1810,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         return row;
     };
     auto add_ps_title_strip = [this, ps_card_header_bg, &make_ps_header](wxBoxSizer *card_sizer, wxWindow *card, const wxString &title, bool active) {
-        auto *header_panel = new wxPanel(card);
-        header_panel->SetBackgroundColour(ps_card_header_bg);
+        const double hdr_corner_r = this->FromDIP(12);
+        auto *header_panel = new PsCardHeaderPanel(card, ps_card_header_bg, hdr_corner_r);
         auto *header_sz = new wxBoxSizer(wxVERTICAL);
-        header_sz->Add(make_ps_header(header_panel, title, active), 0, wxALIGN_CENTER_HORIZONTAL | wxTOP | wxBOTTOM, FromDIP(8));
+        header_sz->Add(make_ps_header(header_panel, title, active), 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(8));
+        // Former gap before separator — now inside the dark header so fill runs to the line.
+        header_sz->AddSpacer(FromDIP(6));
         header_panel->SetSizer(header_sz);
         card_sizer->Add(header_panel, 0, wxEXPAND);
     };
@@ -1784,7 +1840,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
             sep->SetMinSize(wxSize(-1, FromDIP(1)));
             sep->SetMaxSize(wxSize(-1, FromDIP(1)));
             sep->SetBackgroundColour(wxColour(55, 58, 64));
-            card_sizer->Add(sep, 0, wxEXPAND | wxTOP, FromDIP(6));
+            card_sizer->Add(sep, 0, wxEXPAND);
         }
 
         auto *temp_lbl = make_ps_value(card, "-- / --", tc.active);
@@ -1810,7 +1866,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
             sep->SetMinSize(wxSize(-1, FromDIP(1)));
             sep->SetMaxSize(wxSize(-1, FromDIP(1)));
             sep->SetBackgroundColour(wxColour(55, 58, 64));
-            card_sizer->Add(sep, 0, wxEXPAND | wxTOP, FromDIP(6));
+            card_sizer->Add(sep, 0, wxEXPAND);
         }
 
         auto *bed_temp_lbl = make_ps_value(card, "-- / --", false);
