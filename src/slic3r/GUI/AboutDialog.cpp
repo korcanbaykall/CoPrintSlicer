@@ -149,7 +149,7 @@ wxString CopyrightsDialog::get_html_text()
         _L("License"),
         _L("CoPrintSlicer is licensed under "),
         "https://www.gnu.org/licenses/agpl-3.0.html",_L("GNU Affero General Public License, version 3"),
-        _L("CoPrintSlicer is based on PrusaSlicer and BambuStudio"),
+        _L("CoPrintSlicer is based on OrcaSlicer"),
         _L("Libraries"),
         _L("This software uses open source components whose copyright and other proprietary rights belong to their respective owners"));
 

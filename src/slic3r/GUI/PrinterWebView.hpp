@@ -86,6 +86,8 @@ private:
     };
 
     wxStaticText *m_active_file_name_value{ nullptr };
+    wxStaticText *m_total_time_value{ nullptr };
+    wxStaticText *m_progress_percent_label{ nullptr };
     wxString m_apikey;
     bool m_apikey_sent{ false };
     wxPanel *m_assistant_page{ nullptr };
@@ -103,6 +105,15 @@ private:
     wxStaticText *m_fan_value_label{ nullptr };
     wxStaticText *m_bed_temp_value{ nullptr };
     wxStaticText *m_extruder_temp_value{ nullptr };
+    wxStaticText *m_ps_bed_temp_label{ nullptr };
+    wxStaticText *m_ps_t1_temp_label{ nullptr };
+    wxStaticText *m_ps_t2_temp_label{ nullptr };
+    wxStaticText *m_ps_t3_temp_label{ nullptr };
+    wxStaticText *m_ps_t4_temp_label{ nullptr };
+    wxStaticText *m_ps_t1_fan_label{ nullptr };
+    wxStaticText *m_ps_t2_fan_label{ nullptr };
+    wxStaticText *m_ps_t3_fan_label{ nullptr };
+    wxStaticText *m_ps_t4_fan_label{ nullptr };
     wxPanel *m_connected_printer_panel{ nullptr };
     wxStaticText *m_connected_printer_status_label{ nullptr };
     wxStaticText *m_connected_printer_name_label{ nullptr };

@@ -1,5 +1,6 @@
 #include "ProgressBar.hpp"
 #include "../I18N.hpp"
+#include <algorithm>
 #include <wx/dcclient.h>
 #include <wx/dcgraph.h>
 #include "Label.hpp"
@@ -172,67 +173,67 @@ void ProgressBar::render(wxDC &dc)
 void ProgressBar::doRender(wxDC &dc)
 {
     if (m_step >= m_max) m_step = m_max;
-    wxSize size   = GetSize();
+    wxSize size = GetSize();
+
+    // wx DrawRoundedRectangle distorts when radius exceeds half the smaller side (pill / pinched ends).
+    const double max_outer_r = std::max(0.0, std::min(static_cast<double>(size.x), static_cast<double>(size.y)) / 2.0);
+    const double corner_r     = std::min(static_cast<double>(m_radius), max_outer_r);
+
+    // Outer track
     dc.SetPen(wxPen(m_progress_background_colour, 1));
     dc.SetBrush(wxBrush(m_progress_background_colour));
-    if (m_radius == 0) {
+    if (corner_r == 0) {
         dc.DrawRectangle(0, 0, size.x, size.y);
     } else {
-        dc.DrawRoundedRectangle(0, 0, size.x, size.y, m_radius);
+        dc.DrawRoundedRectangle(0, 0, size.x, size.y, corner_r);
     }
 
-    //draw progress
-    if (m_disable) {
-        m_proportion = float(size.x * float(this->m_step) / float(this->m_max));
-        if (m_proportion < m_radius * 2 && m_proportion != 0) { m_proportion = m_radius * 2; }
+    // Inner bar: inset by pad pixels on all sides
+    int pad = FromDIP(3);
+    int inner_x = pad;
+    int inner_y = pad;
+    int inner_w = size.x - 2 * pad;
+    int inner_h = size.y - 2 * pad;
+    double inner_r = (corner_r > pad) ? (corner_r - pad) : 0.0;
+    if (inner_w > 0 && inner_h > 0) {
+        const double max_inner_r = std::max(0.0, std::min(static_cast<double>(inner_w), static_cast<double>(inner_h)) / 2.0);
+        inner_r = std::min(inner_r, max_inner_r);
+    }
 
-        dc.SetPen(wxPen(m_progress_colour_disable, 1));
-        dc.SetBrush(wxBrush(m_progress_colour_disable));
-        if (m_radius == 0) {
-            dc.DrawRectangle(0, 0, m_proportion, size.y);
-        } else {
-            dc.DrawRoundedRectangle(0, 0, m_proportion, size.y, m_radius);
+    if (inner_w > 0 && inner_h > 0) {
+        wxColour fill_colour = m_disable ? m_progress_colour_disable : m_progress_colour;
+        m_proportion = float(inner_w * float(m_step) / float(m_max));
+        if (m_proportion < inner_r * 2 && m_proportion != 0) { m_proportion = (float)(inner_r * 2); }
+
+        if (m_proportion > 0) {
+            dc.SetPen(wxPen(fill_colour, 1));
+            dc.SetBrush(wxBrush(fill_colour));
+            if (inner_r == 0) {
+                dc.DrawRectangle(inner_x, inner_y, (int)m_proportion, inner_h);
+            } else {
+                dc.DrawRoundedRectangle(inner_x, inner_y, (int)m_proportion, inner_h, inner_r);
+            }
         }
+    }
 
+    if (m_disable) {
         dc.SetFont(::Label::Head_12);
         auto textSize = dc.GetMultiLineTextExtent(m_disable_text);
         dc.SetTextForeground(wxColour(144, 144, 144));
         auto pt = wxPoint();
-        pt.x    = (size.x - textSize.x) / 2;
-        pt.y    = (size.y - textSize.y) / 2;
+        pt.x = (size.x - textSize.x) / 2;
+        pt.y = (size.y - textSize.y) / 2;
         dc.DrawText(m_disable_text, pt);
-
-    } else {
-        m_proportion = float(size.x * float(this->m_step) / float(this->m_max));
-        if (m_proportion < m_radius * 2  && m_proportion != 0) { m_proportion = m_radius * 2; }
-
-        dc.SetPen(wxPen(m_progress_colour, 1));
-        dc.SetBrush(wxBrush(m_progress_colour));
-        if (m_radius == 0) {
-            dc.DrawRectangle(0, 0, m_proportion, size.y);
-        } else {
-            dc.DrawRoundedRectangle(0, 0, m_proportion, size.y, m_radius);
-        }
-
+    } else if (m_shownumber) {
+        auto text = wxString::Format("%d%%", m_step);
         dc.SetFont(GetFont());
-        auto textSize = dc.GetMultiLineTextExtent(wxString("000%"));
-        dc.SetTextForeground(wxColour(144, 144, 144));
+        auto textSize = dc.GetMultiLineTextExtent(text);
+        dc.SetTextForeground(wxColour(200, 205, 215));
         auto pt = wxPoint();
-        pt.x    = (size.x - textSize.x) / 2;
-        pt.y    = (size.y - textSize.y) / 2;
-
-        auto text = wxString("");
-        if (m_step < 10) {
-            text = wxString::Format("%d", m_step);
-        } else {
-            text = wxString::Format("%d", m_step);
-        }
-
-        if (m_shownumber) {
-            dc.DrawText(text + wxString("%"), pt);
-        }
+        pt.x = size.x - textSize.x - FromDIP(8);
+        pt.y = (size.y - textSize.y) / 2;
+        dc.DrawText(text, pt);
     }
-
 }
 
 

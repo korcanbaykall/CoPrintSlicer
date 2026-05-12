@@ -1533,11 +1533,17 @@ wxBoxSizer *StatusBasePanel::create_monitoring_page()
     bSizer_monitoring_title->Fit(m_panel_monitoring_title);
     sizer->Add(m_panel_monitoring_title, 0, wxEXPAND | wxALL, 0);
 
-//    media_ctrl_panel              = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-//    media_ctrl_panel->SetBackgroundColour(*wxBLACK);
-//    wxBoxSizer *bSizer_monitoring = new wxBoxSizer(wxVERTICAL);
-    m_media_ctrl = new wxMediaCtrl2(this);
+    media_ctrl_panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+    media_ctrl_panel->SetBackgroundColour(*wxBLACK);
+    wxBoxSizer *bSizer_monitoring = new wxBoxSizer(wxVERTICAL);
+
+    m_media_ctrl = new wxMediaCtrl2(media_ctrl_panel);
     m_media_ctrl->SetMinSize(wxSize(PAGE_MIN_WIDTH, FromDIP(288)));
+    m_media_ctrl->SetBackgroundColour(*wxBLACK);
+
+    bSizer_monitoring->Add(m_media_ctrl, 1, wxEXPAND | wxALL, 0);
+    media_ctrl_panel->SetSizer(bSizer_monitoring);
+    media_ctrl_panel->Layout();
 
     m_custom_camera_view = WebView::CreateWebView(this, wxEmptyString);
     m_custom_camera_view->EnableContextMenu(false);
@@ -1556,13 +1562,9 @@ wxBoxSizer *StatusBasePanel::create_monitoring_page()
         }
     });
 
-    sizer->Add(m_media_ctrl, 1, wxEXPAND | wxALL, 0);
+    sizer->Add(media_ctrl_panel, 1, wxEXPAND | wxALL, 0);
     sizer->Add(m_custom_camera_view, 1, wxEXPAND | wxALL, 0);
     sizer->Add(m_media_play_ctrl, 0, wxEXPAND | wxALL, 0);
-//    media_ctrl_panel->SetSizer(bSizer_monitoring);
-//    media_ctrl_panel->Layout();
-//
-//    sizer->Add(media_ctrl_panel, 1, wxEXPAND | wxALL, 1);
 
     if (wxGetApp().app_config->get("camera", "enable_custom_source") == "true") {
         handle_camera_source_change();
@@ -4881,6 +4883,7 @@ void StatusBasePanel::handle_camera_source_change()
 void StatusBasePanel::toggle_builtin_camera()
 {
     m_custom_camera_view->Hide();
+    media_ctrl_panel->Show();
     m_media_ctrl->Show();
     m_media_play_ctrl->Show();
 }
@@ -4891,6 +4894,7 @@ void StatusBasePanel::toggle_custom_camera()
 
     if (enabled) {
         m_custom_camera_view->Show();
+        media_ctrl_panel->Hide();
         m_media_ctrl->Hide();
         m_media_play_ctrl->Hide();
     }
