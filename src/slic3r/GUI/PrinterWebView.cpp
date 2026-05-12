@@ -55,6 +55,9 @@ namespace GUI {
 
 namespace {
 
+/** CoPrint printers sidebar / list icon: resources/images/cprint_printer_nav.png */
+constexpr const char *k_cprint_printer_nav_bitmap = "cprint_printer_nav";
+
 std::vector<wxString> moonraker_camera_stream_urls(MachineObject *obj)
 {
     if (obj == nullptr || !obj->is_online())
@@ -601,7 +604,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         printers_active_strip->SetMaxSize(wxSize(FromDIP(3), -1));
         printers_active_strip->SetBackgroundColour(wxColour(28, 30, 34));
         printers_item_sizer->Add(printers_active_strip, 0, wxEXPAND);
-        printers_item_sizer->AddSpacer(FromDIP(16));
+        printers_item_sizer->AddSpacer(FromDIP(12));
+        auto *printers_nav_icon = new wxStaticBitmap(printers_item, wxID_ANY, create_scaled_bitmap(k_cprint_printer_nav_bitmap, printers_item, 22));
+        printers_nav_icon->SetCursor(wxCursor(wxCURSOR_HAND));
+        printers_item_sizer->Add(printers_nav_icon, 0, wxALIGN_CENTER_VERTICAL);
+        printers_item_sizer->AddSpacer(FromDIP(8));
         auto *printers_label = new wxStaticText(printers_item, wxID_ANY, "Printers");
         printers_label->SetForegroundColour(wxColour(235, 235, 235));
         printers_label->SetCursor(wxCursor(wxCURSOR_HAND));
@@ -619,6 +626,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         m_preview_printers_button = printers_item;
         auto toggle_popup = [this](wxMouseEvent &) { toggle_printers_popup(); };
         printers_item->Bind(wxEVT_LEFT_DOWN, toggle_popup);
+        printers_nav_icon->Bind(wxEVT_LEFT_DOWN, toggle_popup);
         printers_label->Bind(wxEVT_LEFT_DOWN, toggle_popup);
         printers_chevron->Bind(wxEVT_LEFT_DOWN, toggle_popup);
         printers_add->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &evt) {
@@ -2424,36 +2432,7 @@ void PrinterWebView::show_add_printer_dialog()
             m_notebook->AddPage(m_ip_page, _L("IP Connect"));
             m_notebook->AddPage(m_manual_page, _L("Manual Setup"));
 
-            root->Add(m_notebook, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(8));
-
-            auto *bottom = new wxBoxSizer(wxVERTICAL);
-            auto add_bottom_row = [&](PrinterWebViewTab tab, const wxString &label) {
-                auto *row = new wxPanel(this, wxID_ANY);
-                row->SetBackgroundColour(wxColour(248, 249, 250));
-                row->SetCursor(wxCursor(wxCURSOR_HAND));
-                auto *hs = new wxBoxSizer(wxHORIZONTAL);
-                hs->AddSpacer(FromDIP(12));
-                auto *lbl = new wxStaticText(row, wxID_ANY, label);
-                lbl->SetCursor(wxCursor(wxCURSOR_HAND));
-                hs->Add(lbl, 1, wxALIGN_CENTER_VERTICAL);
-                auto *chv = new wxStaticText(row, wxID_ANY, ">");
-                chv->SetForegroundColour(wxColour(130, 130, 130));
-                chv->SetCursor(wxCursor(wxCURSOR_HAND));
-                hs->Add(chv, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
-                row->SetSizer(hs);
-                auto go = [this, owner, tab](wxMouseEvent &) {
-                    EndModal(wxID_OK);
-                    if (owner != nullptr)
-                        owner->CallAfter([owner, tab]() { owner->select_tab(tab); });
-                };
-                row->Bind(wxEVT_LEFT_DOWN, go);
-                lbl->Bind(wxEVT_LEFT_DOWN, go);
-                chv->Bind(wxEVT_LEFT_DOWN, go);
-                bottom->Add(row, 0, wxEXPAND | wxTOP, FromDIP(6));
-            };
-            add_bottom_row(PrinterWebViewTab::Update, _L("System Upgrade"));
-            add_bottom_row(PrinterWebViewTab::Storage, _L("Media"));
-            root->Add(bottom, 0, wxEXPAND | wxALL, FromDIP(8));
+            root->Add(m_notebook, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
 
             SetSizer(root);
 
@@ -2466,7 +2445,7 @@ void PrinterWebView::show_add_printer_dialog()
                     owner->CallAfter([owner]() { owner->prompt_ip_connect(); });
             });
 
-            SetSize(wxSize(FromDIP(360), FromDIP(420)));
+            SetSize(wxSize(FromDIP(360), FromDIP(380)));
             rebuild_auto_list();
         }
 
@@ -2502,6 +2481,8 @@ void PrinterWebView::show_add_printer_dialog()
                 row->SetBackgroundColour(wxColour(255, 255, 255));
                 row->SetCursor(wxCursor(wxCURSOR_HAND));
                 auto *hs = new wxBoxSizer(wxHORIZONTAL);
+                hs->AddSpacer(FromDIP(8));
+                hs->Add(new wxStaticBitmap(row, wxID_ANY, create_scaled_bitmap(k_cprint_printer_nav_bitmap, m_owner, 20)), 0, wxALIGN_CENTER_VERTICAL);
                 hs->AddSpacer(FromDIP(8));
                 auto *vs = new wxBoxSizer(wxVERTICAL);
                 auto *name = new wxStaticText(row, wxID_ANY, from_u8(obj->get_dev_name()));
@@ -2661,6 +2642,8 @@ void PrinterWebView::rebuild_printers_popup()
 
     auto *header = new wxBoxSizer(wxHORIZONTAL);
     header->AddSpacer(FromDIP(12));
+    header->Add(new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap(k_cprint_printer_nav_bitmap, this, 22)), 0, wxALIGN_CENTER_VERTICAL);
+    header->AddSpacer(FromDIP(8));
     auto *title = new wxStaticText(m_printers_popup_panel, wxID_ANY, _L("Printers"));
     wxFont title_font = title->GetFont();
     title_font.SetWeight(wxFONTWEIGHT_BOLD);
@@ -2681,7 +2664,7 @@ void PrinterWebView::rebuild_printers_popup()
     if (selected_machine != nullptr) {
         auto *acct_row = new wxBoxSizer(wxHORIZONTAL);
         acct_row->AddSpacer(FromDIP(12));
-        acct_row->Add(new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap("printer_preview_BL-P001", this, 16)), 0, wxALIGN_CENTER_VERTICAL);
+        acct_row->Add(new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap(k_cprint_printer_nav_bitmap, this, 16)), 0, wxALIGN_CENTER_VERTICAL);
         acct_row->AddSpacer(FromDIP(8));
         auto *nm = new wxStaticText(m_printers_popup_panel, wxID_ANY, from_u8(selected_machine->get_dev_name()));
         nm->SetForegroundColour(wxColour(45, 45, 45));
@@ -2794,7 +2777,7 @@ void PrinterWebView::rebuild_printers_popup()
         card->SetCursor(wxCursor(wxCURSOR_HAND));
         auto *hs = new wxBoxSizer(wxHORIZONTAL);
         hs->AddSpacer(FromDIP(10));
-        auto *printer_bmp = new wxStaticBitmap(card, wxID_ANY, create_scaled_bitmap("printer_preview_BL-P001", this, 22));
+        auto *printer_bmp = new wxStaticBitmap(card, wxID_ANY, create_scaled_bitmap(k_cprint_printer_nav_bitmap, this, 22));
         hs->Add(printer_bmp, 0, wxALIGN_CENTER_VERTICAL);
         hs->AddSpacer(FromDIP(10));
         auto *vs = new wxBoxSizer(wxVERTICAL);
@@ -2875,33 +2858,6 @@ void PrinterWebView::rebuild_printers_popup()
     add_printer_btn->SetForegroundColour(k_green);
     add_printer_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { show_add_printer_dialog(); });
     printers_popup_sizer->Add(add_printer_btn, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(14));
-
-    auto add_nav_row = [&](PrinterWebViewTab tab, const wxString &label) {
-        auto *row = new wxPanel(m_printers_popup_panel, wxID_ANY);
-        row->SetBackgroundColour(wxColour(248, 249, 250));
-        row->SetCursor(wxCursor(wxCURSOR_HAND));
-        auto *r = new wxBoxSizer(wxHORIZONTAL);
-        r->AddSpacer(FromDIP(12));
-        auto *t = new wxStaticText(row, wxID_ANY, label);
-        t->SetForegroundColour(wxColour(40, 40, 40));
-        t->SetCursor(wxCursor(wxCURSOR_HAND));
-        r->Add(t, 1, wxALIGN_CENTER_VERTICAL);
-        auto *c = new wxStaticText(row, wxID_ANY, ">");
-        c->SetForegroundColour(wxColour(130, 130, 130));
-        c->SetCursor(wxCursor(wxCURSOR_HAND));
-        r->Add(c, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
-        row->SetSizer(r);
-        auto go = [this, tab](wxMouseEvent &) {
-            dismiss_printers_popup();
-            select_tab(tab);
-        };
-        row->Bind(wxEVT_LEFT_DOWN, go);
-        t->Bind(wxEVT_LEFT_DOWN, go);
-        c->Bind(wxEVT_LEFT_DOWN, go);
-        printers_popup_sizer->Add(row, 0, wxEXPAND | wxTOP, FromDIP(8));
-    };
-    add_nav_row(PrinterWebViewTab::Update, _L("System Upgrade"));
-    add_nav_row(PrinterWebViewTab::Storage, _L("Media"));
 
     printers_popup_sizer->AddSpacer(FromDIP(12));
 
