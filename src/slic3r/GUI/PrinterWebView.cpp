@@ -684,6 +684,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *camera_refresh_btn = new wxStaticBitmap(preview_box, wxID_ANY, create_scaled_bitmap("camera_refresh_white", this, 18));
     camera_refresh_btn->SetCursor(wxCursor(wxCURSOR_HAND));
     camera_refresh_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
+        if (m_camera_webview == nullptr)
+            return;
         auto *dev_manager = wxGetApp().getDeviceManager();
         MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
         auto urls = configured_camera_stream_urls(obj);
@@ -691,22 +693,52 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     });
     camera_title_row->Add(camera_refresh_btn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(15));
     preview_box_sizer->Add(camera_title_row, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
-    m_camera_webview = wxWebView::New(preview_box, wxID_ANY);
-    m_camera_webview->SetMinSize(wxSize(FromDIP(580), FromDIP(454)));
-    m_camera_webview->SetBackgroundColour(*wxBLACK);
-    m_camera_webview->SetPage(camera_stream_page({}), "");
+    // Use the same WebView factory as the rest of the app (WebViewEdge + handlers on Windows).
+    // Raw wxWebView::New can pick a backend that fails or mis-initializes after splash/login.
+    m_camera_webview = ::WebView::CreateWebView(preview_box, wxString{});
+    if (m_camera_webview != nullptr) {
+        m_camera_webview->SetMinSize(wxSize(FromDIP(580), FromDIP(454)));
+        m_camera_webview->SetBackgroundColour(*wxBLACK);
+        m_camera_webview->SetPage(camera_stream_page({}), "");
 #ifdef __WXMSW__
-    m_camera_webview->Bind(wxEVT_SIZE, [this](wxSizeEvent &e) {
-        e.Skip();
-        wxSize sz = e.GetSize();
-        if (sz.x > 0 && sz.y > 0) {
-            int d = this->FromDIP(12) * 2;
-            ::SetWindowRgn((HWND)m_camera_webview->GetHWND(),
-                ::CreateRoundRectRgn(0, 0, sz.x + 1, sz.y + 1, d, d), TRUE);
-        }
-    });
+        m_camera_webview->Bind(wxEVT_SIZE, [this](wxSizeEvent &e) {
+            e.Skip();
+            if (m_camera_webview == nullptr)
+                return;
+            // Round rect only when a real HWND exists (avoid crash with stub / not-yet-created view).
+            if (m_camera_webview->GetNativeBackend() == nullptr)
+                return;
+            wxSize sz = e.GetSize();
+            if (sz.x <= 0 || sz.y <= 0)
+                return;
+            HWND hwnd = (HWND) m_camera_webview->GetHWND();
+            if (hwnd == nullptr)
+                return;
+            const int d = this->FromDIP(12) * 2;
+            HRGN hrgn = ::CreateRoundRectRgn(0, 0, sz.x + 1, sz.y + 1, d, d);
+            if (hrgn == nullptr)
+                return;
+            if (!::SetWindowRgn(hwnd, hrgn, TRUE))
+                ::DeleteObject(hrgn);
+        });
 #endif
-    preview_box_sizer->Add(m_camera_webview, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
+        preview_box_sizer->Add(m_camera_webview, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
+    } else {
+        BOOST_LOG_TRIVIAL(error) << "PrinterWebView: WebView::CreateWebView returned null; camera area disabled";
+        auto *camera_placeholder = new wxPanel(preview_box, wxID_ANY);
+        camera_placeholder->SetMinSize(wxSize(FromDIP(580), FromDIP(454)));
+        camera_placeholder->SetBackgroundColour(wxColour(24, 26, 30));
+        auto *camera_msg = new wxStaticText(
+            camera_placeholder,
+            wxID_ANY,
+            _L("Camera preview could not start. Install or repair Microsoft WebView2 Runtime."));
+        auto *camera_ph_sizer = new wxBoxSizer(wxVERTICAL);
+        camera_ph_sizer->AddStretchSpacer(1);
+        camera_ph_sizer->Add(camera_msg, 0, wxALIGN_CENTER_HORIZONTAL | wxLEFT | wxRIGHT, FromDIP(24));
+        camera_ph_sizer->AddStretchSpacer(1);
+        camera_placeholder->SetSizer(camera_ph_sizer);
+        preview_box_sizer->Add(camera_placeholder, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
+    }
     preview_box->SetSizer(preview_box_sizer);
     top_row->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
 
