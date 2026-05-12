@@ -1509,7 +1509,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     right_sizer->Add(movement_title_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(8));
     right_sizer->Add(movement_sep, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
-    right_sizer->Add(movement_body_wrap, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(12));
+    right_sizer->AddSpacer(FromDIP(8));
+    right_sizer->Add(movement_body_wrap, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(4));
 
     auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
     const int right_placeholder_height = FromDIP(240);
