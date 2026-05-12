@@ -84,6 +84,7 @@ public:
 private:
     void apply_filament_tool_selection(int tool_index);
     void prompt_ps_target_temperature(bool is_bed, int extruder_index);
+    void show_toolhead_temperature_dialog(int active_extruder_index);
     void show_filament_load_wizard();
     void ensure_camera_webview_created();
     void ensure_storage_page_created();

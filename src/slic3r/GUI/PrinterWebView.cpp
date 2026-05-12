@@ -30,6 +30,7 @@
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
 #include <wx/dialog.h>
+#include <wx/button.h>
 
 #include <string>
 #include <wx/graphics.h>
@@ -2979,53 +2980,228 @@ void PrinterWebView::apply_filament_tool_selection(int tool_index)
         m_filament_tool_name_lbl->SetLabelText(wxString::Format("Tool %d", tool_index + 1));
 }
 
+void PrinterWebView::show_toolhead_temperature_dialog(int active_extruder_index)
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+    if (obj == nullptr || !obj->is_online() || obj->GetExtderSystem() == nullptr)
+        return;
+
+    active_extruder_index = std::max(0, std::min(3, active_extruder_index));
+
+    long min_t = 0;
+    long max_t = 300;
+    if (obj->nozzle_temp_range.size() >= 2) {
+        min_t = obj->nozzle_temp_range[0];
+        max_t = obj->nozzle_temp_range[1];
+    }
+
+    wxDialog dlg(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
+    dlg.SetBackgroundColour(*wxWHITE);
+
+    auto *root = new wxBoxSizer(wxVERTICAL);
+
+    auto *title_bar = new wxPanel(&dlg, wxID_ANY);
+    title_bar->SetBackgroundColour(wxColour(22, 24, 29));
+    auto *title_sz = new wxBoxSizer(wxHORIZONTAL);
+    auto *title_txt = new wxStaticText(title_bar, wxID_ANY, _L("Change Toolhead Temperature"));
+    title_txt->SetForegroundColour(*wxWHITE);
+    {
+        wxFont tf = title_txt->GetFont();
+        if (tf.GetPointSize() > 1)
+            tf.SetPointSize(tf.GetPointSize() + 1);
+        tf.SetWeight(wxFONTWEIGHT_BOLD);
+        title_txt->SetFont(tf);
+    }
+    title_sz->Add(title_txt, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(16));
+    auto *close_btn = new wxButton(title_bar, wxID_ANY, wxString::FromUTF8("\u00D7"), wxDefaultPosition, wxSize(FromDIP(40), FromDIP(40)), wxBORDER_NONE);
+    close_btn->SetBackgroundColour(wxColour(22, 24, 29));
+    close_btn->SetForegroundColour(*wxWHITE);
+    title_sz->Add(close_btn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(4));
+    title_bar->SetSizer(title_sz);
+    title_bar->SetMinSize(wxSize(-1, FromDIP(48)));
+    root->Add(title_bar, 0, wxEXPAND);
+
+    auto *body = new wxPanel(&dlg);
+    body->SetBackgroundColour(*wxWHITE);
+    auto *body_sz = new wxBoxSizer(wxHORIZONTAL);
+
+    auto *left = new wxPanel(body, wxID_ANY);
+    left->SetBackgroundColour(*wxWHITE);
+    auto *left_sz = new wxBoxSizer(wxVERTICAL);
+
+    auto *tool_hdr_wrap = new wxPanel(left, wxID_ANY);
+    tool_hdr_wrap->SetBackgroundColour(wxColour(240, 241, 243));
+    auto *thw_sz = new wxBoxSizer(wxVERTICAL);
+    auto *tool_hdr = new wxStaticText(tool_hdr_wrap, wxID_ANY, wxString::Format("Tool %d", active_extruder_index + 1));
+    tool_hdr->SetBackgroundColour(wxColour(240, 241, 243));
+    tool_hdr->SetForegroundColour(wxColour(55, 55, 58));
+    {
+        wxFont hf = tool_hdr->GetFont();
+        hf.SetWeight(wxFONTWEIGHT_BOLD);
+        tool_hdr->SetFont(hf);
+    }
+    thw_sz->Add(tool_hdr, 0, wxALL, FromDIP(10));
+    tool_hdr_wrap->SetSizer(thw_sz);
+    left_sz->Add(tool_hdr_wrap, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
+
+    const float cur_f = obj->GetExtderSystem()->GetNozzleTempCurrent(active_extruder_index);
+    const float tgt_f = obj->GetExtderSystem()->GetNozzleTempTarget(active_extruder_index);
+
+    auto *temp_row = new wxBoxSizer(wxHORIZONTAL);
+    wxBitmap therm = create_scaled_bitmap("tool_temperature_white", &dlg, 32);
+    if (therm.IsOk())
+        temp_row->Add(new wxStaticBitmap(left, wxID_ANY, therm), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    auto *big_cur = new wxStaticText(left, wxID_ANY, wxString::Format("%.0f", static_cast<double>(cur_f)));
+    {
+        wxFont bf = big_cur->GetFont();
+        bf.SetPointSize(std::max(18, bf.GetPointSize() + 8));
+        bf.SetWeight(wxFONTWEIGHT_BOLD);
+        big_cur->SetFont(bf);
+    }
+    big_cur->SetForegroundColour(wxColour(40, 40, 40));
+    temp_row->Add(big_cur, 0, wxALIGN_CENTER_VERTICAL);
+    temp_row->Add(new wxStaticText(left, wxID_ANY, " / "), 0, wxALIGN_CENTER_VERTICAL);
+    auto *big_tgt = new wxStaticText(left, wxID_ANY, wxString::Format("%.0f °C", static_cast<double>(tgt_f)));
+    {
+        wxFont sf = big_tgt->GetFont();
+        if (sf.GetPointSize() > 1)
+            sf.SetPointSize(sf.GetPointSize() + 1);
+        big_tgt->SetFont(sf);
+    }
+    big_tgt->SetForegroundColour(wxColour(130, 132, 138));
+    temp_row->Add(big_tgt, 0, wxALIGN_CENTER_VERTICAL);
+    left_sz->Add(temp_row, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(18));
+
+    wxString init_val = wxString::Format("%.0f°C", static_cast<double>(tgt_f));
+    auto *inp = new wxTextCtrl(left, wxID_ANY, init_val, wxDefaultPosition, wxSize(FromDIP(168), FromDIP(38)), wxTE_PROCESS_ENTER);
+    auto *set_btn = new wxButton(left, wxID_ANY, _L("Set"), wxDefaultPosition, wxSize(FromDIP(76), FromDIP(38)));
+    set_btn->SetBackgroundColour(wxColour(55, 58, 64));
+    set_btn->SetForegroundColour(*wxWHITE);
+    auto *inp_row = new wxBoxSizer(wxHORIZONTAL);
+    inp_row->Add(inp, 0, wxALIGN_CENTER_VERTICAL);
+    inp_row->Add(set_btn, 0, wxLEFT | wxALIGN_CENTER_VERTICAL, FromDIP(10));
+    left_sz->Add(inp_row, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP(16));
+    left_sz->AddStretchSpacer(1);
+    left->SetSizer(left_sz);
+
+    auto *sep = new wxPanel(body, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(1), -1));
+    sep->SetBackgroundColour(wxColour(225, 226, 230));
+
+    auto *right = new wxPanel(body, wxID_ANY);
+    right->SetBackgroundColour(*wxWHITE);
+    auto *right_sz = new wxBoxSizer(wxVERTICAL);
+
+    for (int i = 0; i < 4; ++i) {
+        if (i == active_extruder_index)
+            continue;
+        const float oc = obj->GetExtderSystem()->GetNozzleTempCurrent(i);
+        const float ot = obj->GetExtderSystem()->GetNozzleTempTarget(i);
+        auto *row = new wxPanel(right, wxID_ANY);
+        row->SetBackgroundColour(*wxWHITE);
+        auto *rs = new wxBoxSizer(wxHORIZONTAL);
+
+        auto *pill = new wxPanel(row, wxID_ANY);
+        pill->SetBackgroundColour(wxColour(236, 237, 240));
+        auto *ps = new wxBoxSizer(wxVERTICAL);
+        auto *pn = new wxStaticText(pill, wxID_ANY, wxString::Format("Tool %d", i + 1));
+        pn->SetBackgroundColour(wxColour(236, 237, 240));
+        pn->SetForegroundColour(wxColour(55, 55, 58));
+        {
+            wxFont pf = pn->GetFont();
+            pf.SetWeight(wxFONTWEIGHT_BOLD);
+            pn->SetFont(pf);
+        }
+        ps->Add(pn, 0, wxALL, FromDIP(6));
+        pill->SetSizer(ps);
+        rs->Add(pill, 0, wxALIGN_CENTER_VERTICAL);
+        rs->AddSpacer(FromDIP(10));
+        wxBitmap sm = create_scaled_bitmap("tool_temperature_white", &dlg, 16);
+        if (sm.IsOk())
+            rs->Add(new wxStaticBitmap(row, wxID_ANY, sm), 0, wxALIGN_CENTER_VERTICAL);
+        auto *tx = new wxStaticText(row, wxID_ANY, wxString::Format("%.0f/%.0f °C", static_cast<double>(oc), static_cast<double>(ot)));
+        tx->SetForegroundColour(wxColour(115, 118, 125));
+        rs->Add(tx, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(6));
+        row->SetSizer(rs);
+        right_sz->Add(row, 0, wxEXPAND | wxRIGHT | wxTOP, FromDIP(12));
+    }
+    right_sz->AddStretchSpacer(1);
+    right->SetSizer(right_sz);
+
+    body_sz->Add(left, 52, wxEXPAND | wxALL, FromDIP(14));
+    body_sz->Add(sep, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(16));
+    body_sz->Add(right, 48, wxEXPAND | wxALL, FromDIP(14));
+    body->SetSizer(body_sz);
+    root->Add(body, 1, wxEXPAND);
+
+    dlg.SetSizer(root);
+
+    const auto apply_temp = [&]() {
+        wxString raw = inp->GetValue();
+        raw.Trim(true);
+        raw.Trim(false);
+        raw.Replace(wxString::FromUTF8("\xC2\xB0""C"), wxEmptyString, true);
+        raw.Replace("C", wxEmptyString, true);
+        raw.Trim(true);
+        raw.Trim(false);
+        long v = 0;
+        if (!raw.ToLong(&v)) {
+            wxMessageBox(_L("Please enter a valid temperature."), _L("Change Toolhead Temperature"), wxOK | wxICON_WARNING, &dlg);
+            return;
+        }
+        v = std::max(min_t, std::min(max_t, v));
+        obj->command_set_nozzle_new(active_extruder_index, static_cast<int>(v));
+        dlg.EndModal(wxID_OK);
+    };
+
+    close_btn->Bind(wxEVT_BUTTON, [&dlg](wxCommandEvent &) { dlg.EndModal(wxID_CANCEL); });
+    set_btn->Bind(wxEVT_BUTTON, [&apply_temp](wxCommandEvent &) { apply_temp(); });
+    inp->Bind(wxEVT_TEXT_ENTER, [&apply_temp](wxCommandEvent &) { apply_temp(); });
+    dlg.Bind(wxEVT_CLOSE_WINDOW, [&dlg](wxCloseEvent &e) {
+        if (dlg.IsModal())
+            dlg.EndModal(wxID_CANCEL);
+        else
+            e.Skip();
+    });
+
+    dlg.Fit();
+    dlg.SetMinSize(dlg.GetSize());
+    dlg.CentreOnParent();
+    dlg.ShowModal();
+}
+
 void PrinterWebView::prompt_ps_target_temperature(bool is_bed, int extruder_index)
 {
+    if (!is_bed) {
+        show_toolhead_temperature_dialog(extruder_index);
+        return;
+    }
+
     auto *dev_manager = wxGetApp().getDeviceManager();
     MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
     if (obj == nullptr || !obj->is_online())
         return;
 
-    extruder_index = std::max(0, std::min(3, extruder_index));
-
     long min_t = 0;
     long max_t = 300;
     long cur = 0;
-    wxString caption;
-    wxString msg;
 
-    if (is_bed) {
-        caption = _L("Tabla hedef sicakligi");
-        msg = _L("Yeni tabla hedef sicakligini girin (°C).");
-        if (obj->GetBed() != nullptr)
-            cur = static_cast<long>(std::nearbyint(static_cast<double>(obj->GetBed()->GetBedTempTarget())));
-        max_t = obj->get_bed_temperature_limit();
-        if (obj->bed_temp_range.size() >= 2) {
-            min_t = obj->bed_temp_range[0];
-            max_t = obj->bed_temp_range[1];
-        }
-    } else {
-        caption = wxString::Format(_L("Nozul %d hedef sicakligi"), extruder_index + 1);
-        msg = _L("Yeni nozul hedef sicakligini girin (°C).");
-        if (obj->GetExtderSystem() != nullptr)
-            cur = static_cast<long>(std::nearbyint(static_cast<double>(obj->GetExtderSystem()->GetNozzleTempTarget(extruder_index))));
-        if (obj->nozzle_temp_range.size() >= 2) {
-            min_t = obj->nozzle_temp_range[0];
-            max_t = obj->nozzle_temp_range[1];
-        }
+    if (obj->GetBed() != nullptr)
+        cur = static_cast<long>(std::nearbyint(static_cast<double>(obj->GetBed()->GetBedTempTarget())));
+    max_t = obj->get_bed_temperature_limit();
+    if (obj->bed_temp_range.size() >= 2) {
+        min_t = obj->bed_temp_range[0];
+        max_t = obj->bed_temp_range[1];
     }
 
-    wxTextEntryDialog dlg(this, msg, caption, wxString::Format("%ld", cur));
+    wxTextEntryDialog dlg(this, _L("Enter new bed target temperature (°C)."), _L("Bed target temperature"), wxString::Format("%ld", cur));
     if (dlg.ShowModal() != wxID_OK)
         return;
     long v = 0;
     if (!dlg.GetValue().ToLong(&v))
         return;
     v = std::max(min_t, std::min(max_t, v));
-    if (is_bed)
-        obj->command_set_bed(static_cast<int>(v));
-    else
-        obj->command_set_nozzle_new(extruder_index, static_cast<int>(v));
+    obj->command_set_bed(static_cast<int>(v));
 }
 
 void PrinterWebView::show_filament_load_wizard()
