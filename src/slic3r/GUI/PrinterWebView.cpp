@@ -2758,35 +2758,6 @@ void PrinterWebView::rebuild_printers_popup()
     const wxColour k_muted(120, 120, 120);
     const wxColour k_card_border(232, 232, 232);
 
-    if (selected_machine != nullptr) {
-        auto *acct_row = new wxBoxSizer(wxHORIZONTAL);
-        acct_row->AddSpacer(FromDIP(12));
-        acct_row->Add(new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap(k_cprint_printer_nav_bitmap, this, 16)), 0, wxALIGN_CENTER_VERTICAL);
-        acct_row->AddSpacer(FromDIP(8));
-        auto *nm = new wxStaticText(m_printers_popup_panel, wxID_ANY, from_u8(selected_machine->get_dev_name()));
-        nm->SetForegroundColour(wxColour(45, 45, 45));
-        acct_row->Add(nm, 1, wxALIGN_CENTER_VERTICAL);
-        auto *logout_label = new wxStaticText(m_printers_popup_panel, wxID_ANY, wxString::FromUTF8("C\xC4\xB1k\xC4\xB1\xC5\x9F"));
-        logout_label->SetForegroundColour(k_muted);
-        logout_label->SetCursor(wxCursor(wxCURSOR_HAND));
-        acct_row->Add(logout_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(4));
-        auto *logout_icon = new wxStaticBitmap(m_printers_popup_panel, wxID_ANY, create_scaled_bitmap("menu_exit", this, 14));
-        logout_icon->SetCursor(wxCursor(wxCURSOR_HAND));
-        acct_row->Add(logout_icon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
-        auto logout_handler = [this](wxMouseEvent &) {
-            dismiss_printers_popup();
-            wxGetApp().request_user_logout();
-        };
-        logout_label->Bind(wxEVT_LEFT_DOWN, logout_handler);
-        logout_icon->Bind(wxEVT_LEFT_DOWN, logout_handler);
-        printers_popup_sizer->Add(acct_row, 0, wxEXPAND | wxBOTTOM, FromDIP(6));
-        auto *header_divider = new wxPanel(m_printers_popup_panel, wxID_ANY);
-        header_divider->SetMinSize(wxSize(-1, FromDIP(1)));
-        header_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
-        header_divider->SetBackgroundColour(k_card_border);
-        printers_popup_sizer->Add(header_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
-    }
-
     auto *search_box = new wxTextCtrl(m_printers_popup_panel, wxID_ANY, "", wxDefaultPosition, wxSize(-1, FromDIP(28)));
     search_box->SetHint(_L("Search"));
     search_box->ChangeValue(m_printers_search_query);
@@ -2896,16 +2867,6 @@ void PrinterWebView::rebuild_printers_popup()
         st->SetForegroundColour(online ? k_green : k_muted);
         status_row->Add(st, 0, wxALIGN_CENTER_VERTICAL);
         vs->Add(status_row, 0);
-        wxString ip = from_u8(machine->get_dev_ip());
-        wxStaticText *ip_lbl = nullptr;
-        if (!ip.empty()) {
-            ip_lbl = new wxStaticText(card, wxID_ANY, ip);
-            ip_lbl->SetForegroundColour(k_muted);
-            wxFont ip_font = ip_lbl->GetFont();
-            ip_font.SetPointSize((std::max)(8, ip_font.GetPointSize() - 1));
-            ip_lbl->SetFont(ip_font);
-            vs->Add(ip_lbl, 0);
-        }
         hs->Add(vs, 1, wxALIGN_CENTER_VERTICAL);
         auto *more = new wxStaticText(card, wxID_ANY, "...");
         more->SetForegroundColour(k_muted);
@@ -2924,8 +2885,6 @@ void PrinterWebView::rebuild_printers_popup()
         name_lbl->Bind(wxEVT_LEFT_DOWN, pick);
         st->Bind(wxEVT_LEFT_DOWN, pick);
         dot->Bind(wxEVT_LEFT_DOWN, pick);
-        if (ip_lbl != nullptr)
-            ip_lbl->Bind(wxEVT_LEFT_DOWN, pick);
         printer_bmp->Bind(wxEVT_LEFT_DOWN, pick);
         chev->Bind(wxEVT_LEFT_DOWN, pick);
         more->Bind(wxEVT_LEFT_DOWN, [this, more, machine](wxMouseEvent &evt) {
