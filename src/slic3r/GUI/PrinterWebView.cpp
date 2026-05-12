@@ -268,23 +268,26 @@ private:
         dc.SetBackground(wxBrush(m_fill));
         dc.Clear();
 
-#if defined(__WXMSW__)
-        // wxGCDC / Direct2D path has been associated with rare startup paint crashes; use plain wxDC on Windows.
-        (void)0;
-#else
-        wxGCDC gdc(dc);
-        wxGraphicsContext *gctx = gdc.GetGraphicsContext();
-        if (gctx) {
-            gctx->SetAntialiasMode(wxANTIALIAS_DEFAULT);
-            gctx->SetBrush(wxBrush(m_fill));
-            gctx->SetPen(wxPen(m_fill, 1));
-            const double cap_h = std::min(2.0 * r, h);
-            gctx->DrawRoundedRectangle(x, y, w, cap_h, r);
-            if (h > cap_h)
-                gctx->DrawRectangle(x, y + cap_h, w, h - cap_h);
+        std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
+        if (gc) {
+            static constexpr double kPi = 3.14159265358979323846;
+            gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+            gc->SetBrush(wxBrush(m_fill));
+            gc->SetPen(wxPen(m_fill, 1));
+
+            // Top-left and top-right rounded only; bottom edge of header stays straight.
+            wxGraphicsPath path = gc->CreatePath();
+            path.MoveToPoint(x + r, y);
+            path.AddLineToPoint(x + w - r, y);
+            path.AddArc(x + w - r, y + r, r, -kPi / 2.0, 0.0, false);
+            path.AddLineToPoint(x + w, y + h);
+            path.AddLineToPoint(x, y + h);
+            path.AddLineToPoint(x, y + r);
+            path.AddArc(x + r, y + r, r, kPi, 1.5 * kPi, false);
+            path.CloseSubpath();
+            gc->FillPath(path);
             return;
         }
-#endif
 
         const int ri = std::max(1, static_cast<int>(r + 0.5));
         const int cap_hi = std::min(ri * 2, rect.height);
