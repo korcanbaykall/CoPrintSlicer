@@ -62,6 +62,9 @@ public:
     void rebuild_extruder_popup();
     void rebuild_fan_popup();
     void rebuild_speed_popup();
+    void toggle_filament_tool_popup();
+    void dismiss_filament_tool_popup();
+    void rebuild_filament_tool_popup();
     void select_tab(PrinterWebViewTab tab);
     void update_sidebar_selection();
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
@@ -158,6 +161,9 @@ private:
     wxPopupTransientWindow *m_speed_popup{ nullptr };
     wxWindow *m_speed_popup_button{ nullptr };
     wxPanel *m_speed_popup_panel{ nullptr };
+    wxPopupTransientWindow *m_filament_tool_popup{ nullptr };
+    wxWindow *m_filament_tool_popup_button{ nullptr };
+    wxPanel *m_filament_tool_popup_panel{ nullptr };
     wxPanel *m_storage_placeholder{ nullptr };
     StaticBox *m_filament_tool_color_dot{ nullptr };
     wxStaticText *m_filament_tool_name_lbl{ nullptr };
