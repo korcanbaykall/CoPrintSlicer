@@ -31,6 +31,7 @@
 #include <wx/textdlg.h>
 #include <wx/graphics.h>
 #include <wx/dcgraph.h>
+#include <wx/event.h>
 
 #include <algorithm>
 #include <array>
@@ -693,52 +694,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     });
     camera_title_row->Add(camera_refresh_btn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(15));
     preview_box_sizer->Add(camera_title_row, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
-    // Use the same WebView factory as the rest of the app (WebViewEdge + handlers on Windows).
-    // Raw wxWebView::New can pick a backend that fails or mis-initializes after splash/login.
-    m_camera_webview = ::WebView::CreateWebView(preview_box, wxString{});
-    if (m_camera_webview != nullptr) {
-        m_camera_webview->SetMinSize(wxSize(FromDIP(580), FromDIP(454)));
-        m_camera_webview->SetBackgroundColour(*wxBLACK);
-        m_camera_webview->SetPage(camera_stream_page({}), "");
-#ifdef __WXMSW__
-        m_camera_webview->Bind(wxEVT_SIZE, [this](wxSizeEvent &e) {
-            e.Skip();
-            if (m_camera_webview == nullptr)
-                return;
-            // Round rect only when a real HWND exists (avoid crash with stub / not-yet-created view).
-            if (m_camera_webview->GetNativeBackend() == nullptr)
-                return;
-            wxSize sz = e.GetSize();
-            if (sz.x <= 0 || sz.y <= 0)
-                return;
-            HWND hwnd = (HWND) m_camera_webview->GetHWND();
-            if (hwnd == nullptr)
-                return;
-            const int d = this->FromDIP(12) * 2;
-            HRGN hrgn = ::CreateRoundRectRgn(0, 0, sz.x + 1, sz.y + 1, d, d);
-            if (hrgn == nullptr)
-                return;
-            if (!::SetWindowRgn(hwnd, hrgn, TRUE))
-                ::DeleteObject(hrgn);
-        });
-#endif
-        preview_box_sizer->Add(m_camera_webview, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
-    } else {
-        BOOST_LOG_TRIVIAL(error) << "PrinterWebView: WebView::CreateWebView returned null; camera area disabled";
-        auto *camera_placeholder = new wxPanel(preview_box, wxID_ANY);
-        camera_placeholder->SetMinSize(wxSize(FromDIP(580), FromDIP(454)));
-        camera_placeholder->SetBackgroundColour(wxColour(24, 26, 30));
-        auto *camera_msg = new wxStaticText(
-            camera_placeholder,
-            wxID_ANY,
-            _L("Camera preview could not start. Install or repair Microsoft WebView2 Runtime."));
-        auto *camera_ph_sizer = new wxBoxSizer(wxVERTICAL);
-        camera_ph_sizer->AddStretchSpacer(1);
-        camera_ph_sizer->Add(camera_msg, 0, wxALIGN_CENTER_HORIZONTAL | wxLEFT | wxRIGHT, FromDIP(24));
-        camera_ph_sizer->AddStretchSpacer(1);
-        camera_placeholder->SetSizer(camera_ph_sizer);
-        preview_box_sizer->Add(camera_placeholder, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
-    }
+    // Host only until the panel is actually shown. Creating WebView2 while MainFrame / tabs are still
+    // constructing has been observed to crash (ACCESS_VIOLATION in ntdll); defer to wxEVT_SHOW.
+    m_camera_webview_host = new wxPanel(preview_box, wxID_ANY);
+    m_camera_webview_host->SetMinSize(wxSize(FromDIP(580), FromDIP(454)));
+    m_camera_webview_host->SetBackgroundColour(wxColour(0, 0, 0));
+    preview_box_sizer->Add(m_camera_webview_host, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
     preview_box->SetSizer(preview_box_sizer);
     top_row->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
 
@@ -1987,6 +1948,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     Bind(wxEVT_TIMER, [this](wxTimerEvent &) { refresh_layer_info_from_selected_machine(); }, m_layer_refresh_timer->GetId());
     m_layer_refresh_timer->Start(250);
     Bind(wxEVT_CLOSE_WINDOW, &PrinterWebView::OnClose, this);
+    Bind(wxEVT_SHOW, [this](wxShowEvent &ev) {
+        if (ev.IsShown())
+            this->ensure_camera_webview_created();
+        ev.Skip();
+    });
  }
 
 PrinterWebView::~PrinterWebView()
@@ -2019,6 +1985,8 @@ void PrinterWebView::load_url(wxString& url, wxString apikey)
 
 bool PrinterWebView::Show(bool show)
 {
+    if (show)
+        ensure_camera_webview_created();
     if (show)
         refresh_layer_info_from_selected_machine();
     return wxPanel::Show(show);
@@ -2803,6 +2771,62 @@ void PrinterWebView::rebuild_speed_popup()
     m_speed_popup->SetClientSize(popup_size);
     m_speed_popup->SetSize(popup_size);
     m_speed_popup->Layout();
+}
+
+void PrinterWebView::ensure_camera_webview_created()
+{
+    if (m_camera_webview_initialized || m_camera_webview_host == nullptr)
+        return;
+    m_camera_webview_initialized = true;
+
+    wxWebView *const wv = ::WebView::CreateWebView(m_camera_webview_host, wxString{});
+    if (wv == nullptr) {
+        BOOST_LOG_TRIVIAL(error) << "PrinterWebView: WebView::CreateWebView returned null; camera area disabled";
+        auto *msg = new wxStaticText(
+            m_camera_webview_host,
+            wxID_ANY,
+            _L("Camera preview could not start. Install or repair Microsoft WebView2 Runtime."));
+        auto *vs = new wxBoxSizer(wxVERTICAL);
+        vs->AddStretchSpacer(1);
+        vs->Add(msg, 0, wxALIGN_CENTER_HORIZONTAL | wxLEFT | wxRIGHT, FromDIP(24));
+        vs->AddStretchSpacer(1);
+        m_camera_webview_host->SetSizer(vs);
+        m_camera_webview_host->Layout();
+        return;
+    }
+
+    m_camera_webview = wv;
+    m_camera_webview->SetBackgroundColour(*wxBLACK);
+    m_camera_webview->SetPage(camera_stream_page({}), "");
+
+    auto *hs = new wxBoxSizer(wxHORIZONTAL);
+    hs->Add(m_camera_webview, 1, wxEXPAND);
+    m_camera_webview_host->SetSizer(hs);
+
+#ifdef __WXMSW__
+    m_camera_webview->Bind(wxEVT_SIZE, [this](wxSizeEvent &e) {
+        e.Skip();
+        if (m_camera_webview == nullptr)
+            return;
+        if (m_camera_webview->GetNativeBackend() == nullptr)
+            return;
+        wxSize sz = e.GetSize();
+        if (sz.x <= 0 || sz.y <= 0)
+            return;
+        HWND hwnd = (HWND) m_camera_webview->GetHWND();
+        if (hwnd == nullptr)
+            return;
+        const int d = this->FromDIP(12) * 2;
+        HRGN hrgn = ::CreateRoundRectRgn(0, 0, sz.x + 1, sz.y + 1, d, d);
+        if (hrgn == nullptr)
+            return;
+        if (!::SetWindowRgn(hwnd, hrgn, TRUE))
+            ::DeleteObject(hrgn);
+    });
+#endif
+
+    m_camera_webview_host->Layout();
+    refresh_layer_info_from_selected_machine();
 }
 
 void PrinterWebView::apply_filament_tool_selection(int tool_index)

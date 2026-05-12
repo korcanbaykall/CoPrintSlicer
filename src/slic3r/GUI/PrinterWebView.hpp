@@ -82,6 +82,7 @@ public:
 
 private:
     void apply_filament_tool_selection(int tool_index);
+    void ensure_camera_webview_created();
     struct SidebarItem {
         PrinterWebViewTab tab;
         wxPanel *panel{ nullptr };
@@ -133,6 +134,8 @@ private:
     wxWindow *m_preview_printers_button{ nullptr };
     wxStaticBitmap *m_preview_thumbnail{ nullptr };
     wxWebView *m_camera_webview{ nullptr };
+    wxPanel *m_camera_webview_host{ nullptr };
+    bool m_camera_webview_initialized{ false };
     wxStaticText *m_printer_name_value{ nullptr };
     wxStaticText *m_printer_model_value{ nullptr };
     wxStaticText *m_printer_serial_value{ nullptr };
