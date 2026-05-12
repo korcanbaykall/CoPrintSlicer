@@ -356,6 +356,10 @@ public:
     //SoftFever
     void show_device(bool bBBLPrinter);
 
+private:
+    void ensure_printer_web_view_created();
+
+public:
     PA_Calibration_Dlg* m_pa_calib_dlg{ nullptr };
     Temp_Calibration_Dlg* m_temp_calib_dlg{ nullptr };
     MaxVolumetricSpeed_Test_Dlg* m_vol_test_dlg { nullptr };

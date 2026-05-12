@@ -616,6 +616,8 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, BORDERLESS_FRAME_
     wxGetApp().UpdateDarkUIWin(this);
 #endif // _MSW_DARK_MODE
 
+    CallAfter([this]() { ensure_printer_web_view_created(); });
+
     wxGetApp().persist_window_geometry(this, true);
     wxGetApp().persist_window_geometry(&m_settings_dialog, true);
     // bind events from DiffDlg
@@ -1152,14 +1154,8 @@ void MainFrame::init_tabpanel() {
     m_monitor->SetBackgroundColour(*wxWHITE);
     m_tabpanel->AddPage(m_monitor, _L("Device"), std::string("tab_monitor_active"), std::string("tab_monitor_active"), false);
 
-    m_printer_view = new PrinterWebView(m_tabpanel);
-    Bind(EVT_LOAD_PRINTER_URL, [this](LoadPrinterViewEvent &evt) {
-        wxString url = evt.GetString();
-        wxString key = evt.GetAPIkey();
-        //select_tab(MainFrame::tpMonitor);
-        m_printer_view->load_url(url, key);
-    });
-    m_printer_view->Hide();
+    // PrinterWebView (WebView2) is created lazily: from show_device() when needed, and via CallAfter
+    // at the end of MainFrame construction so the top-level window hierarchy is ready (avoids startup crashes).
 
     if (wxGetApp().is_enable_multi_machine()) {
         m_multi_machine = new MultiMachinePage(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
@@ -1197,7 +1193,7 @@ void MainFrame::show_device(bool bBBLPrinter) {
         if (m_tabpanel->FindPage(m_monitor) != wxNOT_FOUND)
             return;
         // Remove printer view
-        if ((idx = m_tabpanel->FindPage(m_printer_view)) != wxNOT_FOUND) {
+        if (m_printer_view != nullptr && (idx = m_tabpanel->FindPage(m_printer_view)) != wxNOT_FOUND) {
             m_printer_view->Show(false);
             m_tabpanel->RemovePage(idx);
         }
@@ -1235,7 +1231,7 @@ void MainFrame::show_device(bool bBBLPrinter) {
 #endif // _MSW_DARK_MODE
 
     } else {
-        if (m_tabpanel->FindPage(m_printer_view) != wxNOT_FOUND)
+        if (m_printer_view != nullptr && m_tabpanel->FindPage(m_printer_view) != wxNOT_FOUND)
             return;
 
         if ((idx = m_tabpanel->FindPage(m_calibration)) != wxNOT_FOUND) {
@@ -1250,19 +1246,24 @@ void MainFrame::show_device(bool bBBLPrinter) {
             m_monitor->Show(false);
             m_tabpanel->RemovePage(idx);
         }
-        if (m_printer_view == nullptr) {
-            m_printer_view = new PrinterWebView(m_tabpanel);
-            Bind(EVT_LOAD_PRINTER_URL, [this](LoadPrinterViewEvent& evt) {
-                wxString url = evt.GetString();
-                wxString key = evt.GetAPIkey();
-                // select_tab(MainFrame::tpMonitor);
-                m_printer_view->load_url(url, key);
-            });
-        }
+        ensure_printer_web_view_created();
         m_printer_view->Show(false);
         m_tabpanel->InsertPage(tpMonitor, m_printer_view, _L("Device"), std::string("tab_monitor_active"),
                                std::string("tab_monitor_active"));
     }
+}
+
+void MainFrame::ensure_printer_web_view_created()
+{
+    if (m_printer_view != nullptr)
+        return;
+    m_printer_view = new PrinterWebView(m_tabpanel);
+    Bind(EVT_LOAD_PRINTER_URL, [this](LoadPrinterViewEvent& evt) {
+        wxString url = evt.GetString();
+        wxString key = evt.GetAPIkey();
+        m_printer_view->load_url(url, key);
+    });
+    m_printer_view->Hide();
 }
 
 bool MainFrame::preview_only_hint()
