@@ -2772,7 +2772,11 @@ void PrinterWebView::rebuild_printers_popup()
         if (machine == nullptr)
             return;
         const bool online = machine->is_online();
-        auto *card = new wxPanel(m_printers_popup_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_THEME);
+        auto *card = new StaticBox(m_printers_popup_panel, wxID_ANY);
+        card->SetCornerRadius(static_cast<double>(FromDIP(10)));
+        card->SetBorderWidth(1);
+        card->SetBorderColorNormal(k_card_border);
+        card->SetBackgroundColorNormal(wxColour(255, 255, 255));
         card->SetBackgroundColour(wxColour(255, 255, 255));
         card->SetCursor(wxCursor(wxCURSOR_HAND));
         auto *hs = new wxBoxSizer(wxHORIZONTAL);
@@ -2852,12 +2856,27 @@ void PrinterWebView::rebuild_printers_popup()
         printers_popup_sizer->Add(empty, 0, wxALL, FromDIP(14));
     }
 
-    auto *add_printer_btn = new wxButton(m_printers_popup_panel, wxID_ANY, _L("+ Add Printer"));
-    add_printer_btn->SetMinSize(wxSize(-1, FromDIP(40)));
-    add_printer_btn->SetBackgroundColour(wxColour(255, 255, 255));
-    add_printer_btn->SetForegroundColour(k_green);
-    add_printer_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { show_add_printer_dialog(); });
-    printers_popup_sizer->Add(add_printer_btn, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(14));
+    auto *add_printer_wrap = new StaticBox(m_printers_popup_panel, wxID_ANY);
+    add_printer_wrap->SetCornerRadius(static_cast<double>(FromDIP(10)));
+    add_printer_wrap->SetBorderWidth(FromDIP(1));
+    add_printer_wrap->SetBorderStyle(wxPENSTYLE_SHORT_DASH);
+    add_printer_wrap->SetBorderColorNormal(wxColour(200, 200, 204));
+    add_printer_wrap->SetBackgroundColorNormal(wxColour(255, 255, 255));
+    add_printer_wrap->SetBackgroundColour(wxColour(255, 255, 255));
+    add_printer_wrap->SetMinSize(wxSize(-1, FromDIP(40)));
+    add_printer_wrap->SetCursor(wxCursor(wxCURSOR_HAND));
+    auto *add_printer_sizer = new wxBoxSizer(wxHORIZONTAL);
+    add_printer_sizer->AddStretchSpacer(1);
+    auto *add_printer_lbl = new wxStaticText(add_printer_wrap, wxID_ANY, _L("+ Add Printer"));
+    add_printer_lbl->SetForegroundColour(k_green);
+    add_printer_lbl->SetCursor(wxCursor(wxCURSOR_HAND));
+    add_printer_sizer->Add(add_printer_lbl, 0, wxALIGN_CENTER_VERTICAL);
+    add_printer_sizer->AddStretchSpacer(1);
+    add_printer_wrap->SetSizer(add_printer_sizer);
+    const auto open_add_printer = [this](wxMouseEvent &) { show_add_printer_dialog(); };
+    add_printer_wrap->Bind(wxEVT_LEFT_DOWN, open_add_printer);
+    add_printer_lbl->Bind(wxEVT_LEFT_DOWN, open_add_printer);
+    printers_popup_sizer->Add(add_printer_wrap, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(14));
 
     printers_popup_sizer->AddSpacer(FromDIP(12));
 
