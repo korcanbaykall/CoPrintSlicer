@@ -13,7 +13,6 @@
 #include <wx/image.h>
 #include <wx/webrequest.h>
 #include <wx/webview.h>
-#include "Widgets/ProgressBar.hpp"
 #include "Widgets/WebView.hpp"
 #include "DeviceDashboard/DeviceCommandService.hpp"
 #include "DeviceDashboard/DeviceStateStore.hpp"
@@ -51,11 +50,6 @@ public:
     bool Show(bool show) override;
     void reload();
     void update_mode();
-    void set_printer_layer(int layer);
-    void set_file_layer(int layer);
-    void set_layer_info(int printer_layer, int file_layer);
-    void set_estimated_remaining_seconds(int remaining_seconds);
-    void set_active_file_name(const wxString &file_name);
     void toggle_printers_popup();
     void dismiss_printers_popup();
     void toggle_extruder_popup();
@@ -137,15 +131,10 @@ private:
         wxStaticText *chevron{ nullptr };
     };
 
-    wxStaticText *m_active_file_name_value{ nullptr };
-    wxStaticText *m_total_time_value{ nullptr };
-    wxStaticText *m_progress_percent_label{ nullptr };
     wxString m_apikey;
     bool m_apikey_sent{ false };
     wxPanel *m_assistant_page{ nullptr };
     wxWebView *m_browser{ nullptr };
-    wxStaticText *m_estimated_finish_label{ nullptr };
-    wxStaticText *m_estimated_finish_value{ nullptr };
     wxStaticText *m_extruder_display_label{ nullptr };
     wxPopupTransientWindow *m_extruder_popup{ nullptr };
     wxWindow *m_extruder_popup_button{ nullptr };
@@ -174,10 +163,6 @@ private:
     wxStaticText *m_connected_printer_logout_label{ nullptr };
     bool m_has_active_printer_connection{ false };
     std::map<wxString, wxString> m_fan_values;
-    wxStaticText *m_layer_file_value{ nullptr };
-    wxStaticText *m_layer_label{ nullptr };
-    wxStaticText *m_layer_printer_value{ nullptr };
-    wxStaticBitmap *m_pause_resume_icon{ nullptr };
     wxTimer *m_layer_refresh_timer{ nullptr };
     wxWindow *m_preview_printers_button{ nullptr };
     wxPanel *m_sidebar_header_panel{ nullptr };
@@ -255,7 +240,6 @@ private:
     bool m_has_moonraker_status{ false };
     bool m_moonraker_status_fetch_in_progress{ false };
     std::string m_moonraker_status_machine_id;
-    wxString m_active_file_name;
     wxString m_filament_preview_fetch_key;
     bool m_filament_preview_fetch_in_progress{ false };
     wxPanel *m_status_page{ nullptr };
@@ -267,7 +251,6 @@ private:
     wxPanel *m_update_page{ nullptr };
     wxStaticText *m_update_percent_value{ nullptr };
     wxStaticBitmap *m_update_printer_bitmap{ nullptr };
-    ProgressBar *m_print_progress_bar{ nullptr };
     wxGauge *m_update_progress_gauge{ nullptr };
     wxStaticText *m_update_release_note_link{ nullptr };
     wxStaticText *m_update_serial_value{ nullptr };

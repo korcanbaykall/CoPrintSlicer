@@ -1181,221 +1181,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     CallAfter(update_camera_host_responsive_size);
     top_row->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
 
-    auto *progress_box = new StaticBox(left_container, wxID_ANY);
-    progress_box->SetCornerRadius(FromDIP(10));
-    progress_box->SetBorderWidth(1);
-    progress_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    progress_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    progress_box->SetBackgroundColour(wxColour(28, 30, 34));
-    progress_box->SetMinSize(wxSize(FromDIP(460), FromDIP(325)));
-    auto *progress_box_sizer = new wxBoxSizer(wxVERTICAL);
-    auto *progress_title_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *progress_title_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("monitor_tasklist_print_white", this, 16));
-    auto *progress_title = new wxStaticText(progress_box, wxID_ANY, "Print Status");
-    progress_title->SetForegroundColour(wxColour(220, 220, 220));
-    {
-        wxFont f = progress_title->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        progress_title->SetFont(f);
-    }
-    progress_title_row->Add(progress_title_icon, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(20));
-    progress_title_row->AddSpacer(FromDIP(6));
-    progress_title_row->Add(progress_title, 0, wxALIGN_CENTER_VERTICAL);
-    progress_box_sizer->Add(progress_title_row, 0, wxEXPAND | wxTOP, FromDIP(12));
-    progress_box_sizer->AddSpacer(FromDIP(10));
-    auto *progress_top_line = new wxPanel(progress_box, wxID_ANY);
-    progress_top_line->SetMinSize(wxSize(-1, FromDIP(1)));
-    progress_top_line->SetMaxSize(wxSize(-1, FromDIP(1)));
-    progress_top_line->SetBackgroundColour(wxColour(96, 100, 108));
-    progress_box_sizer->Add(progress_top_line, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(15));
-    progress_box_sizer->AddSpacer(FromDIP(15));
-    auto *progress_content_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *progress_thumb_box = new StaticBox(progress_box, wxID_ANY);
-    progress_thumb_box->SetMinSize(wxSize(FromDIP(240), FromDIP(200)));
-    progress_thumb_box->SetMaxSize(wxSize(FromDIP(240), FromDIP(200)));
-    progress_thumb_box->SetCornerRadius(FromDIP(12));
-    progress_thumb_box->SetBorderWidth(0);
-    progress_thumb_box->SetBackgroundColorNormal(wxColour(0, 0, 0));
-    progress_thumb_box->SetBackgroundColour(wxColour(0, 0, 0));
-    auto *progress_thumb_sizer = new wxBoxSizer(wxVERTICAL);
-    m_preview_thumbnail = new wxStaticBitmap(progress_thumb_box, wxID_ANY, wxNullBitmap);
-    m_preview_thumbnail->SetBackgroundColour(wxColour(0, 0, 0));
-    m_preview_thumbnail->SetMinSize(wxSize(FromDIP(220), FromDIP(180)));
-    m_preview_thumbnail->SetMaxSize(wxSize(FromDIP(220), FromDIP(180)));
-    set_fallback_preview_thumbnail();
-    progress_thumb_sizer->AddStretchSpacer(1);
-    progress_thumb_sizer->Add(m_preview_thumbnail, 0, wxALIGN_CENTER_HORIZONTAL);
-    progress_thumb_sizer->AddStretchSpacer(1);
-    progress_thumb_box->SetSizer(progress_thumb_sizer);
-    progress_content_row->Add(progress_thumb_box, 0, wxLEFT, FromDIP(15));
-    progress_content_row->AddSpacer(FromDIP(15));
-
-    auto update_progress_thumbnail_responsive_size = [this, progress_box, progress_thumb_box]() {
-        if (progress_box == nullptr || progress_thumb_box == nullptr || m_preview_thumbnail == nullptr)
-            return;
-
-        const int progress_w = progress_box->GetClientSize().GetWidth();
-        if (progress_w <= 0)
-            return;
-
-        const int thumb_w = std::clamp(static_cast<int>(progress_w * 0.36), FromDIP(160), FromDIP(240));
-        const int thumb_h = std::clamp(static_cast<int>(thumb_w * 0.83), FromDIP(132), FromDIP(200));
-        const int image_w = std::max(FromDIP(130), thumb_w - FromDIP(20));
-        const int image_h = std::max(FromDIP(108), thumb_h - FromDIP(20));
-
-        progress_thumb_box->SetMinSize(wxSize(thumb_w, thumb_h));
-        progress_thumb_box->SetMaxSize(wxSize(thumb_w, thumb_h));
-        m_preview_thumbnail->SetMinSize(wxSize(image_w, image_h));
-        m_preview_thumbnail->SetMaxSize(wxSize(image_w, image_h));
-
-        if (m_thumbnail_image.IsOk())
-            m_preview_thumbnail->SetBitmap(wxBitmap(scale_preview_thumbnail(m_thumbnail_image, image_w, image_h)));
-
-        progress_thumb_box->Layout();
-        progress_box->Layout();
-    };
-    progress_box->Bind(wxEVT_SIZE, [update_progress_thumbnail_responsive_size](wxSizeEvent &event) {
-        event.Skip();
-        update_progress_thumbnail_responsive_size();
-    });
-    CallAfter(update_progress_thumbnail_responsive_size);
-
-    auto *controls_col = new wxBoxSizer(wxVERTICAL);
-    controls_col->AddSpacer(FromDIP(15));
-    auto *printing_file_label = new wxStaticText(progress_box, wxID_ANY, _L("Printing File:"));
-    printing_file_label->SetForegroundColour(wxColour(97, 211, 124));
-    {
-        wxFont f = printing_file_label->GetFont();
-        if (f.GetPointSize() > 1) f.SetPointSize(f.GetPointSize() - 1);
-        printing_file_label->SetFont(f);
-    }
-    controls_col->Add(printing_file_label, 0, wxEXPAND | wxBOTTOM, FromDIP(2));
-    m_active_file_name_value = new wxStaticText(progress_box, wxID_ANY, "N/A", wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END);
-    m_active_file_name_value->SetForegroundColour(wxColour(220, 220, 220));
-    {
-        wxFont f = m_active_file_name_value->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        m_active_file_name_value->SetFont(f);
-    }
-    controls_col->Add(m_active_file_name_value, 0, wxEXPAND | wxBOTTOM, FromDIP(4));
-
-    auto *total_time_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *total_time_icon = new wxStaticText(progress_box, wxID_ANY, wxString::FromUTF8("\xE2\x8F\xB1"));
-    total_time_icon->SetForegroundColour(wxColour(150, 156, 166));
-    auto *total_time_label = new wxStaticText(progress_box, wxID_ANY, " Total:");
-    total_time_label->SetForegroundColour(wxColour(150, 156, 166));
-    m_total_time_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
-    m_total_time_value->SetForegroundColour(wxColour(220, 220, 220));
-    total_time_row->Add(total_time_icon, 0, wxALIGN_CENTER_VERTICAL);
-    total_time_row->Add(total_time_label, 0, wxALIGN_CENTER_VERTICAL);
-    total_time_row->AddSpacer(FromDIP(4));
-    total_time_row->Add(m_total_time_value, 0, wxALIGN_CENTER_VERTICAL);
-    controls_col->Add(total_time_row, 0, wxBOTTOM, FromDIP(6));
-
-    auto *progress_controls_row = new wxBoxSizer(wxHORIZONTAL);
-    const int print_progress_bar_h = FromDIP(24);
-    m_print_progress_bar = new ProgressBar(progress_box, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, print_progress_bar_h));
-    m_print_progress_bar->SetMinSize(wxSize(-1, print_progress_bar_h));
-    m_print_progress_bar->SetBackgroundColour(wxColour(28, 30, 34));
-    // Full capsule ends: radius must not exceed half the bar height (larger values distort wx rounded rects).
-    m_print_progress_bar->SetRadius(print_progress_bar_h / 2.0);
-    m_print_progress_bar->SetProgressForedColour(wxColour(40, 44, 52));
-    m_print_progress_bar->SetProgressBackgroundColour(wxColour(97, 114, 143));
-    m_print_progress_bar->SetValue(0);
-    m_print_progress_bar->ShowNumber(true);
-    progress_controls_row->Add(m_print_progress_bar, 1, wxEXPAND | wxALIGN_CENTER_VERTICAL);
-    m_progress_percent_label = new wxStaticText(progress_box, wxID_ANY, "0%");
-    m_progress_percent_label->Hide();
-    m_pause_resume_icon = new wxStaticBitmap(progress_box, wxID_ANY, create_scaled_bitmap("pause", this, 20));
-    m_pause_resume_icon->SetMinSize(wxSize(FromDIP(20), FromDIP(20)));
-    m_pause_resume_icon->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
-        auto *dev_manager = wxGetApp().getDeviceManager();
-        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj == nullptr || !obj->is_online())
-            return;
-        if (obj->can_resume()) {
-            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: resume current print task dev_id =" << obj->get_dev_id();
-            obj->command_task_resume();
-        } else {
-            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: pause current print task dev_id =" << obj->get_dev_id();
-            obj->command_task_pause();
-        }
-    });
-    m_pause_resume_icon->Hide();
-    controls_col->Add(progress_controls_row, 0, wxEXPAND | wxTOP, FromDIP(6));
-
-    auto *layer_info_row = new wxBoxSizer(wxHORIZONTAL);
-    m_layer_label = new wxStaticText(progress_box, wxID_ANY, "Layer:");
-    m_layer_label->SetForegroundColour(wxColour(150, 156, 166));
-    m_layer_printer_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
-    m_layer_printer_value->SetForegroundColour(wxColour(220, 220, 220));
-    auto *layer_sep = new wxStaticText(progress_box, wxID_ANY, "/");
-    layer_sep->SetForegroundColour(wxColour(150, 156, 166));
-    m_layer_file_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
-    m_layer_file_value->SetForegroundColour(wxColour(220, 220, 220));
-    layer_info_row->Add(m_layer_label, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddSpacer(FromDIP(4));
-    layer_info_row->Add(m_layer_printer_value, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->Add(layer_sep, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->Add(m_layer_file_value, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddStretchSpacer(1);
-    m_estimated_finish_label = new wxStaticText(progress_box, wxID_ANY, "Remaining:");
-    m_estimated_finish_label->SetForegroundColour(wxColour(150, 156, 166));
-    m_estimated_finish_value = new wxStaticText(progress_box, wxID_ANY, "N/A");
-    m_estimated_finish_value->SetForegroundColour(wxColour(220, 220, 220));
-    layer_info_row->Add(m_estimated_finish_label, 0, wxALIGN_CENTER_VERTICAL);
-    layer_info_row->AddSpacer(FromDIP(4));
-    layer_info_row->Add(m_estimated_finish_value, 0, wxALIGN_CENTER_VERTICAL);
-    controls_col->Add(layer_info_row, 0, wxEXPAND | wxTOP, FromDIP(6));
-
-    controls_col->AddStretchSpacer(1);
-
-    auto *action_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *pause_btn = new Button(progress_box, _L("Pause"), "print_control_pause_amber", 0, 14);
-    pause_btn->SetMinSize(wxSize(FromDIP(80), FromDIP(40)));
-    pause_btn->SetMaxSize(wxSize(FromDIP(80), FromDIP(40)));
-    pause_btn->SetCornerRadius(FromDIP(8));
-    pause_btn->SetBackgroundColorNormal(wxColour(0xFF, 0xF9, 0xF1));
-    pause_btn->SetBorderColorNormal(wxColour(0xD7, 0xA4, 0x6D));
-    pause_btn->SetTextColorNormal(wxColour(0xD7, 0xA4, 0x6D));
-    pause_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
-        auto *dev_manager = wxGetApp().getDeviceManager();
-        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj == nullptr || !obj->is_online()) return;
-        if (obj->can_resume()) {
-            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: resume task dev_id=" << obj->get_dev_id();
-            obj->command_task_resume();
-        } else {
-            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: pause task dev_id=" << obj->get_dev_id();
-            obj->command_task_pause();
-        }
-    });
-    action_row->Add(pause_btn, 0, wxRIGHT, FromDIP(10));
-
-    auto *stop_btn = new Button(progress_box, _L("Stop"), "print_control_stop_red", 0, 14);
-    stop_btn->SetMinSize(wxSize(FromDIP(80), FromDIP(40)));
-    stop_btn->SetMaxSize(wxSize(FromDIP(80), FromDIP(40)));
-    stop_btn->SetCornerRadius(FromDIP(8));
-    stop_btn->SetBackgroundColorNormal(wxColour(0xFF, 0xF9, 0xF9));
-    stop_btn->SetBorderColorNormal(wxColour(0xFF, 0x7D, 0x72));
-    stop_btn->SetTextColorNormal(wxColour(0xFF, 0x7D, 0x72));
-    stop_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
-        auto *dev_manager = wxGetApp().getDeviceManager();
-        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj != nullptr && obj->is_online()) {
-            BOOST_LOG_TRIVIAL(info) << "PrinterWebView: stop task dev_id=" << obj->get_dev_id();
-            obj->command_task_abort();
-        }
-    });
-    action_row->Add(stop_btn, 0);
-    controls_col->Add(action_row, 0, wxTOP | wxBOTTOM, FromDIP(5));
-
-    progress_content_row->Add(controls_col, 1, wxEXPAND | wxRIGHT, FromDIP(15));
-
-    progress_box_sizer->Add(progress_content_row, 1, wxEXPAND);
-    progress_box_sizer->AddStretchSpacer(1);
-    progress_box->SetSizer(progress_box_sizer);
-
     auto make_upper_placeholder_box = [this, left_container]() {
         auto *box = new StaticBox(left_container, wxID_ANY);
         box->SetMinSize(wxSize(FromDIP(620), FromDIP(340)));
@@ -2383,14 +2168,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     auto *content_columns = new wxBoxSizer(wxHORIZONTAL);
 
-    auto *left_main_column = new wxBoxSizer(wxVERTICAL);
-    left_main_column->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
-    left_main_column->AddSpacer(FromDIP(8));
-    left_main_column->Add(progress_box, 0, wxEXPAND);
-
-    // New dashboard PrintStatusPanel — shown below existing UI for side-by-side comparison.
-    // Wire state from m_dashboard_state_store; commands route through handle_dashboard_command.
+    // PrintStatusPanel replaces the old progress_box. Thumbnail is loaded through
+    // m_preview_thumbnail which now points at the panel's internal bitmap widget.
     m_dashboard_print_status_panel = new DeviceDashboard::PrintStatusPanel(left_container);
+    m_preview_thumbnail = m_dashboard_print_status_panel->thumbnail_widget();
+    set_fallback_preview_thumbnail();
     m_dashboard_print_status_panel->set_pause_handler([this]() {
         DeviceDashboard::DeviceCommand cmd;
         cmd.kind = DeviceDashboard::DeviceCommandKind::PausePrint;
@@ -2401,7 +2183,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         cmd.kind = DeviceDashboard::DeviceCommandKind::StopPrint;
         handle_dashboard_command(cmd);
     });
-    left_main_column->AddSpacer(FromDIP(10));
+
+    auto *left_main_column = new wxBoxSizer(wxVERTICAL);
+    left_main_column->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
+    left_main_column->AddSpacer(FromDIP(8));
     left_main_column->Add(m_dashboard_print_status_panel, 0, wxEXPAND);
 
     auto *printer_status_box = new StaticBox(left_container, wxID_ANY);
@@ -2709,45 +2494,6 @@ void PrinterWebView::update_mode()
 {
     refresh_layer_info_from_selected_machine();
     return;
-}
-
-void PrinterWebView::set_printer_layer(int layer)
-{
-    if (m_layer_printer_value == nullptr)
-        return;
-    m_layer_printer_value->SetLabelText(layer_value_text(layer));
-    Layout();
-}
-
-void PrinterWebView::set_file_layer(int layer)
-{
-    if (m_layer_file_value == nullptr)
-        return;
-    m_layer_file_value->SetLabelText(layer_value_text(layer));
-    Layout();
-}
-
-void PrinterWebView::set_layer_info(int printer_layer, int file_layer)
-{
-    set_printer_layer(printer_layer);
-    set_file_layer(file_layer);
-}
-
-void PrinterWebView::set_estimated_remaining_seconds(int remaining_seconds)
-{
-    if (m_estimated_finish_value == nullptr)
-        return;
-    m_estimated_finish_value->SetLabelText(remaining_minutes_text(remaining_seconds));
-    Layout();
-}
-
-void PrinterWebView::set_active_file_name(const wxString &file_name)
-{
-    m_active_file_name = file_name.empty() ? wxString("N/A") : file_name;
-    if (m_active_file_name_value == nullptr)
-        return;
-    m_active_file_name_value->SetLabelText(m_active_file_name);
-    Layout();
 }
 
 void PrinterWebView::toggle_printers_popup()
@@ -6524,18 +6270,6 @@ void PrinterWebView::update_preview_thumbnail(const MachineObject *obj)
     m_thumbnail_web_request.Start();
 }
 
-void PrinterWebView::refresh_print_controls_from_selected_machine()
-{
-    if (m_pause_resume_icon == nullptr)
-        return;
-
-    auto *dev_manager = wxGetApp().getDeviceManager();
-    auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-    if (obj != nullptr && obj->can_resume())
-        m_pause_resume_icon->SetBitmap(create_scaled_bitmap("Vector", this, 16));
-    else
-        m_pause_resume_icon->SetBitmap(create_scaled_bitmap("pause", this, 20));
-}
 
 void PrinterWebView::handle_dashboard_command(const DeviceDashboard::DeviceCommand &command)
 {
@@ -6593,8 +6327,6 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
         return true;
     };
 
-    refresh_print_controls_from_selected_machine();
-
     if (m_filament_load_btn != nullptr && m_filament_unload_btn != nullptr) {
         const bool allow_filament_ops = obj != nullptr && obj->is_online() && !obj->is_in_printing();
         m_filament_load_btn->Enable(allow_filament_ops);
@@ -6605,7 +6337,6 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
             m_manage_filament_title->Enable(allow_filament_ops);
     }
 
-    set_active_file_name(active_file_name_text(obj));
     update_preview_thumbnail(obj);
     refresh_filament_preview_from_selected_machine();
 
@@ -6629,14 +6360,6 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
             m_connected_printer_panel->GetParent()->Layout();
             m_connected_printer_panel->GetParent()->Refresh();
         }
-    }
-
-    if (m_print_progress_bar != nullptr) {
-        const int pct = (obj != nullptr && obj->mc_print_percent >= 0 && obj->mc_print_percent <= 100)
-                            ? obj->mc_print_percent : 0;
-        m_print_progress_bar->SetValue(pct);
-        if (m_progress_percent_label != nullptr)
-            set_label_if_changed(m_progress_percent_label, wxString::Format("%d%%", pct));
     }
 
     if (m_bed_temp_value != nullptr) {
@@ -6755,23 +6478,6 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
             m_camera_webview->SetPage(camera_stream_page(camera_urls), m_camera_stream_url.BeforeLast('/'));
     }
 
-    const int printer_layer = (obj != nullptr && obj->curr_layer > 0) ? obj->curr_layer : -1;
-    const int file_layer = (obj != nullptr && obj->total_layers > 0) ? obj->total_layers : -1;
-    set_layer_info(printer_layer, file_layer);
-
-    int remaining_seconds = -1;
-    if (obj != nullptr) {
-        const int total_duration_seconds = (obj->slice_info != nullptr && obj->slice_info->prediction > 0) ? obj->slice_info->prediction : -1;
-        if (m_total_time_value != nullptr)
-            m_total_time_value->SetLabelText(remaining_minutes_text(total_duration_seconds));
-        if (total_duration_seconds > 0 && obj->mc_print_percent >= 0 && obj->mc_print_percent <= 100) {
-            const int elapsed_seconds = static_cast<int>((static_cast<long long>(total_duration_seconds) * obj->mc_print_percent) / 100);
-            remaining_seconds = total_duration_seconds - elapsed_seconds;
-        } else if (obj->mc_left_time > 0) {
-            remaining_seconds = obj->mc_left_time;
-        }
-    }
-    set_estimated_remaining_seconds(remaining_seconds);
     refresh_update_page_from_selected_machine();
 }
 

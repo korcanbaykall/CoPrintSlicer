@@ -29,6 +29,8 @@ public:
     void set_pause_handler(ActionHandler handler);
     void set_stop_handler(ActionHandler handler);
 
+    wxStaticBitmap* thumbnail_widget() const { return m_thumbnail; }
+
 private:
     static wxString time_text(int seconds);
 
