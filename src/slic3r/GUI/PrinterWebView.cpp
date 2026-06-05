@@ -5521,6 +5521,23 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     auto dashboard_state = DeviceDashboard::DashboardStateAdapter::from_machine(obj);
     dashboard_state.movement.selected_tool = m_selected_extruder_index;
     dashboard_state.movement.selected_distance_mm = m_axis_move_step;
+
+    // Moonraker WebSocket verileri MachineObject içinde değil, PrinterWebView'ın
+    // kendi m_moonraker_* değişkenlerinde tutuluyor. Eğer Moonraker bağlıysa
+    // DashboardStateAdapter'ın ürettiği değerlerin üzerine yaz.
+    if (m_has_moonraker_status) {
+        dashboard_state.bed.temperature.available = true;
+        dashboard_state.bed.temperature.current   = m_moonraker_bed_current;
+        dashboard_state.bed.temperature.target    = m_moonraker_bed_target;
+        for (int i = 0; i < DeviceDashboard::MaxDashboardTools; ++i) {
+            dashboard_state.tools[i].nozzle.available = true;
+            dashboard_state.tools[i].nozzle.current   = m_moonraker_nozzle_current[i];
+            dashboard_state.tools[i].nozzle.target    = m_moonraker_nozzle_target[i];
+            dashboard_state.tools[i].fan.available    = true;
+            dashboard_state.tools[i].fan.percent      = m_moonraker_fan_percent;
+        }
+    }
+
     m_dashboard_state_store.set_state(dashboard_state);
     if (m_dashboard_print_status_panel != nullptr)
         m_dashboard_print_status_panel->apply_state(m_dashboard_state_store.state().print_job);
