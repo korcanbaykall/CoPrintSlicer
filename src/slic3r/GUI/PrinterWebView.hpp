@@ -15,6 +15,7 @@
 #include <wx/webview.h>
 #include "Widgets/ProgressBar.hpp"
 #include "Widgets/WebView.hpp"
+#include "DeviceDashboard/DeviceStateStore.hpp"
 class wxStaticBitmap;
 class wxStaticText;
 class wxPopupTransientWindow;
@@ -266,6 +267,7 @@ private:
     wxStaticText *m_update_serial_value{ nullptr };
     wxStaticText *m_update_status_value{ nullptr };
     wxStaticText *m_update_version_value{ nullptr };
+    DeviceDashboard::DeviceStateStore m_dashboard_state_store;
     double m_axis_move_step{ 1.0 };
     int m_zoomFactor{ 100 };
 };

@@ -15,6 +15,7 @@
 #include "slic3r/GUI/DeviceCore/DevFan.h"
 #include "slic3r/GUI/DeviceCore/DevLamp.h"
 #include "slic3r/GUI/DeviceManager.hpp"
+#include "slic3r/GUI/DeviceDashboard/services/DashboardStateAdapter.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/Utils/NetworkAgentFactory.hpp"
 #include "slic3r/Utils/NetworkAgent.hpp"
@@ -6524,6 +6525,7 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     auto *dev_manager = wxGetApp().getDeviceManager();
     auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
     refresh_moonraker_status_from_selected_machine();
+    m_dashboard_state_store.set_state(DeviceDashboard::DashboardStateAdapter::from_machine(obj));
     bool printer_status_values_changed = false;
     auto set_label_if_changed = [](wxStaticText *label, const wxString &text) -> bool {
         if (label == nullptr || label->GetLabelText() == text)
