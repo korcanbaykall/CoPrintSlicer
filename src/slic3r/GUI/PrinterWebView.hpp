@@ -147,7 +147,6 @@ private:
     wxStaticText *m_fan_value_label{ nullptr };
     wxStaticText *m_bed_temp_value{ nullptr };
     wxStaticText *m_extruder_temp_value{ nullptr };
-    std::array<Button *, 4> m_axis_tool_buttons{ nullptr, nullptr, nullptr, nullptr };
     wxPanel *m_connected_printer_panel{ nullptr };
     wxStaticText *m_connected_printer_status_label{ nullptr };
     wxStaticText *m_connected_printer_logout_label{ nullptr };
