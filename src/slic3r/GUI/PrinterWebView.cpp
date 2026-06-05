@@ -16,6 +16,7 @@
 #include "slic3r/GUI/DeviceCore/DevLamp.h"
 #include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/DeviceDashboard/services/DashboardStateAdapter.hpp"
+#include "slic3r/GUI/DeviceDashboard/panels/MovementPanel.hpp"
 #include "slic3r/GUI/DeviceDashboard/panels/PrintStatusPanel.hpp"
 #include "slic3r/GUI/DeviceDashboard/panels/PrinterStatusPanel.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
@@ -2190,6 +2191,12 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     left_main_column->AddSpacer(FromDIP(8));
     left_main_column->Add(m_dashboard_print_status_panel, 0, wxEXPAND);
 
+    m_dashboard_movement_panel = new DeviceDashboard::MovementPanel(left_container);
+    m_dashboard_movement_panel->set_command_handler([this](const DeviceDashboard::DeviceCommand& command) {
+        handle_dashboard_command(command);
+    });
+    right_container->Hide();
+
     // printer_status_box → PrinterStatusPanel ile değiştirildi
     m_dashboard_printer_status_panel = new DeviceDashboard::PrinterStatusPanel(left_container);
     m_dashboard_printer_status_panel->set_tool_select_handler([this](int idx) {
@@ -2202,7 +2209,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         prompt_ps_target_temperature(true, 0);
     });
     auto *right_main_column = new wxBoxSizer(wxVERTICAL);
-    right_main_column->Add(right_container, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
+    right_main_column->Add(m_dashboard_movement_panel, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
     right_main_column->AddSpacer(FromDIP(3));
     right_main_column->Add(m_dashboard_printer_status_panel, 0, wxEXPAND);
     right_main_column->AddSpacer(FromDIP(3));
@@ -6157,6 +6164,8 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     m_dashboard_state_store.set_state(dashboard_state);
     if (m_dashboard_print_status_panel != nullptr)
         m_dashboard_print_status_panel->apply_state(m_dashboard_state_store.state().print_job);
+    if (m_dashboard_movement_panel != nullptr)
+        m_dashboard_movement_panel->apply_state(m_dashboard_state_store.state().movement);
     if (m_dashboard_printer_status_panel != nullptr)
         m_dashboard_printer_status_panel->apply_state(m_dashboard_state_store.state().tools, m_dashboard_state_store.state().bed);
     auto set_label_if_changed = [](wxStaticText *label, const wxString &text) -> bool {

@@ -29,6 +29,7 @@ class MachineObject;
 namespace GUI {
 
 namespace DeviceDashboard {
+class MovementPanel;
 class PrintStatusPanel;
 class PrinterStatusPanel;
 } // namespace DeviceDashboard
@@ -246,6 +247,7 @@ private:
     wxStaticText *m_update_status_value{ nullptr };
     wxStaticText *m_update_version_value{ nullptr };
     DeviceDashboard::DeviceStateStore m_dashboard_state_store;
+    DeviceDashboard::MovementPanel*          m_dashboard_movement_panel{nullptr};
     DeviceDashboard::PrintStatusPanel*        m_dashboard_print_status_panel{nullptr};
     DeviceDashboard::PrinterStatusPanel*      m_dashboard_printer_status_panel{nullptr};
     double m_axis_move_step{ 1.0 };
