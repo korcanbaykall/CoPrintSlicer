@@ -16,6 +16,7 @@
 #include "slic3r/GUI/DeviceCore/DevLamp.h"
 #include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/DeviceDashboard/services/DashboardStateAdapter.hpp"
+#include "slic3r/GUI/DeviceDashboard/panels/PrintStatusPanel.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/Utils/NetworkAgentFactory.hpp"
 #include "slic3r/Utils/NetworkAgent.hpp"
@@ -2386,6 +2387,22 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     left_main_column->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
     left_main_column->AddSpacer(FromDIP(8));
     left_main_column->Add(progress_box, 0, wxEXPAND);
+
+    // New dashboard PrintStatusPanel — shown below existing UI for side-by-side comparison.
+    // Wire state from m_dashboard_state_store; commands route through handle_dashboard_command.
+    m_dashboard_print_status_panel = new DeviceDashboard::PrintStatusPanel(left_container);
+    m_dashboard_print_status_panel->set_pause_handler([this]() {
+        DeviceDashboard::DeviceCommand cmd;
+        cmd.kind = DeviceDashboard::DeviceCommandKind::PausePrint;
+        handle_dashboard_command(cmd);
+    });
+    m_dashboard_print_status_panel->set_stop_handler([this]() {
+        DeviceDashboard::DeviceCommand cmd;
+        cmd.kind = DeviceDashboard::DeviceCommandKind::StopPrint;
+        handle_dashboard_command(cmd);
+    });
+    left_main_column->AddSpacer(FromDIP(10));
+    left_main_column->Add(m_dashboard_print_status_panel, 0, wxEXPAND);
 
     auto *printer_status_box = new StaticBox(left_container, wxID_ANY);
     printer_status_box->SetMinSize(wxSize(FromDIP(775), FromDIP(168)));
@@ -6566,6 +6583,8 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
     refresh_moonraker_status_from_selected_machine();
     m_dashboard_state_store.set_state(DeviceDashboard::DashboardStateAdapter::from_machine(obj));
+    if (m_dashboard_print_status_panel != nullptr)
+        m_dashboard_print_status_panel->apply_state(m_dashboard_state_store.state().print_job);
     bool printer_status_values_changed = false;
     auto set_label_if_changed = [](wxStaticText *label, const wxString &text) -> bool {
         if (label == nullptr || label->GetLabelText() == text)

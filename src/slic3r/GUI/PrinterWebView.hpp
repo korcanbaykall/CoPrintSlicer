@@ -29,6 +29,10 @@ class MachineObject;
 
 namespace GUI {
 
+namespace DeviceDashboard {
+class PrintStatusPanel;
+} // namespace DeviceDashboard
+
 class CloudTaskManagerPage;
 enum class PrinterWebViewTab {
     Status,
@@ -270,6 +274,7 @@ private:
     wxStaticText *m_update_status_value{ nullptr };
     wxStaticText *m_update_version_value{ nullptr };
     DeviceDashboard::DeviceStateStore m_dashboard_state_store;
+    DeviceDashboard::PrintStatusPanel* m_dashboard_print_status_panel{nullptr};
     double m_axis_move_step{ 1.0 };
     int m_zoomFactor{ 100 };
 };
