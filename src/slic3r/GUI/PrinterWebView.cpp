@@ -969,8 +969,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         m_camera_webview_host->SetMinSize(wxSize(host_w, host_h));
         preview_box->Layout();
     };
-    preview_box->Bind(wxEVT_SIZE, [update_camera_host_responsive_size](wxSizeEvent &event) {
+    preview_box->Bind(wxEVT_SIZE, [update_camera_host_responsive_size, last_w = -1, last_h = -1](wxSizeEvent &event) mutable {
         event.Skip();
+        const wxSize sz = event.GetSize();
+        if (sz.x == last_w && sz.y == last_h) return;
+        last_w = sz.x; last_h = sz.y;
         update_camera_host_responsive_size();
     });
     CallAfter(update_camera_host_responsive_size);
@@ -1313,8 +1316,11 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         upper_placeholder_box->Layout();
         upper_placeholder_box->Refresh();
     };
-    upper_placeholder_box->Bind(wxEVT_SIZE, [update_filament_management_responsive_widths](wxSizeEvent &event) {
+    upper_placeholder_box->Bind(wxEVT_SIZE, [update_filament_management_responsive_widths, last_w = -1](wxSizeEvent &event) mutable {
         event.Skip();
+        const int w = event.GetSize().x;
+        if (w == last_w) return;
+        last_w = w;
         update_filament_management_responsive_widths();
     });
     CallAfter(update_filament_management_responsive_widths);
@@ -4540,8 +4546,8 @@ void PrinterWebView::refresh_moonraker_status_from_selected_machine()
             }
 
             m_has_moonraker_status = got_any;
-            if (got_any && m_status_page != nullptr)
-                m_status_page->Refresh();
+            // Moonraker verisi geldi — tüm dashboard'u yenile
+            refresh_layer_info_from_selected_machine();
         });
     }).detach();
 }

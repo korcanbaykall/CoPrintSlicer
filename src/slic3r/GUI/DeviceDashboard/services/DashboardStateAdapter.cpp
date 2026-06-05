@@ -36,19 +36,28 @@ DeviceDashboardState DashboardStateAdapter::from_machine(MachineObject* machine)
     if (auto* extruders = machine->GetExtderSystem()) {
         for (int i = 0; i < MaxDashboardTools; ++i) {
             ToolState& tool = state.tools[i];
-            tool.available = true;
-            tool.nozzle.available = true;
-            tool.nozzle.current = static_cast<double>(extruders->GetNozzleTempCurrent(i));
-            tool.nozzle.target = static_cast<double>(extruders->GetNozzleTempTarget(i));
-            state.filament.tools[i].nozzle = tool.nozzle;
-            state.filament.tools[i].available = tool.available;
+            const double cur = static_cast<double>(extruders->GetNozzleTempCurrent(i));
+            const double tgt = static_cast<double>(extruders->GetNozzleTempTarget(i));
+            // Yalnızca gerçek veri varsa available=true; sıfır "henüz veri yok" demek
+            if (cur > 0.0 || tgt > 0.0) {
+                tool.available = true;
+                tool.nozzle.available = true;
+                tool.nozzle.current = cur;
+                tool.nozzle.target  = tgt;
+                state.filament.tools[i].nozzle    = tool.nozzle;
+                state.filament.tools[i].available = true;
+            }
         }
     }
 
     if (auto* bed = machine->GetBed()) {
-        state.bed.temperature.available = true;
-        state.bed.temperature.current = static_cast<double>(bed->GetBedTemp());
-        state.bed.temperature.target = static_cast<double>(bed->GetBedTempTarget());
+        const double cur = static_cast<double>(bed->GetBedTemp());
+        const double tgt = static_cast<double>(bed->GetBedTempTarget());
+        if (cur > 0.0 || tgt > 0.0) {
+            state.bed.temperature.available = true;
+            state.bed.temperature.current   = cur;
+            state.bed.temperature.target    = tgt;
+        }
     }
 
     if (auto* fan = machine->GetFan()) {
