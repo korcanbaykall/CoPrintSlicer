@@ -46,6 +46,9 @@ PrintStatusPanel::PrintStatusPanel(wxWindow* parent)
     m_thumbnail_host->SetMinSize(wxSize(FromDIP(240), FromDIP(170)));
     auto* thumbnail_sizer = new wxBoxSizer(wxVERTICAL);
     m_thumbnail = new wxStaticBitmap(m_thumbnail_host, wxID_ANY, wxNullBitmap);
+    m_thumbnail->SetBackgroundColour(*wxBLACK);
+    m_thumbnail->SetMinSize(wxSize(FromDIP(220), FromDIP(150)));
+    m_thumbnail->SetMaxSize(wxSize(FromDIP(220), FromDIP(150)));
     thumbnail_sizer->AddStretchSpacer(1);
     thumbnail_sizer->Add(m_thumbnail, 0, wxALIGN_CENTER);
     thumbnail_sizer->AddStretchSpacer(1);

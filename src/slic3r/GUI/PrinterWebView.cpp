@@ -1508,7 +1508,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     // m_preview_thumbnail which now points at the panel's internal bitmap widget.
     m_dashboard_print_status_panel = new DeviceDashboard::PrintStatusPanel(left_container);
     m_preview_thumbnail = m_dashboard_print_status_panel->thumbnail_widget();
-    set_fallback_preview_thumbnail();
+    // CallAfter: layout tamamlandıktan sonra logo yükle,
+    // böylece thumbnail widget boyutu hazır olur
+    CallAfter([this]() { set_fallback_preview_thumbnail(); });
     m_dashboard_print_status_panel->set_pause_handler([this]() {
         DeviceDashboard::DeviceCommand cmd;
         cmd.kind = DeviceDashboard::DeviceCommandKind::PausePrint;
