@@ -6094,32 +6094,40 @@ void PrinterWebView::handle_dashboard_command(const DeviceDashboard::DeviceComma
 {
     auto *dev_manager = wxGetApp().getDeviceManager();
     MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-    if (obj == nullptr || !obj->is_online())
-        return;
 
     switch (command.kind) {
     case DeviceDashboard::DeviceCommandKind::SelectTool:
         apply_printer_status_tool_selection(command.tool_index);
         break;
+    case DeviceDashboard::DeviceCommandKind::SetMotionDistance:
+        m_axis_move_step = command.value > 0.0 ? command.value : 1.0;
+        break;
     case DeviceDashboard::DeviceCommandKind::PausePrint:
+        if (obj == nullptr || !obj->is_online())
+            return;
         if (obj->can_resume())
             obj->command_task_resume();
         else
             obj->command_task_pause();
         break;
     case DeviceDashboard::DeviceCommandKind::ResumePrint:
+        if (obj == nullptr || !obj->is_online())
+            return;
         obj->command_task_resume();
         break;
     case DeviceDashboard::DeviceCommandKind::StopPrint:
+        if (obj == nullptr || !obj->is_online())
+            return;
         obj->command_task_abort();
         break;
     case DeviceDashboard::DeviceCommandKind::Home:
+        if (obj == nullptr || !obj->is_online())
+            return;
         obj->command_go_home();
         break;
-    case DeviceDashboard::DeviceCommandKind::SetMotionDistance:
-        m_axis_move_step = command.value > 0.0 ? command.value : 1.0;
-        break;
     case DeviceDashboard::DeviceCommandKind::SetPrintSpeed: {
+        if (obj == nullptr || !obj->is_online())
+            return;
         const int percent = static_cast<int>(std::round(command.value));
         DevPrintingSpeedLevel level = SPEED_LEVEL_NORMAL;
         if (percent <= 50)
@@ -6134,6 +6142,8 @@ void PrinterWebView::handle_dashboard_command(const DeviceDashboard::DeviceComma
         break;
     }
     case DeviceDashboard::DeviceCommandKind::MoveAxis: {
+        if (obj == nullptr || !obj->is_online())
+            return;
         std::string axis;
         int speed = 3000;
         switch (command.axis) {
