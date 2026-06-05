@@ -381,6 +381,29 @@ set(SLIC3R_GUI_SOURCES
     GUI/PrinterCloudAuthDialog.hpp
     GUI/Printer/PrinterFileSystem.cpp
     GUI/Printer/PrinterFileSystem.h
+    GUI/DeviceDashboard/DeviceCommandService.cpp
+    GUI/DeviceDashboard/DeviceCommandService.hpp
+    GUI/DeviceDashboard/DeviceCardFrame.cpp
+    GUI/DeviceDashboard/DeviceCardFrame.hpp
+    GUI/DeviceDashboard/DeviceDashboardPage.cpp
+    GUI/DeviceDashboard/DeviceDashboardPage.hpp
+    GUI/DeviceDashboard/DeviceDashboardState.hpp
+    GUI/DeviceDashboard/DeviceStateStore.cpp
+    GUI/DeviceDashboard/DeviceStateStore.hpp
+    GUI/DeviceDashboard/DeviceUiStyle.cpp
+    GUI/DeviceDashboard/DeviceUiStyle.hpp
+    GUI/DeviceDashboard/services/DashboardStateAdapter.cpp
+    GUI/DeviceDashboard/services/DashboardStateAdapter.hpp
+    GUI/DeviceDashboard/panels/CameraPanel.cpp
+    GUI/DeviceDashboard/panels/CameraPanel.hpp
+    GUI/DeviceDashboard/panels/FilamentPanel.cpp
+    GUI/DeviceDashboard/panels/FilamentPanel.hpp
+    GUI/DeviceDashboard/panels/MovementPanel.cpp
+    GUI/DeviceDashboard/panels/MovementPanel.hpp
+    GUI/DeviceDashboard/panels/PrintStatusPanel.cpp
+    GUI/DeviceDashboard/panels/PrintStatusPanel.hpp
+    GUI/DeviceDashboard/panels/PrinterStatusPanel.cpp
+    GUI/DeviceDashboard/panels/PrinterStatusPanel.hpp
     GUI/PrinterWebView.cpp
     GUI/PrinterWebView.hpp
     GUI/PrintHostDialogs.cpp
