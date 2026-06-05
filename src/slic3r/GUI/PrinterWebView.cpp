@@ -499,6 +499,8 @@ public:
 
     void SetFillColour(const wxColour &fill)
     {
+        if (m_fill == fill)
+            return;
         m_fill = fill;
         Refresh();
     }
@@ -3820,29 +3822,33 @@ void PrinterWebView::apply_filament_preview_rows(const std::array<wxColour, 4> &
                                                  const std::array<int, 4> &assigned_tools,
                                                  const std::array<wxColour, 4> &assigned_colors)
 {
+    bool layout_changed = false;
+    auto set_label_if_changed = [&layout_changed](wxStaticText *label, const wxString &text) {
+        if (label == nullptr || label->GetLabelText() == text)
+            return;
+        label->SetLabelText(text);
+        layout_changed = true;
+    };
+
     for (int i = 0; i < 4; ++i) {
         const int ui_tool = assigned_tools[i] >= 1 && assigned_tools[i] <= 4 ? assigned_tools[i] : i + 1;
         m_filament_assigned_tool_mapping[i] = ui_tool;
         if (auto *p = dynamic_cast<LeftRoundedColourPanel *>(m_filament_model_color_panels[i])) {
             p->SetFillColour(model_colors[i]);
         }
-        if (m_filament_material_labels[i] != nullptr)
-            m_filament_material_labels[i]->SetLabelText(materials[i].empty() ? wxString("PLA") : materials[i]);
-        if (m_filament_weight_labels[i] != nullptr)
-            m_filament_weight_labels[i]->SetLabelText(weights[i].empty() ? wxString("--") : weights[i]);
+        set_label_if_changed(m_filament_material_labels[i], materials[i].empty() ? wxString("PLA") : materials[i]);
+        set_label_if_changed(m_filament_weight_labels[i], weights[i].empty() ? wxString("--") : weights[i]);
 
         if (auto *p = dynamic_cast<LeftRoundedColourPanel *>(m_filament_assigned_color_panels[i])) {
             p->SetFillColour(assigned_colors[i]);
         }
-        if (m_filament_assigned_tool_labels[i] != nullptr) {
-            m_filament_assigned_tool_labels[i]->SetLabelText(wxString::Format("T%d", ui_tool));
-        }
+        set_label_if_changed(m_filament_assigned_tool_labels[i], wxString::Format("T%d", ui_tool));
     }
 
-    if (m_status_page != nullptr) {
+    if (layout_changed && m_status_page != nullptr) {
         m_status_page->Layout();
         m_status_page->Refresh();
-    } else {
+    } else if (layout_changed) {
         Layout();
         Refresh();
     }
@@ -3864,10 +3870,14 @@ void PrinterWebView::set_filament_assigned_tool(int model_slot_index, int ui_too
 
     if (auto *p = dynamic_cast<LeftRoundedColourPanel *>(m_filament_assigned_color_panels[model_slot_index]))
         p->SetFillColour(m_filament_loaded_tool_colors[ui_tool - 1]);
-    if (m_filament_assigned_tool_labels[model_slot_index] != nullptr)
+    bool layout_changed = false;
+    if (m_filament_assigned_tool_labels[model_slot_index] != nullptr &&
+        m_filament_assigned_tool_labels[model_slot_index]->GetLabelText() != wxString::Format("T%d", ui_tool)) {
         m_filament_assigned_tool_labels[model_slot_index]->SetLabelText(wxString::Format("T%d", ui_tool));
+        layout_changed = true;
+    }
 
-    if (m_status_page != nullptr) {
+    if (layout_changed && m_status_page != nullptr) {
         m_status_page->Layout();
         m_status_page->Refresh();
     }
