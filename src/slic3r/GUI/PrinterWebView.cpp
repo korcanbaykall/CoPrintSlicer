@@ -3170,9 +3170,6 @@ void PrinterWebView::rebuild_sidebar_printer_list()
     if (m_sidebar_printer_list_panel == nullptr || m_sidebar_printer_list_sizer == nullptr)
         return;
 
-    m_sidebar_printer_list_panel->DestroyChildren();
-    m_sidebar_printer_list_sizer->Clear(false);
-
     auto *dev_manager = wxGetApp().getDeviceManager();
     const auto my_machines = dev_manager ? dev_manager->get_my_machine_list() : std::map<std::string, MachineObject*>();
     const auto local_machines = dev_manager ? dev_manager->get_local_machinelist() : std::map<std::string, MachineObject*>();
@@ -3266,6 +3263,36 @@ void PrinterWebView::rebuild_sidebar_printer_list()
     };
     std::sort(online_list.begin(), online_list.end(), by_name);
     std::sort(offline_list.begin(), offline_list.end(), by_name);
+
+    wxString next_signature;
+    auto append_machine_signature = [&](const char *section, const std::vector<MachineObject *> &machines) {
+        next_signature += wxString::FromUTF8(section);
+        next_signature += "|";
+        for (MachineObject *machine : machines) {
+            if (machine == nullptr)
+                continue;
+            next_signature += from_u8(machine->get_dev_id());
+            next_signature += "\x1F";
+            next_signature += sidebar_display_name_for(machine);
+            next_signature += "\x1F";
+            next_signature += from_u8(machine->get_dev_ip());
+            next_signature += "\x1F";
+            next_signature += (machine->is_online() ? "1" : "0");
+            next_signature += "\x1F";
+            next_signature += has_local_machine_record(machine) ? "1" : "0";
+            next_signature += "\x1F";
+            next_signature += (selected_machine != nullptr && selected_machine->get_dev_id() == machine->get_dev_id() ? "1" : "0");
+            next_signature += "\n";
+        }
+    };
+    append_machine_signature("online", online_list);
+    append_machine_signature("offline", offline_list);
+    if (next_signature == m_sidebar_printer_list_signature)
+        return;
+    m_sidebar_printer_list_signature = next_signature;
+
+    m_sidebar_printer_list_panel->DestroyChildren();
+    m_sidebar_printer_list_sizer->Clear(false);
 
     const wxColour k_text("#F1F3F4");
     const wxColour k_muted("#A7ADB5");

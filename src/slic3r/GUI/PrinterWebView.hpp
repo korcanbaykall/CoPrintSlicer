@@ -168,6 +168,7 @@ private:
     bool m_lan_rescan_requested{ false };
     wxPanel *m_sidebar_printer_list_panel{ nullptr };
     wxBoxSizer *m_sidebar_printer_list_sizer{ nullptr };
+    wxString m_sidebar_printer_list_signature;
     wxPanel *m_sidebar_add_printer_panel{ nullptr };
     wxPanel *m_sidebar_root_panel{ nullptr };
     wxBoxSizer *m_sidebar_root_sizer{ nullptr };
