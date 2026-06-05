@@ -16,6 +16,18 @@ namespace Slic3r {
 namespace GUI {
 namespace DeviceDashboard {
 
+namespace {
+
+bool set_label_if_changed(wxStaticText* label, const wxString& text)
+{
+    if (label == nullptr || label->GetLabelText() == text)
+        return false;
+    label->SetLabelText(text);
+    return true;
+}
+
+} // namespace
+
 PrintStatusPanel::PrintStatusPanel(wxWindow* parent)
     : wxPanel(parent, wxID_ANY)
 {
@@ -101,23 +113,21 @@ PrintStatusPanel::PrintStatusPanel(wxWindow* parent)
 
 void PrintStatusPanel::apply_state(const PrintJobState& state)
 {
-    if (m_file_name != nullptr)
-        m_file_name->SetLabelText(state.file_name.IsEmpty() ? wxString::FromUTF8("N/A") : state.file_name);
+    bool layout_needed = false;
+
+    layout_needed |= set_label_if_changed(m_file_name, state.file_name.IsEmpty() ? wxString::FromUTF8("N/A") : state.file_name);
 
     const int progress = std::clamp(state.progress_percent, 0, 100);
-    if (m_progress != nullptr)
+    if (m_progress != nullptr && m_progress->GetValue() != progress)
         m_progress->SetValue(progress);
-    if (m_progress_percent != nullptr)
-        m_progress_percent->SetLabelText(wxString::Format("%d%%", progress));
+    layout_needed |= set_label_if_changed(m_progress_percent, wxString::Format("%d%%", progress));
 
-    if (m_elapsed_time != nullptr)
-        m_elapsed_time->SetLabelText(wxString::FromUTF8("Total: ") + time_text(state.elapsed_seconds));
-    if (m_layer_info != nullptr)
-        m_layer_info->SetLabelText(wxString::Format("Layer: %d/%d", state.current_layer, state.total_layers));
-    if (m_remaining_time != nullptr)
-        m_remaining_time->SetLabelText(wxString::FromUTF8("Remaining: ") + time_text(state.remaining_seconds));
+    layout_needed |= set_label_if_changed(m_elapsed_time, wxString::FromUTF8("Total: ") + time_text(state.elapsed_seconds));
+    layout_needed |= set_label_if_changed(m_layer_info, wxString::Format("Layer: %d/%d", state.current_layer, state.total_layers));
+    layout_needed |= set_label_if_changed(m_remaining_time, wxString::FromUTF8("Remaining: ") + time_text(state.remaining_seconds));
 
-    Layout();
+    if (layout_needed)
+        Layout();
 }
 
 void PrintStatusPanel::set_pause_handler(ActionHandler handler)

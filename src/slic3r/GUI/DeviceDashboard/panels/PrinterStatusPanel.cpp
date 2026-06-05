@@ -13,6 +13,18 @@ namespace Slic3r {
 namespace GUI {
 namespace DeviceDashboard {
 
+namespace {
+
+bool set_label_if_changed(wxStaticText* label, const wxString& text)
+{
+    if (label == nullptr || label->GetLabelText() == text)
+        return false;
+    label->SetLabelText(text);
+    return true;
+}
+
+} // namespace
+
 PrinterStatusPanel::PrinterStatusPanel(wxWindow* parent)
     : wxPanel(parent, wxID_ANY)
 {
@@ -137,26 +149,28 @@ PrinterStatusPanel::PrinterStatusPanel(wxWindow* parent)
 
 void PrinterStatusPanel::apply_state(const std::array<ToolState, MaxDashboardTools>& tools, const BedState& bed)
 {
+    bool layout_needed = false;
+
     for (int i = 0; i < MaxDashboardTools; ++i) {
         const ToolState& tool = tools[i];
-        if (m_tools[i].title != nullptr)
-            m_tools[i].title->SetLabelText(tool.label.IsEmpty() ? wxString::Format("Tool %d", i + 1) : tool.label);
-        if (m_tools[i].temperature != nullptr)
-            m_tools[i].temperature->SetLabelText(temperature_text(tool.nozzle));
-        if (m_tools[i].fan != nullptr)
-            m_tools[i].fan->SetLabelText(tool.fan.available ? wxString::Format("%d%%", tool.fan.percent) : wxString::FromUTF8("--%"));
+        layout_needed |= set_label_if_changed(m_tools[i].title, tool.label.IsEmpty() ? wxString::Format("Tool %d", i + 1) : tool.label);
+        layout_needed |= set_label_if_changed(m_tools[i].temperature, temperature_text(tool.nozzle));
+        layout_needed |= set_label_if_changed(m_tools[i].fan, tool.fan.available ? wxString::Format("%d%%", tool.fan.percent) : wxString::FromUTF8("--%"));
     }
 
-    if (m_bed_temperature != nullptr)
-        m_bed_temperature->SetLabelText(temperature_text(bed.temperature));
+    layout_needed |= set_label_if_changed(m_bed_temperature, temperature_text(bed.temperature));
 
-    Layout();
+    if (layout_needed)
+        Layout();
 }
 
 void PrinterStatusPanel::set_active_tool(int tool_index)
 {
     if (tool_index < 0 || tool_index >= MaxDashboardTools)
         tool_index = 0;
+    if (m_active_tool == tool_index)
+        return;
+
     m_active_tool = tool_index;
 
     for (int i = 0; i < MaxDashboardTools; ++i) {

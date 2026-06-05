@@ -83,7 +83,6 @@ public:
     void set_fallback_preview_thumbnail();
     void on_thumbnail_webrequest_state(wxWebRequestEvent &evt);
     void update_preview_thumbnail(const MachineObject *obj);
-    void refresh_print_controls_from_selected_machine();
     void refresh_layer_info_from_selected_machine();
     void refresh_update_page_from_selected_machine();
     void UpdateState();
