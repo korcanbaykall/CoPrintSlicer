@@ -4546,8 +4546,26 @@ void PrinterWebView::refresh_moonraker_status_from_selected_machine()
             }
 
             m_has_moonraker_status = got_any;
-            // Moonraker verisi geldi — tüm dashboard'u yenile
-            refresh_layer_info_from_selected_machine();
+            // Moonraker verisi geldi — sadece sıcaklık panelini güncelle
+            // (refresh_layer_info_from_selected_machine() çağırmıyoruz;
+            //  o fonksiyon içinde yeni bir Moonraker fetch başlatır → sonsuz döngü)
+            if (got_any && m_dashboard_printer_status_panel != nullptr) {
+                DeviceDashboard::DeviceDashboardState patched = m_dashboard_state_store.state();
+                patched.bed.temperature.available = true;
+                patched.bed.temperature.current   = m_moonraker_bed_current;
+                patched.bed.temperature.target    = m_moonraker_bed_target;
+                for (int i = 0; i < DeviceDashboard::MaxDashboardTools; ++i) {
+                    patched.tools[i].nozzle.available = true;
+                    patched.tools[i].nozzle.current   = m_moonraker_nozzle_current[i];
+                    patched.tools[i].nozzle.target    = m_moonraker_nozzle_target[i];
+                    patched.tools[i].fan.available    = true;
+                    patched.tools[i].fan.percent      = m_moonraker_fan_percent;
+                }
+                m_dashboard_printer_status_panel->apply_state(patched.tools, patched.bed);
+                m_dashboard_state_store.set_state(patched);
+            }
+            if (m_status_page != nullptr)
+                m_status_page->Refresh();
         });
     }).detach();
 }
