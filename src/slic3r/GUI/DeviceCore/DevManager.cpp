@@ -71,9 +71,21 @@ namespace Slic3r
         // Load saved local machines
         if (agent) {
             AppConfig*  config         = GUI::wxGetApp().app_config;
+            if (config == nullptr)
+                return;
+
+            bool pruned_forgotten_machines = false;
             const auto local_machines = config->get_local_machines();
             for (auto& it : local_machines) {
                 const auto&    m         = it.second;
+                if (is_forgotten_lan_machine(config, m.dev_id, m.dev_ip)) {
+                    config->erase_local_machine(it.first);
+                    config->erase_local_machine(m.dev_id);
+                    pruned_forgotten_machines = true;
+                    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " skipped saved forgotten LAN machine"
+                        << ", dev_id= " << m.dev_id << ", ip= " << m.dev_ip;
+                    continue;
+                }
                 MachineObject* obj       = new MachineObject(this, m_agent, m.dev_name, m.dev_id, m.dev_ip);
                 obj->printer_type        = m.printer_type;
                 obj->dev_connection_type = "lan";
@@ -85,6 +97,8 @@ namespace Slic3r
                 obj->set_user_access_code(config->get("user_access_code", m.dev_id), false);
                 localMachineList.insert(std::make_pair(m.dev_id, obj));
             }
+            if (pruned_forgotten_machines)
+                config->save();
         }
     }
 
