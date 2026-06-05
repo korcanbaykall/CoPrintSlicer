@@ -4671,13 +4671,16 @@ void PrinterWebView::apply_filament_tool_selection(int tool_index)
 
     const wxColour c = m_filament_loaded_tool_colors[tool_index];
 
-    if (m_filament_tool_color_dot != nullptr) {
+    if (m_filament_tool_color_dot != nullptr && m_filament_tool_color_dot->GetBackgroundColour() != c) {
         m_filament_tool_color_dot->SetBackgroundColorNormal(c);
         m_filament_tool_color_dot->SetBackgroundColour(c);
         m_filament_tool_color_dot->Refresh();
     }
-    if (m_filament_tool_name_lbl != nullptr)
-        m_filament_tool_name_lbl->SetLabelText(wxString::Format("Tool %d", tool_index + 1));
+    if (m_filament_tool_name_lbl != nullptr) {
+        const wxString label = wxString::Format("Tool %d", tool_index + 1);
+        if (m_filament_tool_name_lbl->GetLabelText() != label)
+            m_filament_tool_name_lbl->SetLabelText(label);
+    }
 }
 
 void PrinterWebView::apply_printer_status_tool_selection(int tool_index)
