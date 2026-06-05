@@ -206,6 +206,9 @@ private:
     void on_filament_map_mode_change();
 
 public:
+    // Returns the filament info list populated after slicing (color, type, weight per extruder).
+    const std::vector<FilamentInfo>& get_slice_filaments_info() const { return slice_filaments_info; }
+
     static constexpr unsigned int PLATE_NAME_HOVER_ID = 6;
     static constexpr unsigned int PLATE_FILAMENT_MAP_ID = 8;
     static constexpr unsigned int GRABBER_COUNT = 9;

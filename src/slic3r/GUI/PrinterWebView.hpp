@@ -2,9 +2,12 @@
 #define slic3r_GUI_PrinterWebView_hpp_
 
 #include <map>
+#include <array>
 #include <vector>
+#include <string>
 
 #include <wx/panel.h>
+#include <wx/colour.h>
 #include <wx/string.h>
 #include <wx/timer.h>
 #include <wx/image.h>
@@ -60,6 +63,10 @@ public:
     void toggle_speed_popup();
     void dismiss_speed_popup();
     void rebuild_printers_popup();
+    void rebuild_sidebar_printer_list();
+    void show_sidebar_root_view();
+    void show_sidebar_printers_view();
+    void show_sidebar_add_printer_view();
     void rebuild_extruder_popup();
     void rebuild_fan_popup();
     void rebuild_speed_popup();
@@ -70,6 +77,8 @@ public:
     void update_sidebar_selection();
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
     wxPanel *create_update_page(wxWindow *parent);
+    void set_sidebar_user_avatar(const wxBitmap &avatar_bitmap);
+    void begin_moonraker_lan_scan();
     void set_fallback_preview_thumbnail();
     void on_thumbnail_webrequest_state(wxWebRequestEvent &evt);
     void update_preview_thumbnail(const MachineObject *obj);
@@ -85,13 +94,32 @@ public:
     /** Used by Add Printer flow (dialog + LAN discovery). Returns false on failure. */
     bool finish_add_moonraker_printer(const BBLocalMachine &machine, bool use_ssl);
 
+    void sync_model_colors_from_plater();
+
 private:
+    wxString sidebar_display_name_for(const MachineObject *machine) const;
     void apply_filament_tool_selection(int tool_index);
+    void refresh_filament_preview_from_selected_machine();
+    void apply_filament_preview_fallback();
+    void apply_filament_preview_rows(const std::array<wxColour, 4> &model_colors,
+                                     const std::array<wxString, 4> &materials,
+                                     const std::array<wxString, 4> &weights,
+                                     const std::array<int, 4> &assigned_tools,
+                                     const std::array<wxColour, 4> &assigned_colors);
+    void set_filament_assigned_tool(int model_slot_index, int ui_tool, bool send_mapping_command);
+    void send_tool_map_command(int model_slot_index, int ui_tool);
+    void prompt_and_save_filament_selection_then_load();
+    void save_filament_selection_to_moonraker(int ui_tool, const wxString &material, const wxString &color_hex);
+    void clear_filament_selection_from_moonraker(int ui_tool);
+    void refresh_moonraker_status_from_selected_machine();
+    void apply_printer_status_tool_selection(int tool_index);
     void prompt_ps_target_temperature(bool is_bed, int extruder_index);
     void show_toolhead_temperature_dialog(int active_extruder_index);
     void show_filament_load_wizard();
     void show_add_printer_dialog();
     void show_printer_card_actions_menu(wxWindow *anchor, MachineObject *machine);
+    bool confirm_forget_printer();
+    void forget_local_printer(MachineObject *machine);
     void ensure_camera_webview_created();
     void ensure_storage_page_created();
     struct SidebarItem {
@@ -131,6 +159,9 @@ private:
     wxStaticText *m_ps_t2_fan_label{ nullptr };
     wxStaticText *m_ps_t3_fan_label{ nullptr };
     wxStaticText *m_ps_t4_fan_label{ nullptr };
+    std::array<StaticBox *, 4> m_ps_tool_cards{ nullptr, nullptr, nullptr, nullptr };
+    std::array<wxStaticText *, 4> m_ps_tool_headers{ nullptr, nullptr, nullptr, nullptr };
+    std::array<Button *, 4> m_axis_tool_buttons{ nullptr, nullptr, nullptr, nullptr };
     wxPanel *m_connected_printer_panel{ nullptr };
     wxStaticText *m_connected_printer_status_label{ nullptr };
     wxStaticText *m_connected_printer_logout_label{ nullptr };
@@ -142,6 +173,24 @@ private:
     wxStaticBitmap *m_pause_resume_icon{ nullptr };
     wxTimer *m_layer_refresh_timer{ nullptr };
     wxWindow *m_preview_printers_button{ nullptr };
+    wxPanel *m_sidebar_header_panel{ nullptr };
+    wxStaticText *m_sidebar_header_back{ nullptr };
+    wxStaticText *m_sidebar_header_title{ nullptr };
+    wxStaticText *m_sidebar_header_add{ nullptr };
+    wxPanel *m_sidebar_user_avatar_panel{ nullptr };
+    wxBitmap m_sidebar_user_avatar_bitmap;
+    wxPanel *m_auto_connect_scroll_track{ nullptr };
+    wxPanel *m_auto_connect_scroll_thumb{ nullptr };
+    wxScrolledWindow *m_auto_connect_list_window{ nullptr };
+    std::vector<BBLocalMachine> m_discovered_moonraker_printers;
+    bool m_lan_scan_in_progress{ false };
+    bool m_lan_rescan_requested{ false };
+    wxPanel *m_sidebar_printer_list_panel{ nullptr };
+    wxBoxSizer *m_sidebar_printer_list_sizer{ nullptr };
+    wxPanel *m_sidebar_add_printer_panel{ nullptr };
+    wxPanel *m_sidebar_root_panel{ nullptr };
+    wxBoxSizer *m_sidebar_root_sizer{ nullptr };
+    int m_sidebar_add_tab_index{ 1 };
     wxStaticBitmap *m_preview_thumbnail{ nullptr };
     wxWebView *m_camera_webview{ nullptr };
     wxPanel *m_camera_webview_host{ nullptr };
@@ -156,8 +205,9 @@ private:
     wxString m_preview_thumbnail_url;
     wxPopupTransientWindow *m_printers_popup{ nullptr };
     wxPanel *m_printers_popup_panel{ nullptr };
-    wxString m_selected_extruder{ "Extruder" };
-    wxString m_selected_fan{ "Fan" };
+    wxString m_selected_extruder{ "T1" };
+    int m_selected_extruder_index{ 0 };
+    wxString m_selected_fan{ "T1" };
     wxString m_selected_fan_value{ "__" };
     wxString m_selected_speed{ "--" };
     PrinterWebViewTab m_selected_tab{ PrinterWebViewTab::Status };
@@ -177,6 +227,30 @@ private:
     Button *m_filament_load_btn{ nullptr };
     Button *m_filament_unload_btn{ nullptr };
     int m_selected_filament_tool{ 0 };
+    std::array<wxPanel *, 4> m_filament_model_color_panels{ nullptr, nullptr, nullptr, nullptr };
+    std::array<wxStaticText *, 4> m_filament_material_labels{ nullptr, nullptr, nullptr, nullptr };
+    std::array<wxStaticText *, 4> m_filament_weight_labels{ nullptr, nullptr, nullptr, nullptr };
+    std::array<wxPanel *, 4> m_filament_assigned_color_panels{ nullptr, nullptr, nullptr, nullptr };
+    std::array<wxStaticText *, 4> m_filament_assigned_tool_labels{ nullptr, nullptr, nullptr, nullptr };
+    std::array<int, 4> m_filament_assigned_tool_mapping{ 1, 2, 3, 4 };
+    std::array<wxColour, 4> m_filament_loaded_tool_colors;
+    std::array<wxString, 4> m_filament_loaded_tool_materials;
+    // Colors synced from the Plater at upload time — used as fallback when
+    // no printer metadata is available (e.g. printer is idle after upload).
+    std::array<wxColour, 4> m_plater_synced_colors;
+    std::array<wxString, 4> m_plater_synced_materials;
+    bool m_has_plater_synced_colors{ false };
+    std::array<double, 4> m_moonraker_nozzle_current{ 0.0, 0.0, 0.0, 0.0 };
+    std::array<double, 4> m_moonraker_nozzle_target{ 0.0, 0.0, 0.0, 0.0 };
+    double m_moonraker_bed_current{ 0.0 };
+    double m_moonraker_bed_target{ 0.0 };
+    int m_moonraker_fan_percent{ 0 };
+    bool m_has_moonraker_status{ false };
+    bool m_moonraker_status_fetch_in_progress{ false };
+    std::string m_moonraker_status_machine_id;
+    wxString m_active_file_name;
+    wxString m_filament_preview_fetch_key;
+    bool m_filament_preview_fetch_in_progress{ false };
     wxPanel *m_status_page{ nullptr };
     CloudTaskManagerPage *m_storage_page{ nullptr };
     wxImage m_thumbnail_image;

@@ -1366,7 +1366,7 @@ bool MoonrakerPrinterAgent::query_printer_status(const std::string& base_url,
                                                  nlohmann::json&    status,
                                                  std::string&       error) const
 {
-    std::string url = join_url(base_url, "/printer/objects/query?print_stats&virtual_sdcard&extruder&extruder1&extruder2&extruder3&heater_bed&fan&toolhead&display_status&gcode_move");
+    std::string url = join_url(base_url, "/printer/objects/query?print_stats&virtual_sdcard&extruder&extruder1&extruder2&extruder3&heater_bed&fan&fan_generic%20fan_t0&fan_generic%20fan_t1&fan_generic%20fan_t2&fan_generic%20fan_t3&toolhead&display_status&gcode_move");
 
     std::string response_body;
     bool        success = false;
@@ -1870,6 +1870,14 @@ void MoonrakerPrinterAgent::run_status_stream(std::string dev_id, std::string ba
                     subscribe_objects.insert("fan");
                 }
 
+                // Per-tool cooling fans for multi-extruder printers (e.g. Quadro: fan_generic fan_t0..t3)
+                for (int i = 0; i < 4; ++i) {
+                    const std::string fan_key = "fan_generic fan_t" + std::to_string(i);
+                    if (this->available_objects.count(fan_key) != 0) {
+                        subscribe_objects.insert(fan_key);
+                    }
+                }
+
                 // Add toolhead for homing status
                 if (this->available_objects.count("toolhead") != 0) {
                     subscribe_objects.insert("toolhead");
@@ -2263,6 +2271,33 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
         }
         if (extruder->contains("target") && (*extruder)["target"].is_number()) {
             payload["print"]["nozzle_target_temper"] = (*extruder)["target"].get<float>();
+        }
+    }
+
+    // Collect all extruder temperatures and per-tool fan speeds for multi-extruder support (e.g. Quadro with 4 tools)
+    {
+        nlohmann::json extruder_temps = nlohmann::json::array();
+        for (int i = 0; i < 4; ++i) {
+            const std::string ext_key = (i == 0) ? "extruder" : "extruder" + std::to_string(i);
+            if (status_cache.contains(ext_key) && status_cache[ext_key].is_object()) {
+                const auto& ext = status_cache[ext_key];
+                nlohmann::json entry;
+                entry["cur"] = ext.value("temperature", 0.0f);
+                entry["tgt"] = ext.value("target", 0.0f);
+
+                // Per-tool cooling fan: fan_generic fan_t0, fan_t1, fan_t2, fan_t3
+                const std::string fan_key = "fan_generic fan_t" + std::to_string(i);
+                if (status_cache.contains(fan_key) && status_cache[fan_key].is_object()) {
+                    const auto& fg = status_cache[fan_key];
+                    entry["fan"] = fg.value("speed", -1.0f);
+                } else {
+                    entry["fan"] = -1.0f; // no per-tool fan data
+                }
+                extruder_temps.push_back(entry);
+            }
+        }
+        if (extruder_temps.size() > 1) {
+            payload["print"]["nozzle_tempers"] = extruder_temps;
         }
     }
 

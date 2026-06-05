@@ -60,6 +60,9 @@ public:
     float GetTargetTemp() const { return m_target_temp; }
     void  set_target_temp(float t) { m_target_temp = t; }
 
+    // cooling fan (0.0 – 1.0)
+    float GetFanSpeed() const { return m_fan_speed; }
+
     // filament
     bool             HasFilamentInExt() const { return m_ext_has_filament; }
     bool             HasFilamentInBuffer() const = delete; //{ return m_buffer_has_filament; }  
@@ -88,6 +91,9 @@ private:
     // temperature
     float  m_cur_temp = 0.0f;
     float  m_target_temp = 0.0f;
+
+    // cooling fan speed (0.0 – 1.0); set by Moonraker per-tool fan data
+    float  m_fan_speed = -1.0f; // -1 = no per-tool data available
 
     // filament
     bool             m_ext_has_filament = false;
@@ -146,6 +152,8 @@ public:
     float          GetNozzleDiameter(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetNozzleDiameter() : 0.0; }
     float          GetNozzleTempCurrent(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetCurrentTemp() : 0.0f; }
     float          GetNozzleTempTarget(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetTargetTemp() : 0.0f; }
+    // Returns per-tool fan speed [0,1], or -1 if no per-tool data is available
+    float          GetNozzleFanSpeed(int extder_id) const { return GetExtderById(extder_id) ? GetExtderById(extder_id)->GetFanSpeed() : -1.0f; }
 
     /** Until the next push_status, mirror the user's last nozzle target in the UI. */
     void set_extder_target_temp(int extder_id, int temp);

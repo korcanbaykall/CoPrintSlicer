@@ -152,6 +152,24 @@ namespace Slic3r
 
     void ExtderSystemParser::ParseV1_0(const nlohmann::json& print_json, DevExtderSystem* system)
     {
+        // Multi-extruder Moonraker format: populate all tools from nozzle_tempers array
+        if (print_json.contains("nozzle_tempers") && print_json["nozzle_tempers"].is_array()) {
+            const auto& temps = print_json["nozzle_tempers"];
+            const int count = static_cast<int>(temps.size());
+            if (count > 1) {
+                system->m_extders.clear();
+                for (int i = 0; i < count; ++i) {
+                    DevExtder ext(system, i);
+                    ext.m_cur_temp    = temps[i].value("cur", 0.0f);
+                    ext.m_target_temp = temps[i].value("tgt", 0.0f);
+                    ext.m_fan_speed   = temps[i].value("fan", -1.0f);
+                    system->m_extders.push_back(ext);
+                }
+                system->m_total_extder_count = count;
+                return;
+            }
+        }
+
         if (system->GetTotalExtderCount() != 1)
         {
             return;

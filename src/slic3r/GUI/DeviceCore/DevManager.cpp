@@ -10,12 +10,57 @@
 
 #include "libslic3r/Time.hpp"
 
+#include <algorithm>
 #include <cctype>
 
 using namespace nlohmann;
 
 namespace Slic3r
 {
+    namespace {
+        std::string normalize_lan_host(std::string value)
+        {
+            auto trim = [](std::string& s) {
+                while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front())))
+                    s.erase(s.begin());
+                while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back())))
+                    s.pop_back();
+            };
+
+            trim(value);
+            const auto scheme_pos = value.find("://");
+            if (scheme_pos != std::string::npos)
+                value = value.substr(scheme_pos + 3);
+            const auto slash_pos = value.find('/');
+            if (slash_pos != std::string::npos)
+                value = value.substr(0, slash_pos);
+            const auto question_pos = value.find('?');
+            if (question_pos != std::string::npos)
+                value = value.substr(0, question_pos);
+            const auto at_pos = value.find('@');
+            if (at_pos != std::string::npos)
+                value = value.substr(at_pos + 1);
+            if (std::count(value.begin(), value.end(), ':') == 1) {
+                const auto colon_pos = value.rfind(':');
+                if (colon_pos != std::string::npos)
+                    value = value.substr(0, colon_pos);
+            }
+            trim(value);
+            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
+                return static_cast<char>(std::tolower(c));
+            });
+            return value;
+        }
+
+        bool is_forgotten_lan_machine(AppConfig* config, const std::string& dev_id, const std::string& dev_ip)
+        {
+            if (config == nullptr)
+                return false;
+            const std::string host = normalize_lan_host(!dev_ip.empty() ? dev_ip : dev_id);
+            return !host.empty() && config->has("forgotten_lan_machines", host);
+        }
+    }
+
     DeviceManager::DeviceManager(NetworkAgent* agent)
     {
         m_agent = agent;
@@ -48,6 +93,12 @@ namespace Slic3r
         AppConfig* config = GUI::wxGetApp().app_config;
         if (config) {
             if (m.is_lan_mode_printer()) {
+                if (is_forgotten_lan_machine(config, m.get_dev_id(), m.get_dev_ip())) {
+                    config->erase_local_machine(m.get_dev_id());
+                    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " skipped forgotten LAN machine"
+                        << ", dev_id= " << m.get_dev_id() << ", ip= " << m.get_dev_ip();
+                    return;
+                }
                 BBLocalMachine local_machine;
                 local_machine.dev_id       = m.get_dev_id();
                 local_machine.dev_name     = m.get_dev_name();
@@ -190,6 +241,23 @@ namespace Slic3r
                 connection_name = j["connection_name"].get<std::string>();
             }
 
+            AppConfig* config = Slic3r::GUI::wxGetApp().app_config;
+            if (is_forgotten_lan_machine(config, dev_id, dev_ip)) {
+                auto local_it = localMachineList.find(dev_id);
+                if (local_it != localMachineList.end()) {
+                    if (local_it->second != nullptr)
+                        delete local_it->second;
+                    localMachineList.erase(local_it);
+                }
+                if (config != nullptr) {
+                    config->erase_local_machine(dev_id);
+                    config->save();
+                }
+                BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " ignored forgotten LAN machine"
+                    << ", dev_id= " << dev_id << ", ip= " << dev_ip;
+                return;
+            }
+
             MachineObject* obj;
 
             /* update userMachineList info */
@@ -306,7 +374,6 @@ namespace Slic3r
                 obj->m_is_online = true;
 
                 //load access code
-                AppConfig* config = Slic3r::GUI::wxGetApp().app_config;
                 if (config) {
                     obj->set_access_code(Slic3r::GUI::wxGetApp().app_config->get("access_code", dev_id), false);
                     obj->set_user_access_code(Slic3r::GUI::wxGetApp().app_config->get("user_access_code", dev_id), false);
@@ -332,6 +399,12 @@ namespace Slic3r
         std::string connection_type, std::string bind_state,
         std::string version, std::string access_code)
     {
+        if (AppConfig* config = GUI::wxGetApp().app_config) {
+            const std::string host = normalize_lan_host(!machine.dev_ip.empty() ? machine.dev_ip : machine.dev_id);
+            if (!host.empty())
+                config->erase("forgotten_lan_machines", host);
+        }
+
         MachineObject* obj;
         auto           it = localMachineList.find(machine.dev_id);
         if (it != localMachineList.end()) {

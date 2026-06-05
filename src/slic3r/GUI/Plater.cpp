@@ -15894,6 +15894,11 @@ void Plater::print_job_finished(wxCommandEvent &evt)
     if (!dev) return;
 
     dev->set_selected_machine(evt.GetString().ToStdString());
+
+    // Model has been sent to the printer — sync its colors to the device page now
+    if (p->main_frame && p->main_frame->m_printer_view)
+        p->main_frame->m_printer_view->sync_model_colors_from_plater();
+
     p->main_frame->request_select_tab(MainFrame::TabPosition::tpMonitor);
     //jump to monitor and select device status panel
     MonitorPanel* curr_monitor = p->main_frame->m_monitor;
@@ -15906,6 +15911,10 @@ void Plater::send_job_finished(wxCommandEvent& evt)
     Slic3r::DeviceManager* dev = Slic3r::GUI::wxGetApp().getDeviceManager();
     if (!dev) return;
     //dev->set_selected_machine(evt.GetString().ToStdString());
+
+    // Model has been sent to the printer — sync its colors to the device page now
+    if (p->main_frame && p->main_frame->m_printer_view)
+        p->main_frame->m_printer_view->sync_model_colors_from_plater();
 
     send_gcode_finish(evt.GetString());
     p->hide_send_to_printer_dlg();
