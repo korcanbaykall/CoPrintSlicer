@@ -30,6 +30,7 @@ namespace GUI {
 
 namespace DeviceDashboard {
 class PrintStatusPanel;
+class PrinterStatusPanel;
 } // namespace DeviceDashboard
 
 class CloudTaskManagerPage;
@@ -146,17 +147,6 @@ private:
     wxStaticText *m_fan_value_label{ nullptr };
     wxStaticText *m_bed_temp_value{ nullptr };
     wxStaticText *m_extruder_temp_value{ nullptr };
-    wxStaticText *m_ps_bed_temp_label{ nullptr };
-    wxStaticText *m_ps_t1_temp_label{ nullptr };
-    wxStaticText *m_ps_t2_temp_label{ nullptr };
-    wxStaticText *m_ps_t3_temp_label{ nullptr };
-    wxStaticText *m_ps_t4_temp_label{ nullptr };
-    wxStaticText *m_ps_t1_fan_label{ nullptr };
-    wxStaticText *m_ps_t2_fan_label{ nullptr };
-    wxStaticText *m_ps_t3_fan_label{ nullptr };
-    wxStaticText *m_ps_t4_fan_label{ nullptr };
-    std::array<StaticBox *, 4> m_ps_tool_cards{ nullptr, nullptr, nullptr, nullptr };
-    std::array<wxStaticText *, 4> m_ps_tool_headers{ nullptr, nullptr, nullptr, nullptr };
     std::array<Button *, 4> m_axis_tool_buttons{ nullptr, nullptr, nullptr, nullptr };
     wxPanel *m_connected_printer_panel{ nullptr };
     wxStaticText *m_connected_printer_status_label{ nullptr };
@@ -257,7 +247,8 @@ private:
     wxStaticText *m_update_status_value{ nullptr };
     wxStaticText *m_update_version_value{ nullptr };
     DeviceDashboard::DeviceStateStore m_dashboard_state_store;
-    DeviceDashboard::PrintStatusPanel* m_dashboard_print_status_panel{nullptr};
+    DeviceDashboard::PrintStatusPanel*        m_dashboard_print_status_panel{nullptr};
+    DeviceDashboard::PrinterStatusPanel*      m_dashboard_printer_status_panel{nullptr};
     double m_axis_move_step{ 1.0 };
     int m_zoomFactor{ 100 };
 };

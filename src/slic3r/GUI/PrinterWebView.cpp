@@ -17,6 +17,7 @@
 #include "slic3r/GUI/DeviceManager.hpp"
 #include "slic3r/GUI/DeviceDashboard/services/DashboardStateAdapter.hpp"
 #include "slic3r/GUI/DeviceDashboard/panels/PrintStatusPanel.hpp"
+#include "slic3r/GUI/DeviceDashboard/panels/PrinterStatusPanel.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/Utils/NetworkAgentFactory.hpp"
 #include "slic3r/Utils/NetworkAgent.hpp"
@@ -2189,205 +2190,21 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     left_main_column->AddSpacer(FromDIP(8));
     left_main_column->Add(m_dashboard_print_status_panel, 0, wxEXPAND);
 
-    auto *printer_status_box = new StaticBox(left_container, wxID_ANY);
-    printer_status_box->SetMinSize(wxSize(FromDIP(775), FromDIP(168)));
-    printer_status_box->SetCornerRadius(FromDIP(12));
-    printer_status_box->SetBorderWidth(1);
-    printer_status_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    printer_status_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    printer_status_box->SetBackgroundColour(wxColour(28, 30, 34));
-
-    auto *ps_main_sizer = new wxBoxSizer(wxVERTICAL);
-
-    auto *ps_title_label = new wxStaticText(printer_status_box, wxID_ANY, "Printer Status");
-    ps_title_label->SetForegroundColour(wxColour(220, 220, 220));
-    {
-        wxFont f = ps_title_label->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        ps_title_label->SetFont(f);
-    }
-    auto *ps_title_row = new wxBoxSizer(wxHORIZONTAL);
-    ps_title_row->Add(ps_title_label, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(12));
-    ps_main_sizer->Add(ps_title_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(8));
-
-    auto *ps_title_sep = new wxPanel(printer_status_box, wxID_ANY);
-    ps_title_sep->SetMinSize(wxSize(-1, FromDIP(1)));
-    ps_title_sep->SetMaxSize(wxSize(-1, FromDIP(1)));
-    ps_title_sep->SetBackgroundColour(wxColour(55, 58, 64));
-    ps_main_sizer->Add(ps_title_sep, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
-
-    auto *ps_grid = new wxBoxSizer(wxHORIZONTAL);
-
-    const wxColour ps_card_body_bg(35, 38, 43);
-    const wxColour ps_card_header_bg(22, 24, 29);
-
-    auto make_ps_card = [this, printer_status_box, ps_card_body_bg](bool active) -> StaticBox * {
-        auto *card = new StaticBox(printer_status_box, wxID_ANY);
-        card->SetMinSize(wxSize(-1, this->FromDIP(110)));
-        card->SetMaxSize(wxSize(-1, this->FromDIP(110)));
-        card->SetCornerRadius(this->FromDIP(10));
-        card->SetBorderWidth(1);
-        card->SetBorderColorNormal(active ? wxColour(44, 182, 125) : wxColour(55, 58, 64));
-        card->SetBackgroundColorNormal(ps_card_body_bg);
-        card->SetBackgroundColour(ps_card_body_bg);
-        return card;
-    };
-    auto make_ps_header = [this](wxWindow *parent, const wxString &txt, bool active) -> wxStaticText * {
-        auto *lbl = new wxStaticText(parent, wxID_ANY, txt, wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE);
-        lbl->SetForegroundColour(active ? wxColour(220, 220, 220) : wxColour(120, 125, 135));
-        // Do not paint an opaque label background — it would hide PsCardHeaderPanel's rounded top corners.
-        lbl->SetBackgroundStyle(wxBG_STYLE_TRANSPARENT);
-        wxFont f = lbl->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        lbl->SetFont(f);
-        return lbl;
-    };
-    auto make_ps_value = [this](wxWindow *parent, const wxString &txt, bool active) -> wxStaticText * {
-        auto *lbl = new wxStaticText(parent, wxID_ANY, txt);
-        lbl->SetForegroundColour(active ? wxColour(200, 200, 200) : wxColour(90, 95, 105));
-        wxFont f = lbl->GetFont();
-        if (f.GetPointSize() > 1) f.SetPointSize(f.GetPointSize() - 1);
-        lbl->SetFont(f);
-        return lbl;
-    };
-    auto make_icon_row = [this, ps_card_body_bg](wxWindow *card, const std::string &icon_name, wxStaticText *lbl) -> wxPanel * {
-        auto *row_panel = new wxPanel(card, wxID_ANY);
-        row_panel->SetBackgroundColour(ps_card_body_bg);
-        row_panel->SetMinSize(wxSize(-1, this->FromDIP(20)));
-        auto *row = new wxBoxSizer(wxHORIZONTAL);
-        wxBitmap bmp = create_scaled_bitmap(icon_name, this, 18);
-        wxImage img = bmp.ConvertToImage();
-        if (img.IsOk()) {
-            for (int x = 0; x < img.GetWidth(); x++)
-                for (int y = 0; y < img.GetHeight(); y++)
-                    img.SetRGB(x, y, 255, 255, 255);
-            bmp = wxBitmap(img);
-        }
-        lbl->Reparent(row_panel);
-        row->AddStretchSpacer(1);
-        row->Add(new wxStaticBitmap(row_panel, wxID_ANY, bmp),
-            0, wxALIGN_CENTER_VERTICAL | wxRIGHT, this->FromDIP(5));
-        row->Add(lbl, 0, wxALIGN_CENTER_VERTICAL);
-        row->AddStretchSpacer(1);
-        row_panel->SetSizer(row);
-        return row_panel;
-    };
-    auto add_ps_title_strip = [this, ps_card_header_bg, &make_ps_header](wxBoxSizer *card_sizer, wxWindow *card, const wxString &title, bool active) -> wxStaticText * {
-        const int border_inset = this->FromDIP(1);
-        const double hdr_corner_r = this->FromDIP(8);
-        auto *header_panel = new PsCardHeaderPanel(card, ps_card_header_bg, hdr_corner_r);
-        auto *header_sz = new wxBoxSizer(wxVERTICAL);
-        auto *header_label = make_ps_header(header_panel, title, active);
-        header_sz->Add(header_label, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(8));
-        // Former gap before separator — now inside the dark header so fill runs to the line.
-        header_sz->AddSpacer(FromDIP(6));
-        header_panel->SetSizer(header_sz);
-        // Keep a tiny inset so the selected card's green border remains visible
-        // around the whole tool button instead of being covered by the header panel.
-        card_sizer->Add(header_panel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, border_inset);
-        return header_label;
-    };
-
-    // Tool 1–4 cards, then Build Plate
-    struct PsToolCol { wxString name; bool active; wxStaticText **temp; wxStaticText **fan; };
-    PsToolCol tool_ps_cols[] = {
-        { "Tool 1", true,  &m_ps_t1_temp_label, &m_ps_t1_fan_label },
-        { "Tool 2", false, &m_ps_t2_temp_label, &m_ps_t2_fan_label },
-        { "Tool 3", false, &m_ps_t3_temp_label, &m_ps_t3_fan_label },
-        { "Tool 4", false, &m_ps_t4_temp_label, &m_ps_t4_fan_label },
-    };
-    for (int i = 0; i < 4; ++i) {
-        auto &tc = tool_ps_cols[i];
-        if (i > 0)
-            ps_grid->AddSpacer(FromDIP(20));
-        auto *card = make_ps_card(tc.active);
-        m_ps_tool_cards[i] = card;
-        auto *card_sizer = new wxBoxSizer(wxVERTICAL);
-        auto *header_label = add_ps_title_strip(card_sizer, card, tc.name, tc.active);
-        m_ps_tool_headers[i] = header_label;
-        {
-            auto *sep = new wxPanel(card, wxID_ANY);
-            sep->SetMinSize(wxSize(-1, FromDIP(1)));
-            sep->SetMaxSize(wxSize(-1, FromDIP(1)));
-            sep->SetBackgroundColour(wxColour(55, 58, 64));
-            card_sizer->Add(sep, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(2));
-        }
-
-        auto *temp_lbl = make_ps_value(card, "-- / --", tc.active);
-        *tc.temp = temp_lbl;
-        temp_lbl->SetCursor(wxCursor(wxCURSOR_HAND));
-        const int nozzle_idx = i;
-        temp_lbl->Bind(wxEVT_LEFT_DOWN, [this, nozzle_idx](wxMouseEvent &) {
-            apply_printer_status_tool_selection(nozzle_idx);
-            prompt_ps_target_temperature(false, nozzle_idx);
-        });
-        card_sizer->AddSpacer(FromDIP(8));
-        card_sizer->Add(make_icon_row(card, "tool_temperature_white", temp_lbl), 0,
-            wxEXPAND | wxLEFT | wxRIGHT, FromDIP(1));
-
-        auto *fan_lbl = make_ps_value(card, "--%", tc.active);
-        *tc.fan = fan_lbl;
-        card_sizer->AddSpacer(FromDIP(13));
-        card_sizer->Add(make_icon_row(card, "tool_fan_white", fan_lbl), 0,
-            wxEXPAND | wxLEFT | wxRIGHT, FromDIP(1));
-        card_sizer->AddSpacer(FromDIP(13));
-        card->SetCursor(wxCursor(wxCURSOR_HAND));
-        header_label->SetCursor(wxCursor(wxCURSOR_HAND));
-        card->Bind(wxEVT_LEFT_DOWN, [this, nozzle_idx](wxMouseEvent &) {
-            apply_printer_status_tool_selection(nozzle_idx);
-        });
-        header_label->Bind(wxEVT_LEFT_DOWN, [this, nozzle_idx](wxMouseEvent &) {
-            apply_printer_status_tool_selection(nozzle_idx);
-        });
-        fan_lbl->SetCursor(wxCursor(wxCURSOR_HAND));
-        fan_lbl->Bind(wxEVT_LEFT_DOWN, [this, nozzle_idx](wxMouseEvent &) {
-            apply_printer_status_tool_selection(nozzle_idx);
-        });
-
-        card->SetSizer(card_sizer);
-        ps_grid->Add(card, 1, wxEXPAND);
-    }
-
-    // Build Plate card
-    {
-        ps_grid->AddSpacer(FromDIP(20));
-        auto *card = make_ps_card(false);
-        auto *card_sizer = new wxBoxSizer(wxVERTICAL);
-        add_ps_title_strip(card_sizer, card, "Build Plate", false);
-        {
-            auto *sep = new wxPanel(card, wxID_ANY);
-            sep->SetMinSize(wxSize(-1, FromDIP(1)));
-            sep->SetMaxSize(wxSize(-1, FromDIP(1)));
-            sep->SetBackgroundColour(wxColour(55, 58, 64));
-            card_sizer->Add(sep, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(2));
-        }
-
-        auto *bed_temp_lbl = make_ps_value(card, "-- / --", false);
-        m_ps_bed_temp_label = bed_temp_lbl;
-        bed_temp_lbl->SetCursor(wxCursor(wxCURSOR_HAND));
-        bed_temp_lbl->Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { prompt_ps_target_temperature(true, 0); });
-        card_sizer->AddSpacer(FromDIP(13));
-        card_sizer->Add(make_icon_row(card, "bed_heating", bed_temp_lbl), 0,
-            wxEXPAND | wxLEFT | wxRIGHT, FromDIP(1));
-        card_sizer->AddSpacer(FromDIP(13));
-
-        card->SetSizer(card_sizer);
-        ps_grid->Add(card, 1, wxEXPAND);
-    }
-
-    {
-        auto *ps_grid_row = new wxBoxSizer(wxHORIZONTAL);
-        ps_grid_row->AddSpacer(FromDIP(40));
-        ps_grid_row->Add(ps_grid, 1, wxEXPAND);
-        ps_grid_row->AddSpacer(FromDIP(40));
-        ps_main_sizer->Add(ps_grid_row, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(10));
-    }
-    printer_status_box->SetSizer(ps_main_sizer);
-
+    // printer_status_box → PrinterStatusPanel ile değiştirildi
+    m_dashboard_printer_status_panel = new DeviceDashboard::PrinterStatusPanel(left_container);
+    m_dashboard_printer_status_panel->set_tool_select_handler([this](int idx) {
+        apply_printer_status_tool_selection(idx);
+    });
+    m_dashboard_printer_status_panel->set_nozzle_temp_handler([this](int idx) {
+        prompt_ps_target_temperature(false, idx);
+    });
+    m_dashboard_printer_status_panel->set_bed_temp_handler([this]() {
+        prompt_ps_target_temperature(true, 0);
+    });
     auto *right_main_column = new wxBoxSizer(wxVERTICAL);
     right_main_column->Add(right_container, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
     right_main_column->AddSpacer(FromDIP(3));
-    right_main_column->Add(printer_status_box, 0, wxEXPAND);
+    right_main_column->Add(m_dashboard_printer_status_panel, 0, wxEXPAND);
     right_main_column->AddSpacer(FromDIP(3));
     right_main_column->Add(upper_placeholder_box, 0, wxEXPAND);
 
@@ -5540,16 +5357,11 @@ void PrinterWebView::apply_printer_status_tool_selection(int tool_index)
     if (m_fan_display_label != nullptr)
         m_fan_display_label->SetLabelText(m_selected_fan);
 
+    if (m_dashboard_printer_status_panel != nullptr)
+        m_dashboard_printer_status_panel->set_active_tool(m_selected_extruder_index);
+
     for (int i = 0; i < 4; ++i) {
         const bool active = i == m_selected_extruder_index;
-        if (m_ps_tool_cards[i] != nullptr) {
-            m_ps_tool_cards[i]->SetBorderColorNormal(active ? wxColour(44, 182, 125) : wxColour(55, 58, 64));
-            m_ps_tool_cards[i]->Refresh();
-        }
-        if (m_ps_tool_headers[i] != nullptr) {
-            m_ps_tool_headers[i]->SetForegroundColour(active ? wxColour(220, 220, 220) : wxColour(120, 125, 135));
-            m_ps_tool_headers[i]->Refresh();
-        }
         if (m_axis_tool_buttons[i] != nullptr) {
             m_axis_tool_buttons[i]->SetBorderColorNormal(active ? wxColour(44, 182, 125) : wxColour(61, 64, 68));
             m_axis_tool_buttons[i]->SetBackgroundColorNormal(wxColour(61, 64, 68));
@@ -6319,7 +6131,8 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     m_dashboard_state_store.set_state(DeviceDashboard::DashboardStateAdapter::from_machine(obj));
     if (m_dashboard_print_status_panel != nullptr)
         m_dashboard_print_status_panel->apply_state(m_dashboard_state_store.state().print_job);
-    bool printer_status_values_changed = false;
+    if (m_dashboard_printer_status_panel != nullptr)
+        m_dashboard_printer_status_panel->apply_state(m_dashboard_state_store.state().tools, m_dashboard_state_store.state().bed);
     auto set_label_if_changed = [](wxStaticText *label, const wxString &text) -> bool {
         if (label == nullptr || label->GetLabelText() == text)
             return false;
@@ -6391,54 +6204,6 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     } else if (m_fan_value_label != nullptr && obj != nullptr && obj->GetFan() != nullptr) {
         m_selected_fan_value = wxString::Format("%d", (int)std::round(obj->GetFan()->GetCoolingFanSpeed() / 25.5f));
         set_label_if_changed(m_fan_value_label, m_selected_fan_value);
-    }
-
-    if (m_ps_bed_temp_label != nullptr) {
-        wxString bed_text = "-- / --";
-        if (m_has_moonraker_status)
-            bed_text = wxString::Format("%.1f / %.1f", m_moonraker_bed_current, m_moonraker_bed_target);
-        else if (obj != nullptr && obj->GetBed() != nullptr)
-            bed_text = wxString::Format("%.1f / %.1f", obj->GetBed()->GetBedTemp(), obj->GetBed()->GetBedTempTarget());
-        printer_status_values_changed |= set_label_if_changed(m_ps_bed_temp_label, bed_text);
-    }
-    std::array<wxStaticText *, 4> ps_temp_labels { m_ps_t1_temp_label, m_ps_t2_temp_label, m_ps_t3_temp_label, m_ps_t4_temp_label };
-    std::array<wxStaticText *, 4> ps_fan_labels { m_ps_t1_fan_label, m_ps_t2_fan_label, m_ps_t3_fan_label, m_ps_t4_fan_label };
-    for (int i = 0; i < 4; ++i) {
-        if (ps_temp_labels[i] != nullptr) {
-            wxString temp_text = "-- / --";
-            if (m_has_moonraker_status)
-                temp_text = wxString::Format("%.1f / %.1f", m_moonraker_nozzle_current[i], m_moonraker_nozzle_target[i]);
-            else if (obj != nullptr && obj->GetExtderSystem() != nullptr)
-                temp_text = wxString::Format("%.1f / %.1f",
-                    static_cast<double>(obj->GetExtderSystem()->GetNozzleTempCurrent(i)),
-                    static_cast<double>(obj->GetExtderSystem()->GetNozzleTempTarget(i)));
-            const bool changed = set_label_if_changed(ps_temp_labels[i], temp_text);
-            printer_status_values_changed |= changed;
-            if (changed && ps_temp_labels[i]->GetParent() != nullptr)
-                ps_temp_labels[i]->GetParent()->Layout();
-        }
-        if (ps_fan_labels[i] != nullptr) {
-            wxString fan_text = "--%";
-            if (m_has_moonraker_status) {
-                fan_text = wxString::Format("%d%%", m_moonraker_fan_percent);
-            } else if (obj != nullptr && obj->GetExtderSystem() != nullptr) {
-                const float per_tool_fan = obj->GetExtderSystem()->GetNozzleFanSpeed(i);
-                if (per_tool_fan >= 0.0f) {
-                    // Per-tool fan speed available (e.g. Quadro fan_generic fan_t0..t3), 0.0–1.0
-                    fan_text = wxString::Format("%d%%", (int)std::round(per_tool_fan * 100.0f));
-                } else if (obj->GetFan() != nullptr) {
-                    // Fall back to single shared fan (standard single-extruder printer)
-                    fan_text = wxString::Format("%d%%", (int)std::round(obj->GetFan()->GetCoolingFanSpeed() / 25.5f));
-                }
-            }
-            const bool changed = set_label_if_changed(ps_fan_labels[i], fan_text);
-            printer_status_values_changed |= changed;
-            if (changed && ps_fan_labels[i]->GetParent() != nullptr)
-                ps_fan_labels[i]->GetParent()->Layout();
-        }
-    }
-    if (printer_status_values_changed && m_status_page != nullptr) {
-        m_status_page->Refresh();
     }
 
     if (m_printer_name_value != nullptr)
