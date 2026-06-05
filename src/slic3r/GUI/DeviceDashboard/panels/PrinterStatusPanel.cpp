@@ -160,8 +160,13 @@ void PrinterStatusPanel::apply_state(const std::array<ToolState, MaxDashboardToo
 
     layout_needed |= set_label_if_changed(m_bed_temperature, temperature_text(bed.temperature));
 
-    if (layout_needed)
+    if (layout_needed) {
+        // Freeze/Thaw: tüm label güncellemeleri bittikten sonra
+        // tek seferde çiz — ara siyahlaşmayı önler
+        Freeze();
         Layout();
+        Thaw();
+    }
 }
 
 void PrinterStatusPanel::set_active_tool(int tool_index)

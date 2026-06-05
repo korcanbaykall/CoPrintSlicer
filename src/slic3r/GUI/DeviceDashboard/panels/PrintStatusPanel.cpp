@@ -126,8 +126,11 @@ void PrintStatusPanel::apply_state(const PrintJobState& state)
     layout_needed |= set_label_if_changed(m_layer_info, wxString::Format("Layer: %d/%d", state.current_layer, state.total_layers));
     layout_needed |= set_label_if_changed(m_remaining_time, wxString::FromUTF8("Remaining: ") + time_text(state.remaining_seconds));
 
-    if (layout_needed)
+    if (layout_needed) {
+        Freeze();
         Layout();
+        Thaw();
+    }
 }
 
 void PrintStatusPanel::set_pause_handler(ActionHandler handler)

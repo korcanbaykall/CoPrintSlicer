@@ -974,7 +974,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         const wxSize sz = event.GetSize();
         if (sz.x == last_w && sz.y == last_h) return;
         last_w = sz.x; last_h = sz.y;
+        auto *win = event.GetEventObject() ? dynamic_cast<wxWindow*>(event.GetEventObject()) : nullptr;
+        if (win) win->Freeze();
         update_camera_host_responsive_size();
+        if (win) win->Thaw();
     });
     CallAfter(update_camera_host_responsive_size);
     top_row->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
@@ -1321,7 +1324,10 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         const int w = event.GetSize().x;
         if (w == last_w) return;
         last_w = w;
+        auto *win = event.GetEventObject() ? dynamic_cast<wxWindow*>(event.GetEventObject()) : nullptr;
+        if (win) win->Freeze();
         update_filament_management_responsive_widths();
+        if (win) win->Thaw();
     });
     CallAfter(update_filament_management_responsive_widths);
 
@@ -1563,7 +1569,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
             return;
         last_width = width;
         left_container->SetMinSize(wxSize(width, -1));
+        status_content->Freeze();
         status_content->Layout();
+        status_content->Thaw();
     });
     status_page_sizer->Add(status_content, 1, wxEXPAND);
     m_status_page->SetSizer(status_page_sizer);
@@ -4564,8 +4572,9 @@ void PrinterWebView::refresh_moonraker_status_from_selected_machine()
                 m_dashboard_printer_status_panel->apply_state(patched.tools, patched.bed);
                 m_dashboard_state_store.set_state(patched);
             }
-            if (m_status_page != nullptr)
-                m_status_page->Refresh();
+            // Tüm status_page'i değil, sadece sıcaklık panelini yenile
+            if (m_dashboard_printer_status_panel != nullptr)
+                m_dashboard_printer_status_panel->Refresh();
         });
     }).detach();
 }
