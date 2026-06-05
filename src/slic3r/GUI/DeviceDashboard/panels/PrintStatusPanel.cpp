@@ -2,6 +2,7 @@
 
 #include "../DeviceCardFrame.hpp"
 #include "../DeviceUiStyle.hpp"
+#include "../../Widgets/Button.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -70,6 +71,24 @@ PrintStatusPanel::PrintStatusPanel(wxWindow* parent)
     m_remaining_time->SetForegroundColour(DeviceUiStyle::text_primary());
     lower_row->Add(m_remaining_time, 0, wxALIGN_CENTER_VERTICAL);
     details_sizer->Add(lower_row, 0, wxEXPAND);
+
+    auto* action_row = new wxBoxSizer(wxHORIZONTAL);
+    m_pause_button = new Button(details, wxString::FromUTF8("Pause"));
+    m_pause_button->SetMinSize(wxSize(FromDIP(80), FromDIP(34)));
+    m_stop_button = new Button(details, wxString::FromUTF8("Stop"));
+    m_stop_button->SetMinSize(wxSize(FromDIP(80), FromDIP(34)));
+    action_row->Add(m_pause_button, 0, wxRIGHT, FromDIP(10));
+    action_row->Add(m_stop_button, 0);
+    details_sizer->Add(action_row, 0, wxTOP, FromDIP(14));
+
+    m_pause_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        if (m_pause_handler)
+            m_pause_handler();
+    });
+    m_stop_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        if (m_stop_handler)
+            m_stop_handler();
+    });
 
     details->SetSizer(details_sizer);
     content_sizer->Add(details, 1, wxEXPAND);

@@ -47,6 +47,16 @@ DeviceDashboardPage::DeviceDashboardPage(wxWindow* parent)
     };
     m_movement_panel->set_command_handler(forward_command);
     m_filament_panel->set_command_handler(forward_command);
+    m_print_status_panel->set_pause_handler([forward_command]() {
+        DeviceCommand command;
+        command.kind = DeviceCommandKind::PausePrint;
+        forward_command(command);
+    });
+    m_print_status_panel->set_stop_handler([forward_command]() {
+        DeviceCommand command;
+        command.kind = DeviceCommandKind::StopPrint;
+        forward_command(command);
+    });
 }
 
 void DeviceDashboardPage::apply_state(const DeviceDashboardState& state)

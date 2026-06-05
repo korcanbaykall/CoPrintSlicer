@@ -6520,6 +6520,46 @@ void PrinterWebView::refresh_print_controls_from_selected_machine()
         m_pause_resume_icon->SetBitmap(create_scaled_bitmap("pause", this, 20));
 }
 
+void PrinterWebView::handle_dashboard_command(const DeviceDashboard::DeviceCommand &command)
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+    if (obj == nullptr || !obj->is_online())
+        return;
+
+    switch (command.kind) {
+    case DeviceDashboard::DeviceCommandKind::PausePrint:
+        if (obj->can_resume())
+            obj->command_task_resume();
+        else
+            obj->command_task_pause();
+        break;
+    case DeviceDashboard::DeviceCommandKind::ResumePrint:
+        obj->command_task_resume();
+        break;
+    case DeviceDashboard::DeviceCommandKind::StopPrint:
+        obj->command_task_abort();
+        break;
+    case DeviceDashboard::DeviceCommandKind::MoveAxis: {
+        std::string axis;
+        int speed = 3000;
+        switch (command.axis) {
+        case DeviceDashboard::Axis::X: axis = "X"; break;
+        case DeviceDashboard::Axis::Y: axis = "Y"; break;
+        case DeviceDashboard::Axis::Z:
+            axis = "Z";
+            speed = 900;
+            break;
+        }
+        if (!axis.empty())
+            obj->command_axis_control(axis, 1.0, command.value, speed);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 void PrinterWebView::refresh_layer_info_from_selected_machine()
 {
     auto *dev_manager = wxGetApp().getDeviceManager();

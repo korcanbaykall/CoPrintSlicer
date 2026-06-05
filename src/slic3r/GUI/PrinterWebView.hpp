@@ -15,6 +15,7 @@
 #include <wx/webview.h>
 #include "Widgets/ProgressBar.hpp"
 #include "Widgets/WebView.hpp"
+#include "DeviceDashboard/DeviceCommandService.hpp"
 #include "DeviceDashboard/DeviceStateStore.hpp"
 class wxStaticBitmap;
 class wxStaticText;
@@ -123,6 +124,7 @@ private:
     void forget_local_printer(MachineObject *machine);
     void ensure_camera_webview_created();
     void ensure_storage_page_created();
+    void handle_dashboard_command(const DeviceDashboard::DeviceCommand &command);
     struct SidebarItem {
         PrinterWebViewTab tab;
         wxPanel *panel{ nullptr };
