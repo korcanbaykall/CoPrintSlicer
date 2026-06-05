@@ -6091,6 +6091,9 @@ void PrinterWebView::handle_dashboard_command(const DeviceDashboard::DeviceComma
         return;
 
     switch (command.kind) {
+    case DeviceDashboard::DeviceCommandKind::SelectTool:
+        apply_printer_status_tool_selection(command.tool_index);
+        break;
     case DeviceDashboard::DeviceCommandKind::PausePrint:
         if (obj->can_resume())
             obj->command_task_resume();
@@ -6103,6 +6106,26 @@ void PrinterWebView::handle_dashboard_command(const DeviceDashboard::DeviceComma
     case DeviceDashboard::DeviceCommandKind::StopPrint:
         obj->command_task_abort();
         break;
+    case DeviceDashboard::DeviceCommandKind::Home:
+        obj->command_go_home();
+        break;
+    case DeviceDashboard::DeviceCommandKind::SetMotionDistance:
+        m_axis_move_step = command.value > 0.0 ? command.value : 1.0;
+        break;
+    case DeviceDashboard::DeviceCommandKind::SetPrintSpeed: {
+        const int percent = static_cast<int>(std::round(command.value));
+        DevPrintingSpeedLevel level = SPEED_LEVEL_NORMAL;
+        if (percent <= 50)
+            level = SPEED_LEVEL_SILENCE;
+        else if (percent <= 100)
+            level = SPEED_LEVEL_NORMAL;
+        else if (percent <= 125)
+            level = SPEED_LEVEL_RAPID;
+        else
+            level = SPEED_LEVEL_RAMPAGE;
+        obj->command_set_printing_speed(level);
+        break;
+    }
     case DeviceDashboard::DeviceCommandKind::MoveAxis: {
         std::string axis;
         int speed = 3000;
@@ -6128,7 +6151,10 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     auto *dev_manager = wxGetApp().getDeviceManager();
     auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
     refresh_moonraker_status_from_selected_machine();
-    m_dashboard_state_store.set_state(DeviceDashboard::DashboardStateAdapter::from_machine(obj));
+    auto dashboard_state = DeviceDashboard::DashboardStateAdapter::from_machine(obj);
+    dashboard_state.movement.selected_tool = m_selected_extruder_index;
+    dashboard_state.movement.selected_distance_mm = m_axis_move_step;
+    m_dashboard_state_store.set_state(dashboard_state);
     if (m_dashboard_print_status_panel != nullptr)
         m_dashboard_print_status_panel->apply_state(m_dashboard_state_store.state().print_job);
     if (m_dashboard_printer_status_panel != nullptr)
