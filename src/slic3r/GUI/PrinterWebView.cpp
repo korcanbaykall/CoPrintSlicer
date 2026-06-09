@@ -20,6 +20,7 @@
 #include "slic3r/GUI/DeviceDashboard/panels/PrintStatusPanel.hpp"
 #include "slic3r/GUI/DeviceDashboard/panels/PrinterStatusPanel.hpp"
 #include "slic3r/GUI/DeviceDashboard/panels/FilamentPanel.hpp"
+#include "slic3r/GUI/DeviceDashboard/panels/CameraPanel.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/Utils/NetworkAgentFactory.hpp"
 #include "slic3r/Utils/NetworkAgent.hpp"
@@ -77,6 +78,14 @@ namespace pt = boost::property_tree;
 
 namespace Slic3r {
 namespace GUI {
+
+static bool set_text_if_changed(wxStaticText *label, const wxString &text)
+{
+    if (label == nullptr || label->GetLabelText() == text)
+        return false;
+    label->SetLabelText(text);
+    return true;
+}
 
 static bool looks_like_network_identifier(const std::string &value)
 {
@@ -534,6 +543,149 @@ wxString hex_from_colour(const wxColour &color)
     return wxString::Format("#%02X%02X%02X", color.Red(), color.Green(), color.Blue());
 }
 
+struct FilamentMetadataResult {
+    std::array<wxColour, 4> model_colors;
+    std::array<wxString, 4> materials;
+    std::array<wxString, 4> weights;
+    bool colors_parsed{false};
+};
+
+struct LoadedFilamentResult {
+    std::array<wxColour, 4> assigned_colors;
+    std::array<wxString, 4> materials;
+    bool has_colors{false};
+};
+
+static nlohmann::json parse_json_body(const std::string &body)
+{
+    if (body.empty())
+        return {};
+    auto parsed = nlohmann::json::parse(body, nullptr, false, true);
+    return parsed.is_discarded() ? nlohmann::json{} : parsed;
+}
+
+static wxArrayString split_metadata_string(const std::string &raw)
+{
+    wxString s = wxString::FromUTF8(raw);
+    const wxChar sep = s.Find(';') != wxNOT_FOUND ? ';' : ',';
+    wxArrayString parts = wxSplit(s, sep);
+    for (auto &part : parts) {
+        part.Trim(true).Trim(false);
+        if (part.StartsWith("\"") && part.EndsWith("\"") && part.length() >= 2)
+            part = part.Mid(1, part.length() - 2);
+    }
+    return parts;
+}
+
+static FilamentMetadataResult parse_filament_metadata(nlohmann::json metadata)
+{
+    FilamentMetadataResult result;
+    result.model_colors = default_filament_preview_colors();
+    result.materials    = default_filament_preview_materials();
+    result.weights      = default_filament_preview_weights();
+
+    if (metadata.contains("result"))
+        metadata = metadata["result"];
+    if (!metadata.is_object())
+        return result;
+
+    if (auto it = metadata.find("filament_colors"); it != metadata.end()) {
+        if (it->is_array()) {
+            for (size_t i = 0; i < std::min<size_t>(4, it->size()); ++i)
+                if ((*it)[i].is_string()) {
+                    result.model_colors[i] = colour_from_hex((*it)[i].get<std::string>(), result.model_colors[i]);
+                    result.colors_parsed = true;
+                }
+        } else if (it->is_string()) {
+            auto colors = split_metadata_string(it->get<std::string>());
+            for (size_t i = 0; i < std::min<size_t>(4, colors.size()); ++i) {
+                result.model_colors[i] = colour_from_hex(into_u8(colors[i]), result.model_colors[i]);
+                result.colors_parsed = true;
+            }
+        }
+    }
+
+    if (auto it = metadata.find("filament_weights"); it != metadata.end()) {
+        if (it->is_array()) {
+            for (size_t i = 0; i < std::min<size_t>(4, it->size()); ++i)
+                if ((*it)[i].is_number())
+                    result.weights[i] = wxString::Format("%.1fg", (*it)[i].get<double>());
+        } else if (it->is_string()) {
+            auto parts = split_metadata_string(it->get<std::string>());
+            for (size_t i = 0; i < std::min<size_t>(4, parts.size()); ++i) {
+                double v = 0.0;
+                if (parts[i].ToDouble(&v))
+                    result.weights[i] = wxString::Format("%.1fg", v);
+            }
+        } else if (auto total = metadata.find("filament_weight_total");
+                   total != metadata.end() && total->is_number()) {
+            const double each = total->get<double>() / 4.0;
+            for (auto &w : result.weights)
+                w = wxString::Format("%.1fg", each);
+        }
+    }
+
+    if (auto it = metadata.find("filament_type"); it != metadata.end()) {
+        if (it->is_array()) {
+            for (size_t i = 0; i < std::min<size_t>(4, it->size()); ++i)
+                if ((*it)[i].is_string())
+                    result.materials[i] = wxString::FromUTF8((*it)[i].get<std::string>());
+        } else if (it->is_string()) {
+            const std::string raw = it->get<std::string>();
+            auto parsed_types = nlohmann::json::parse(raw, nullptr, false, true);
+            if (!parsed_types.is_discarded() && parsed_types.is_array()) {
+                for (size_t i = 0; i < std::min<size_t>(4, parsed_types.size()); ++i)
+                    if (parsed_types[i].is_string())
+                        result.materials[i] = wxString::FromUTF8(parsed_types[i].get<std::string>());
+            } else {
+                auto parts = split_metadata_string(raw);
+                for (size_t i = 0; i < std::min<size_t>(4, parts.size()); ++i)
+                    if (!parts[i].empty())
+                        result.materials[i] = parts[i];
+            }
+        }
+    }
+
+    return result;
+}
+
+static LoadedFilamentResult parse_filament_db(nlohmann::json db)
+{
+    LoadedFilamentResult result;
+    result.assigned_colors = default_filament_preview_colors();
+    result.materials       = default_filament_preview_materials();
+
+    if (db.contains("result"))
+        db = db["result"];
+    if (db.is_object() && db.contains("value"))
+        db = db["value"];
+    if (db.is_object() && db.contains("filament_selections"))
+        db = db["filament_selections"];
+    if (!db.is_object())
+        return result;
+
+    for (int ui_tool = 1; ui_tool <= 4; ++ui_tool) {
+        const std::string key_name = "toolhead_" + std::to_string(ui_tool);
+        const std::string zero_key = "toolhead_" + std::to_string(ui_tool - 1);
+        const nlohmann::json *tool_ptr = nullptr;
+        if (db.contains(key_name) && db[key_name].is_object())
+            tool_ptr = &db[key_name];
+        else if (db.contains(zero_key) && db[zero_key].is_object())
+            tool_ptr = &db[zero_key];
+        if (tool_ptr == nullptr)
+            continue;
+        const auto &tool = *tool_ptr;
+        if (auto it = tool.find("color_hex"); it != tool.end() && it->is_string()) {
+            result.assigned_colors[ui_tool - 1] = colour_from_hex(it->get<std::string>(), result.assigned_colors[ui_tool - 1]);
+            result.has_colors = true;
+        }
+        if (auto it = tool.find("type"); it != tool.end() && it->is_string())
+            result.materials[ui_tool - 1] = wxString::FromUTF8(it->get<std::string>());
+    }
+
+    return result;
+}
+
 bool looks_like_hex_colour(wxString value)
 {
     value.Trim(true);
@@ -812,15 +964,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     rebuild_sidebar_printer_list();
     show_sidebar_root_view();
 
-    m_extruder_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
-    m_extruder_popup_panel = new wxPanel(m_extruder_popup, wxID_ANY);
-    m_extruder_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
-    rebuild_extruder_popup();
-
-    m_fan_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
-    m_fan_popup_panel = new wxPanel(m_fan_popup, wxID_ANY);
-    m_fan_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
-    rebuild_fan_popup();
 
     auto *content_host = new wxPanel(this, wxID_ANY);
     content_host->SetBackgroundColour(wxColour(28, 30, 34));
@@ -837,32 +980,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     auto *left_container = new wxPanel(status_content, wxID_ANY);
     left_container->SetBackgroundColour(wxColour(28, 30, 34));
     auto *left_sizer = new wxBoxSizer(wxVERTICAL);
-    auto *top_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *preview_box = new StaticBox(left_container, wxID_ANY);
-    preview_box->SetCornerRadius(FromDIP(12));
-    preview_box->SetBorderWidth(1);
-    preview_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    preview_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    preview_box->SetBackgroundColour(wxColour(28, 30, 34));
-    preview_box->SetMinSize(wxSize(FromDIP(460), -1));
-    auto *preview_box_sizer = new wxBoxSizer(wxVERTICAL);
-    preview_box_sizer->AddSpacer(FromDIP(12));
-    auto *camera_title_row = new wxBoxSizer(wxHORIZONTAL);
-    auto *camera_icon = new wxStaticBitmap(preview_box, wxID_ANY, create_scaled_bitmap("monitor_camera_white", this, 16));
-    auto *camera_label = new wxStaticText(preview_box, wxID_ANY, "Camera");
-    camera_label->SetForegroundColour(wxColour(220, 220, 220));
-    {
-        wxFont f = camera_label->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        camera_label->SetFont(f);
-    }
-    camera_title_row->Add(camera_icon, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(20));
-    camera_title_row->AddSpacer(FromDIP(6));
-    camera_title_row->Add(camera_label, 0, wxALIGN_CENTER_VERTICAL);
-    camera_title_row->AddStretchSpacer(1);
-    auto *camera_refresh_btn = new wxStaticBitmap(preview_box, wxID_ANY, create_scaled_bitmap("camera_refresh_white", this, 18));
-    camera_refresh_btn->SetCursor(wxCursor(wxCURSOR_HAND));
-    camera_refresh_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
+    m_dashboard_camera_panel = new DeviceDashboard::CameraPanel(left_container);
+    m_dashboard_camera_panel->set_refresh_handler([this]() {
         if (m_camera_webview == nullptr)
             return;
         auto *dev_manager = wxGetApp().getDeviceManager();
@@ -870,193 +989,39 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         auto urls = configured_camera_stream_urls(obj);
         m_camera_webview->SetPage(camera_stream_page(urls), m_camera_stream_url.BeforeLast('/'));
     });
-    camera_title_row->Add(camera_refresh_btn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(15));
-    preview_box_sizer->Add(camera_title_row, 0, wxEXPAND | wxBOTTOM, FromDIP(8));
     // Host only until the panel is actually shown. Creating WebView2 while MainFrame / tabs are still
     // constructing has been observed to crash (ACCESS_VIOLATION in ntdll); defer to wxEVT_SHOW.
-    m_camera_webview_host = new wxPanel(preview_box, wxID_ANY);
+    m_camera_webview_host = new wxPanel(m_dashboard_camera_panel->webview_host(), wxID_ANY);
     m_camera_webview_host->SetMinSize(wxSize(FromDIP(420), FromDIP(300)));
     m_camera_webview_host->SetBackgroundColour(wxColour(0, 0, 0));
-    preview_box_sizer->Add(m_camera_webview_host, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
-    preview_box->SetSizer(preview_box_sizer);
-    auto update_camera_host_responsive_size = [this, preview_box]() {
-        if (preview_box == nullptr || m_camera_webview_host == nullptr)
+    {
+        auto *vs = new wxBoxSizer(wxVERTICAL);
+        vs->Add(m_camera_webview_host, 1, wxEXPAND);
+        m_dashboard_camera_panel->webview_host()->SetSizer(vs);
+    }
+    auto update_camera_host_responsive_size = [this]() {
+        if (m_dashboard_camera_panel == nullptr || m_camera_webview_host == nullptr)
             return;
-        const int box_w = preview_box->GetClientSize().GetWidth();
+        const int box_w = m_dashboard_camera_panel->webview_host()->GetClientSize().GetWidth();
         if (box_w <= 0)
             return;
-        const int host_w = std::max(FromDIP(320), box_w - FromDIP(30));
+        const int host_w = std::max(FromDIP(320), box_w);
         const int host_h = std::clamp(static_cast<int>(host_w * 0.78), FromDIP(260), FromDIP(454));
         m_camera_webview_host->SetMinSize(wxSize(host_w, host_h));
-        preview_box->Layout();
+        m_dashboard_camera_panel->webview_host()->Layout();
     };
-    preview_box->Bind(wxEVT_SIZE, [update_camera_host_responsive_size, last_w = -1, last_h = -1](wxSizeEvent &event) mutable {
-        event.Skip();
-        const wxSize sz = event.GetSize();
-        if (sz.x == last_w && sz.y == last_h) return;
-        last_w = sz.x; last_h = sz.y;
-        auto *win = event.GetEventObject() ? dynamic_cast<wxWindow*>(event.GetEventObject()) : nullptr;
-        if (win) win->Freeze();
-        update_camera_host_responsive_size();
-        if (win) win->Thaw();
-    });
+    m_dashboard_camera_panel->webview_host()->Bind(wxEVT_SIZE,
+        [update_camera_host_responsive_size, last_w = -1, last_h = -1](wxSizeEvent &event) mutable {
+            event.Skip();
+            const wxSize sz = event.GetSize();
+            if (sz.x == last_w && sz.y == last_h) return;
+            last_w = sz.x; last_h = sz.y;
+            auto *win = event.GetEventObject() ? dynamic_cast<wxWindow*>(event.GetEventObject()) : nullptr;
+            if (win) win->Freeze();
+            update_camera_host_responsive_size();
+            if (win) win->Thaw();
+        });
     CallAfter(update_camera_host_responsive_size);
-    top_row->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
-
-    auto *right_container = new StaticBox(left_container, wxID_ANY);
-    right_container->SetCornerRadius(FromDIP(12));
-    right_container->SetBorderWidth(1);
-    right_container->SetBorderColorNormal(wxColour(55, 58, 64));
-    right_container->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    right_container->SetBackgroundColour(wxColour(22, 24, 29));
-    const int right_container_width = FromDIP(775);
-    const int right_container_height = FromDIP(392);
-    right_container->SetMinSize(wxSize(right_container_width, right_container_height));
-    right_container->SetMaxSize(wxSize(-1, right_container_height));
-    auto *right_placeholder_box = new StaticBox(right_container, wxID_ANY);
-    const int right_placeholder_height = FromDIP(240);
-    const int right_placeholder_x = FromDIP(529);
-    const int right_placeholder_width = FromDIP(205);
-    right_placeholder_box->SetSize(wxRect(wxPoint(right_placeholder_x, FromDIP(120)), wxSize(right_placeholder_width, right_placeholder_height)));
-    right_placeholder_box->SetMinSize(wxSize(right_placeholder_width, right_placeholder_height));
-    right_placeholder_box->SetMaxSize(wxSize(right_placeholder_width, right_placeholder_height));
-    right_placeholder_box->SetCornerRadius(FromDIP(12));
-    right_placeholder_box->SetBorderWidth(1);
-    right_placeholder_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    right_placeholder_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    right_placeholder_box->SetBackgroundColour(wxColour(28, 30, 34));
-
-    auto add_placeholder_line = [this, right_placeholder_box, right_placeholder_width](int top_offset) {
-        auto *line = new wxPanel(right_placeholder_box, wxID_ANY);
-        line->SetSize(wxRect(
-            wxPoint(FromDIP(0), FromDIP(top_offset)),
-            wxSize(right_placeholder_width, FromDIP(1))));
-        line->SetMinSize(wxSize(right_placeholder_width, FromDIP(1)));
-        line->SetMaxSize(wxSize(right_placeholder_width, FromDIP(1)));
-        line->SetBackgroundColour(wxColour(55, 58, 64));
-    };
-
-    add_placeholder_line(60);
-    add_placeholder_line(120);
-    add_placeholder_line(180);
-
-    auto *bed_label = new wxStaticText(right_placeholder_box, wxID_ANY, "Bed");
-    bed_label->SetPosition(wxPoint(FromDIP(12), FromDIP(20)));
-    bed_label->SetForegroundColour(wxColour(220, 220, 220));
-
-    auto *bed_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
-    bed_value->SetPosition(wxPoint(FromDIP(107), FromDIP(20)));
-    bed_value->SetForegroundColour(wxColour(220, 220, 220));
-    bed_value->SetCursor(wxCursor(wxCURSOR_HAND));
-    m_bed_temp_value = bed_value;
-
-    auto *bed_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
-    bed_unit->SetForegroundColour(wxColour(220, 220, 220));
-
-    auto *extruder_label = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_extruder);
-    extruder_label->SetPosition(wxPoint(FromDIP(12), FromDIP(80)));
-    extruder_label->SetForegroundColour(wxColour(220, 220, 220));
-    extruder_label->SetCursor(wxCursor(wxCURSOR_HAND));
-    m_extruder_display_label = extruder_label;
-
-    auto *extruder_value = new wxStaticText(right_placeholder_box, wxID_ANY, "__ / __");
-    extruder_value->SetPosition(wxPoint(FromDIP(107), FromDIP(80)));
-    extruder_value->SetForegroundColour(wxColour(220, 220, 220));
-    extruder_value->SetCursor(wxCursor(wxCURSOR_HAND));
-    m_extruder_temp_value = extruder_value;
-
-    auto *extruder_unit = new wxStaticText(right_placeholder_box, wxID_ANY, wxString::FromUTF8("\xC2\xB0""C"));
-    extruder_unit->SetForegroundColour(wxColour(220, 220, 220));
-    extruder_unit->SetCursor(wxCursor(wxCURSOR_HAND));
-
-    m_extruder_popup_button = extruder_label;
-    auto extruder_popup_handler = [this](wxMouseEvent &) { toggle_extruder_popup(); };
-    auto extruder_temp_handler = [this](wxMouseEvent &) {
-        auto *dev_manager = wxGetApp().getDeviceManager();
-        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj == nullptr || !obj->is_online())
-            return;
-        const long current_value = obj->GetExtderSystem() ? static_cast<long>(obj->GetExtderSystem()->GetNozzleTempTarget(0)) : 0;
-        wxTextEntryDialog dlg(this, "Nozzle hedef sicakligini girin.", "Nozzle", wxString::Format("%ld", current_value));
-        if (dlg.ShowModal() != wxID_OK)
-            return;
-        long entered_value = 0;
-        if (!dlg.GetValue().ToLong(&entered_value))
-            return;
-        entered_value = std::max<long>(0, std::min<long>(350, entered_value));
-        obj->command_set_nozzle_new(m_selected_extruder_index, (int)entered_value);
-    };
-    extruder_label->Bind(wxEVT_LEFT_DOWN, extruder_popup_handler);
-    extruder_value->Bind(wxEVT_LEFT_DOWN, extruder_temp_handler);
-    extruder_unit->Bind(wxEVT_LEFT_DOWN, extruder_temp_handler);
-
-    auto *fan_label = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_fan);
-    fan_label->SetPosition(wxPoint(FromDIP(12), FromDIP(140)));
-    fan_label->SetForegroundColour(wxColour(220, 220, 220));
-    fan_label->SetCursor(wxCursor(wxCURSOR_HAND));
-    m_fan_display_label = fan_label;
-
-    auto *fan_value = new wxStaticText(right_placeholder_box, wxID_ANY, m_selected_fan_value);
-    fan_value->SetForegroundColour(wxColour(220, 220, 220));
-    fan_value->SetCursor(wxCursor(wxCURSOR_HAND));
-    m_fan_value_label = fan_value;
-
-    auto *fan_unit = new wxStaticText(right_placeholder_box, wxID_ANY, "%");
-    fan_unit->SetForegroundColour(wxColour(220, 220, 220));
-    fan_unit->SetCursor(wxCursor(wxCURSOR_HAND));
-
-    const int temp_value_x = FromDIP(107);
-    const int temp_unit_x = FromDIP(173);
-    const int fan_value_x = FromDIP(165);
-    const int fan_unit_x = FromDIP(190);
-
-    bed_value->SetPosition(wxPoint(temp_value_x, FromDIP(20)));
-    bed_unit->SetPosition(wxPoint(temp_unit_x, FromDIP(20)));
-    auto bed_temp_handler = [this](wxMouseEvent &) {
-        auto *dev_manager = wxGetApp().getDeviceManager();
-        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj == nullptr || !obj->is_online())
-            return;
-        const long current_value = obj->GetBed() ? (long)obj->GetBed()->GetBedTempTarget() : 0;
-        wxTextEntryDialog dlg(this, "Bed hedef sicakligini girin.", "Bed", wxString::Format("%ld", current_value));
-        if (dlg.ShowModal() != wxID_OK)
-            return;
-        long entered_value = 0;
-        if (!dlg.GetValue().ToLong(&entered_value))
-            return;
-        entered_value = std::max<long>(0, std::min<long>(140, entered_value));
-        obj->command_set_bed((int)entered_value);
-    };
-    bed_label->SetCursor(wxCursor(wxCURSOR_HAND));
-    bed_unit->SetCursor(wxCursor(wxCURSOR_HAND));
-    bed_label->Bind(wxEVT_LEFT_DOWN, bed_temp_handler);
-    bed_value->Bind(wxEVT_LEFT_DOWN, bed_temp_handler);
-    bed_unit->Bind(wxEVT_LEFT_DOWN, bed_temp_handler);
-
-    extruder_value->SetPosition(wxPoint(temp_value_x, FromDIP(80)));
-    extruder_unit->SetPosition(wxPoint(temp_unit_x, FromDIP(80)));
-
-    const int fan_row_y = FromDIP(140);
-    fan_value->SetPosition(wxPoint(fan_value_x, fan_row_y));
-    fan_unit->SetPosition(wxPoint(fan_unit_x, fan_row_y));
-
-    m_fan_popup_button = fan_label;
-    auto fan_popup_handler = [this](wxMouseEvent &) { toggle_fan_popup(); };
-    auto fan_value_handler = [this](wxMouseEvent &) { prompt_fan_value(); };
-    fan_label->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
-    fan_value->Bind(wxEVT_LEFT_DOWN, fan_value_handler);
-    fan_unit->Bind(wxEVT_LEFT_DOWN, fan_popup_handler);
-
-    auto *right_placeholder_right_border = new wxPanel(right_placeholder_box, wxID_ANY);
-    right_placeholder_right_border->SetSize(wxRect(
-        wxPoint(right_placeholder_width - FromDIP(2), FromDIP(1)),
-        wxSize(FromDIP(1), right_placeholder_height - FromDIP(2))));
-    right_placeholder_right_border->SetMinSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(2)));
-    right_placeholder_right_border->SetMaxSize(wxSize(FromDIP(1), right_placeholder_height - FromDIP(2)));
-    right_placeholder_right_border->SetBackgroundColour(wxColour(55, 58, 64));
-    right_placeholder_box->Hide();
-
-    right_container->Layout();
 
     auto *content_columns = new wxBoxSizer(wxHORIZONTAL);
 
@@ -1079,7 +1044,7 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     });
 
     auto *left_main_column = new wxBoxSizer(wxVERTICAL);
-    left_main_column->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
+    left_main_column->Add(m_dashboard_camera_panel, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
     left_main_column->AddSpacer(FromDIP(8));
     left_main_column->Add(m_dashboard_print_status_panel, 0, wxEXPAND);
 
@@ -1087,7 +1052,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_dashboard_movement_panel->set_command_handler([this](const DeviceDashboard::DeviceCommand& command) {
         handle_dashboard_command(command);
     });
-    right_container->Hide();
 
     // printer_status_box â†’ PrinterStatusPanel ile deÄŸiÅŸtirildi
     m_dashboard_printer_status_panel = new DeviceDashboard::PrinterStatusPanel(left_container);
@@ -1175,8 +1139,6 @@ PrinterWebView::~PrinterWebView()
 {
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " Start";
     dismiss_printers_popup();
-    dismiss_extruder_popup();
-    dismiss_fan_popup();
     if (m_thumbnail_web_request.IsOk())
         m_thumbnail_web_request.Cancel();
     if (m_layer_refresh_timer != nullptr) {
@@ -1240,113 +1202,11 @@ void PrinterWebView::dismiss_printers_popup()
         m_printers_popup->Dismiss();
 }
 
-void PrinterWebView::toggle_extruder_popup()
-{
-    if (m_extruder_popup == nullptr || m_extruder_popup_button == nullptr)
-        return;
-
-    rebuild_extruder_popup();
-
-    if (m_extruder_popup->IsShown()) {
-        m_extruder_popup->Dismiss();
-        return;
-    }
-
-    const wxPoint screen_pos = m_extruder_popup_button->ClientToScreen(wxPoint(0, m_extruder_popup_button->GetSize().GetHeight() + FromDIP(8)));
-    m_extruder_popup->Position(screen_pos, wxSize(0, 0));
-    m_extruder_popup->Popup(m_extruder_popup_button);
-}
-
-void PrinterWebView::dismiss_extruder_popup()
-{
-    if (m_extruder_popup != nullptr && m_extruder_popup->IsShown())
-        m_extruder_popup->Dismiss();
-}
-
-void PrinterWebView::toggle_fan_popup()
-{
-    if (m_fan_popup == nullptr || m_fan_popup_button == nullptr)
-        return;
-
-    rebuild_fan_popup();
-
-    if (m_fan_popup->IsShown()) {
-        m_fan_popup->Dismiss();
-        return;
-    }
-
-    const wxPoint screen_pos = m_fan_popup_button->ClientToScreen(wxPoint(0, m_fan_popup_button->GetSize().GetHeight() + FromDIP(8)));
-    m_fan_popup->Position(screen_pos, wxSize(0, 0));
-    m_fan_popup->Popup(m_fan_popup_button);
-}
-
-void PrinterWebView::dismiss_fan_popup()
-{
-    if (m_fan_popup != nullptr && m_fan_popup->IsShown())
-        m_fan_popup->Dismiss();
-}
-
-void PrinterWebView::prompt_fan_value()
-{
-    const long current_value = m_selected_fan_value == "__" ? 0 : wxAtoi(m_selected_fan_value);
-    const long entered_value = wxGetNumberFromUser(
-        "0 ile 100 arasinda bir fan degeri girin.",
-        "%",
-        "Fan",
-        current_value,
-        0,
-        100,
-        this);
-
-    if (entered_value < 0)
-        return;
-
-    m_selected_fan_value = wxString::Format("%ld", entered_value);
-    if (m_selected_fan.StartsWith("T"))
-        m_fan_values[m_selected_fan] = m_selected_fan_value;
-    refresh_fan_value_display();
-
-    auto *dev_manager = wxGetApp().getDeviceManager();
-    MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-    if (obj != nullptr && obj->is_online() && obj->GetFan() != nullptr)
-        obj->GetFan()->command_control_fan(1, (int)entered_value);
-}
-
-void PrinterWebView::refresh_fan_value_display()
-{
-    if (m_selected_fan.StartsWith("T")) {
-        const auto it = m_fan_values.find(m_selected_fan);
-        m_selected_fan_value = it != m_fan_values.end() ? it->second : "__";
-    }
-
-    if (m_fan_value_label != nullptr) {
-        m_fan_value_label->SetLabelText(m_selected_fan_value);
-        m_fan_value_label->SetPosition(wxPoint(FromDIP(165), FromDIP(140)));
-    }
-    Layout();
-}
-
 void PrinterWebView::reset_placeholder_selections()
 {
     m_selected_extruder_index = 0;
-    m_selected_extruder = "Extruder";
-    if (m_extruder_display_label != nullptr)
-        m_extruder_display_label->SetLabelText(m_selected_extruder);
-
-    m_selected_fan = "Fan";
-    if (m_fan_display_label != nullptr)
-        m_fan_display_label->SetLabelText(m_selected_fan);
-
-    for (auto &entry : m_fan_values)
-        entry.second = "__";
-    m_selected_fan_value = "__";
-    refresh_fan_value_display();
-
-    dismiss_extruder_popup();
-    dismiss_fan_popup();
     m_selected_filament_tool = 0;
     apply_filament_tool_selection(0);
-
     Layout();
 }
 
@@ -3139,145 +2999,7 @@ void PrinterWebView::rebuild_sidebar_printer_list()
         m_sidebar_printer_list_panel->GetParent()->Layout();
 }
 
-void PrinterWebView::rebuild_extruder_popup()
-{
-    if (m_extruder_popup == nullptr || m_extruder_popup_panel == nullptr)
-        return;
 
-    if (auto *old_sizer = m_extruder_popup_panel->GetSizer()) {
-        m_extruder_popup_panel->SetSizer(nullptr, false);
-        delete old_sizer;
-    }
-    m_extruder_popup_panel->DestroyChildren();
-
-    const int popup_width = FromDIP(95);
-    const int popup_height = FromDIP(180);
-
-    m_extruder_popup_panel->SetMinSize(wxSize(popup_width, popup_height));
-    m_extruder_popup_panel->SetMaxSize(wxSize(popup_width, popup_height));
-    m_extruder_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
-
-    auto *popup_sizer = new wxBoxSizer(wxVERTICAL);
-    auto *popup_box = new StaticBox(m_extruder_popup_panel, wxID_ANY);
-    popup_box->SetMinSize(wxSize(popup_width, popup_height));
-    popup_box->SetMaxSize(wxSize(popup_width, popup_height));
-    popup_box->SetCornerRadius(FromDIP(12));
-    popup_box->SetBorderWidth(1);
-    popup_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    popup_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    popup_box->SetBackgroundColour(wxColour(22, 24, 29));
-
-    auto add_popup_line = [this, popup_box, popup_width](int top_offset) {
-        auto *line = new wxPanel(popup_box, wxID_ANY);
-        line->SetSize(wxRect(
-            wxPoint(FromDIP(0), FromDIP(top_offset)),
-            wxSize(popup_width, FromDIP(1))));
-        line->SetMinSize(wxSize(popup_width, FromDIP(1)));
-        line->SetMaxSize(wxSize(popup_width, FromDIP(1)));
-        line->SetBackgroundColour(wxColour(55, 58, 64));
-    };
-
-    add_popup_line(45);
-    add_popup_line(90);
-    add_popup_line(135);
-
-    const std::array<wxString, 4> extruder_labels = { "T1", "T2", "T3", "T4" };
-    for (int i = 0; i < (int)extruder_labels.size(); ++i) {
-        auto *label = new wxStaticText(popup_box, wxID_ANY, extruder_labels[i]);
-        label->SetForegroundColour(i == m_selected_extruder_index ? wxColour(44, 182, 125) : wxColour(220, 220, 220));
-        label->SetCursor(wxCursor(wxCURSOR_HAND));
-        const wxSize label_size = label->GetBestSize();
-        const int row_height = FromDIP(45);
-        const int label_x = (popup_width - label_size.GetWidth()) / 2;
-        const int label_y = i * row_height + (row_height - label_size.GetHeight()) / 2;
-        label->SetPosition(wxPoint(label_x, label_y));
-        label->Bind(wxEVT_LEFT_DOWN, [this, i](wxMouseEvent &) {
-            apply_printer_status_tool_selection(i);
-            dismiss_extruder_popup();
-        });
-    }
-
-    popup_sizer->Add(popup_box, 0, wxEXPAND);
-    m_extruder_popup_panel->SetSizer(popup_sizer);
-    popup_sizer->Fit(m_extruder_popup_panel);
-    m_extruder_popup_panel->Layout();
-
-    const wxSize popup_size = m_extruder_popup_panel->GetBestSize();
-    m_extruder_popup_panel->SetSize(popup_size);
-    m_extruder_popup->SetClientSize(popup_size);
-    m_extruder_popup->SetSize(popup_size);
-    m_extruder_popup->Layout();
-}
-
-void PrinterWebView::rebuild_fan_popup()
-{
-    if (m_fan_popup == nullptr || m_fan_popup_panel == nullptr)
-        return;
-
-    if (auto *old_sizer = m_fan_popup_panel->GetSizer()) {
-        m_fan_popup_panel->SetSizer(nullptr, false);
-        delete old_sizer;
-    }
-    m_fan_popup_panel->DestroyChildren();
-
-    const int popup_width = FromDIP(95);
-    const int popup_height = FromDIP(180);
-
-    m_fan_popup_panel->SetMinSize(wxSize(popup_width, popup_height));
-    m_fan_popup_panel->SetMaxSize(wxSize(popup_width, popup_height));
-    m_fan_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
-
-    auto *popup_sizer = new wxBoxSizer(wxVERTICAL);
-    auto *popup_box = new StaticBox(m_fan_popup_panel, wxID_ANY);
-    popup_box->SetMinSize(wxSize(popup_width, popup_height));
-    popup_box->SetMaxSize(wxSize(popup_width, popup_height));
-    popup_box->SetCornerRadius(FromDIP(12));
-    popup_box->SetBorderWidth(1);
-    popup_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    popup_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    popup_box->SetBackgroundColour(wxColour(22, 24, 29));
-
-    auto add_popup_line = [this, popup_box, popup_width](int top_offset) {
-        auto *line = new wxPanel(popup_box, wxID_ANY);
-        line->SetSize(wxRect(
-            wxPoint(FromDIP(0), FromDIP(top_offset)),
-            wxSize(popup_width, FromDIP(1))));
-        line->SetMinSize(wxSize(popup_width, FromDIP(1)));
-        line->SetMaxSize(wxSize(popup_width, FromDIP(1)));
-        line->SetBackgroundColour(wxColour(55, 58, 64));
-    };
-
-    add_popup_line(45);
-    add_popup_line(90);
-    add_popup_line(135);
-
-    const std::array<wxString, 4> fan_labels = { "T1", "T2", "T3", "T4" };
-    for (int i = 0; i < (int)fan_labels.size(); ++i) {
-        auto *label = new wxStaticText(popup_box, wxID_ANY, fan_labels[i]);
-        label->SetForegroundColour(i == m_selected_extruder_index ? wxColour(44, 182, 125) : wxColour(220, 220, 220));
-        label->SetCursor(wxCursor(wxCURSOR_HAND));
-        const wxSize label_size = label->GetBestSize();
-        const int row_height = FromDIP(45);
-        const int label_x = (popup_width - label_size.GetWidth()) / 2;
-        const int label_y = i * row_height + (row_height - label_size.GetHeight()) / 2;
-        label->SetPosition(wxPoint(label_x, label_y));
-        label->Bind(wxEVT_LEFT_DOWN, [this, i](wxMouseEvent &) {
-            apply_printer_status_tool_selection(i);
-            dismiss_fan_popup();
-        });
-    }
-
-    popup_sizer->Add(popup_box, 0, wxEXPAND);
-    m_fan_popup_panel->SetSizer(popup_sizer);
-    popup_sizer->Fit(m_fan_popup_panel);
-    m_fan_popup_panel->Layout();
-
-    const wxSize popup_size = m_fan_popup_panel->GetBestSize();
-    m_fan_popup_panel->SetSize(popup_size);
-    m_fan_popup->SetClientSize(popup_size);
-    m_fan_popup->SetSize(popup_size);
-    m_fan_popup->Layout();
-}
 
 void PrinterWebView::apply_filament_preview_rows(const std::array<wxColour, 4> &model_colors,
                                                  const std::array<wxString, 4> &materials,
@@ -3552,157 +3274,39 @@ void PrinterWebView::refresh_filament_preview_from_selected_machine()
             if (key != m_filament_preview_fetch_key)
                 return;
 
-            auto model_colors = default_filament_preview_colors();
-            auto assigned_colors = default_filament_preview_colors();
-            auto materials = default_filament_preview_materials();
-            auto weights = default_filament_preview_weights();
-            auto assigned_tools = default_filament_preview_assigned_tools();
-            auto loaded_tool_materials = default_filament_preview_materials();
-            bool has_loaded_tool_colors = false;
-            bool metadata_colors_parsed = false;
+            auto meta   = parse_filament_metadata(parse_json_body(metadata_body));
+            auto loaded = parse_filament_db(parse_json_body(db_body));
 
-            auto parse_json = [](const std::string &body) {
-                if (body.empty())
-                    return nlohmann::json();
-                auto parsed = nlohmann::json::parse(body, nullptr, false, true);
-                return parsed.is_discarded() ? nlohmann::json() : parsed;
-            };
-            auto split_metadata_string = [](const std::string &raw) {
-                wxString s = wxString::FromUTF8(raw);
-                wxChar sep = ',';
-                if (s.Find(';') != wxNOT_FOUND)
-                    sep = ';';
-                wxArrayString parts = wxSplit(s, sep);
-                for (auto &part : parts) {
-                    part.Trim(true);
-                    part.Trim(false);
-                    if (part.StartsWith("\"") && part.EndsWith("\"") && part.length() >= 2)
-                        part = part.Mid(1, part.length() - 2);
-                }
-                return parts;
-            };
+            m_filament_loaded_tool_colors    = loaded.assigned_colors;
+            m_filament_loaded_tool_materials = loaded.materials;
 
-            auto metadata = parse_json(metadata_body);
-            if (metadata.contains("result"))
-                metadata = metadata["result"];
-            if (metadata.is_object()) {
-                if (auto it = metadata.find("filament_colors"); it != metadata.end() && it->is_array()) {
-                    for (size_t i = 0; i < std::min<size_t>(4, it->size()); ++i) {
-                        if ((*it)[i].is_string()) {
-                            model_colors[i] = colour_from_hex((*it)[i].get<std::string>(), model_colors[i]);
-                            metadata_colors_parsed = true;
-                        }
-                    }
-                } else if (auto it = metadata.find("filament_colors"); it != metadata.end() && it->is_string()) {
-                    auto colors = split_metadata_string(it->get<std::string>());
-                    for (size_t i = 0; i < std::min<size_t>(4, colors.size()); ++i) {
-                        model_colors[i] = colour_from_hex(into_u8(colors[i]), model_colors[i]);
-                        metadata_colors_parsed = true;
-                    }
-                }
-
-                if (auto it = metadata.find("filament_weights"); it != metadata.end() && it->is_array()) {
-                    for (size_t i = 0; i < std::min<size_t>(4, it->size()); ++i) {
-                        if ((*it)[i].is_number())
-                            weights[i] = wxString::Format("%.1fg", (*it)[i].get<double>());
-                    }
-                } else if (auto it = metadata.find("filament_weights"); it != metadata.end() && it->is_string()) {
-                    auto parts = split_metadata_string(it->get<std::string>());
-                    for (size_t i = 0; i < std::min<size_t>(4, parts.size()); ++i) {
-                        double value = 0.0;
-                        if (parts[i].ToDouble(&value))
-                            weights[i] = wxString::Format("%.1fg", value);
-                    }
-                } else if (auto total = metadata.find("filament_weight_total"); total != metadata.end() && total->is_number()) {
-                    const double each = total->get<double>() / 4.0;
-                    for (auto &w : weights)
-                        w = wxString::Format("%.1fg", each);
-                }
-
-                if (auto it = metadata.find("filament_type"); it != metadata.end()) {
-                    if (it->is_array()) {
-                        for (size_t i = 0; i < std::min<size_t>(4, it->size()); ++i)
-                            if ((*it)[i].is_string())
-                                materials[i] = wxString::FromUTF8((*it)[i].get<std::string>());
-                    } else if (it->is_string()) {
-                        const std::string raw = it->get<std::string>();
-                        auto parsed_types = nlohmann::json::parse(raw, nullptr, false, true);
-                        if (!parsed_types.is_discarded() && parsed_types.is_array()) {
-                            for (size_t i = 0; i < std::min<size_t>(4, parsed_types.size()); ++i)
-                                if (parsed_types[i].is_string())
-                                    materials[i] = wxString::FromUTF8(parsed_types[i].get<std::string>());
-                        } else {
-                            wxArrayString parts = split_metadata_string(raw);
-                            for (size_t i = 0; i < std::min<size_t>(4, parts.size()); ++i) {
-                                if (!parts[i].empty())
-                                    materials[i] = parts[i];
-                            }
-                        }
-                    }
-                }
-            }
-
-            auto db = parse_json(db_body);
-            if (db.contains("result"))
-                db = db["result"];
-            if (db.is_object() && db.contains("value"))
-                db = db["value"];
-            if (db.is_object() && db.contains("filament_selections"))
-                db = db["filament_selections"];
-
-            if (db.is_object()) {
-                for (int ui_tool = 1; ui_tool <= 4; ++ui_tool) {
-                    const std::string key_name = "toolhead_" + std::to_string(ui_tool);
-                    const std::string zero_based_key_name = "toolhead_" + std::to_string(ui_tool - 1);
-                    const nlohmann::json *tool_ptr = nullptr;
-                    if (db.contains(key_name) && db[key_name].is_object())
-                        tool_ptr = &db[key_name];
-                    else if (db.contains(zero_based_key_name) && db[zero_based_key_name].is_object())
-                        tool_ptr = &db[zero_based_key_name];
-                    if (tool_ptr == nullptr)
-                        continue;
-                    const auto &tool = *tool_ptr;
-                    if (auto it = tool.find("color_hex"); it != tool.end() && it->is_string()) {
-                        assigned_colors[ui_tool - 1] = colour_from_hex(it->get<std::string>(), assigned_colors[ui_tool - 1]);
-                        has_loaded_tool_colors = true;
-                    }
-                    if (auto it = tool.find("type"); it != tool.end() && it->is_string())
-                        loaded_tool_materials[ui_tool - 1] = wxString::FromUTF8(it->get<std::string>());
-                }
-            }
-
-            m_filament_loaded_tool_colors = assigned_colors;
-            m_filament_loaded_tool_materials = loaded_tool_materials;
-            if (has_loaded_tool_colors) {
-                assigned_tools = nearest_unique_tool_assignment(model_colors, assigned_colors);
-                std::array<wxColour, 4> row_assigned_colors = assigned_colors;
+            auto assigned_tools  = default_filament_preview_assigned_tools();
+            auto assigned_colors = loaded.assigned_colors;
+            if (loaded.has_colors) {
+                assigned_tools = nearest_unique_tool_assignment(meta.model_colors, loaded.assigned_colors);
                 for (int i = 0; i < 4; ++i)
-                    row_assigned_colors[i] = assigned_colors[assigned_tools[i] - 1];
-                assigned_colors = row_assigned_colors;
+                    assigned_colors[i] = loaded.assigned_colors[assigned_tools[i] - 1];
             }
 
             // If metadata returned no model colors, keep the colors synced from
             // the Plater, but still apply the loaded-filament / Assigned Tools
-            // information fetched from Moonraker DB above. Previously this
-            // returned early and accidentally dropped the printer's loaded
-            // filament colors.
-            if (!metadata_colors_parsed && m_has_plater_synced_colors) {
-                model_colors = m_plater_synced_colors;
-                materials = m_plater_synced_materials;
-                if (has_loaded_tool_colors) {
-                    const auto loaded_colors = m_filament_loaded_tool_colors;
-                    assigned_tools = nearest_unique_tool_assignment(model_colors, loaded_colors);
+            // information fetched from Moonraker DB above.
+            if (!meta.colors_parsed && m_has_plater_synced_colors) {
+                meta.model_colors = m_plater_synced_colors;
+                meta.materials    = m_plater_synced_materials;
+                if (loaded.has_colors) {
+                    assigned_tools = nearest_unique_tool_assignment(meta.model_colors, m_filament_loaded_tool_colors);
                     for (int i = 0; i < 4; ++i)
-                        assigned_colors[i] = loaded_colors[assigned_tools[i] - 1];
+                        assigned_colors[i] = m_filament_loaded_tool_colors[assigned_tools[i] - 1];
                 }
-                apply_filament_preview_rows(model_colors, materials, weights, assigned_tools, assigned_colors);
+                apply_filament_preview_rows(meta.model_colors, meta.materials, meta.weights, assigned_tools, assigned_colors);
                 return;
             }
 
-            if (metadata_colors_parsed)
+            if (meta.colors_parsed)
                 m_has_plater_synced_colors = false;
 
-            apply_filament_preview_rows(model_colors, materials, weights, assigned_tools, assigned_colors);
+            apply_filament_preview_rows(meta.model_colors, meta.materials, meta.weights, assigned_tools, assigned_colors);
         });
     }).detach();
 }
@@ -4085,18 +3689,10 @@ void PrinterWebView::apply_printer_status_tool_selection(int tool_index)
         tool_index = 0;
 
     m_selected_extruder_index = tool_index;
-    m_selected_extruder = wxString::Format("T%d", tool_index + 1);
-    m_selected_fan = m_selected_extruder;
-
-    if (m_extruder_display_label != nullptr)
-        m_extruder_display_label->SetLabelText(m_selected_extruder);
-    if (m_fan_display_label != nullptr)
-        m_fan_display_label->SetLabelText(m_selected_fan);
 
     if (m_dashboard_printer_status_panel != nullptr)
         m_dashboard_printer_status_panel->set_active_tool(m_selected_extruder_index);
 
-    refresh_fan_value_display();
     refresh_layer_info_from_selected_machine();
     Layout();
 }
@@ -4898,21 +4494,17 @@ void PrinterWebView::handle_dashboard_command(const DeviceDashboard::DeviceComma
     }
 }
 
-void PrinterWebView::refresh_layer_info_from_selected_machine()
+void PrinterWebView::refresh_dashboard_panels(MachineObject *obj)
 {
-    auto *dev_manager = wxGetApp().getDeviceManager();
-    auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-    refresh_moonraker_status_from_selected_machine();
     auto dashboard_state = DeviceDashboard::DashboardStateAdapter::from_machine(obj);
     dashboard_state.filament = m_dashboard_state_store.state().filament;
-    dashboard_state.filament.selected_tool = std::clamp(m_selected_filament_tool, 0, 3);
-    dashboard_state.filament.can_load_unload = obj != nullptr && obj->is_online() && !obj->is_in_printing();
-    dashboard_state.movement.selected_tool = m_selected_extruder_index;
+    dashboard_state.filament.selected_tool    = std::clamp(m_selected_filament_tool, 0, 3);
+    dashboard_state.filament.can_load_unload  = obj != nullptr && obj->is_online() && !obj->is_in_printing();
+    dashboard_state.movement.selected_tool    = m_selected_extruder_index;
     dashboard_state.movement.selected_distance_mm = m_axis_move_step;
 
     // Moonraker WebSocket verileri MachineObject içinde değil, PrinterWebView'ın
-    // kendi m_moonraker_* değişkenlerinde tutuluyor. Eğer Moonraker bağlıysa
-    // DashboardStateAdapter'ın ürettiği değerlerin üzerine yaz.
+    // kendi m_moonraker_* alanlarında tutuluyor — DashboardStateAdapter çıktısının üzerine yaz.
     if (m_has_moonraker_status) {
         dashboard_state.bed.temperature.available = true;
         dashboard_state.bed.temperature.current   = m_moonraker_bed_current;
@@ -4927,114 +4519,112 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     }
 
     m_dashboard_state_store.set_state(dashboard_state);
+    const auto &state = m_dashboard_state_store.state();
     if (m_dashboard_print_status_panel != nullptr)
-        m_dashboard_print_status_panel->apply_state(m_dashboard_state_store.state().print_job);
+        m_dashboard_print_status_panel->apply_state(state.print_job);
     if (m_dashboard_movement_panel != nullptr)
-        m_dashboard_movement_panel->apply_state(m_dashboard_state_store.state().movement);
+        m_dashboard_movement_panel->apply_state(state.movement);
     if (m_dashboard_printer_status_panel != nullptr)
-        m_dashboard_printer_status_panel->apply_state(m_dashboard_state_store.state().tools, m_dashboard_state_store.state().bed);
+        m_dashboard_printer_status_panel->apply_state(state.tools, state.bed);
     if (m_dashboard_filament_panel != nullptr)
-        m_dashboard_filament_panel->apply_state(m_dashboard_state_store.state().filament);
-    auto set_label_if_changed = [](wxStaticText *label, const wxString &text) -> bool {
-        if (label == nullptr || label->GetLabelText() == text)
-            return false;
-        label->SetLabelText(text);
-        return true;
-    };
+        m_dashboard_filament_panel->apply_state(state.filament);
+}
 
-    update_preview_thumbnail(obj);
-    refresh_filament_preview_from_selected_machine();
+void PrinterWebView::refresh_connected_printer_header(MachineObject *obj)
+{
+    if (m_connected_printer_panel == nullptr ||
+        m_connected_printer_status_label == nullptr ||
+        m_connected_printer_logout_label == nullptr)
+        return;
 
-    if (m_connected_printer_panel != nullptr && m_connected_printer_status_label != nullptr && m_connected_printer_logout_label != nullptr) {
-        const bool has_connected_printer = m_has_active_printer_connection && obj != nullptr && obj->is_online();
-        bool connected_header_changed = false;
-        wxFont st_font = m_connected_printer_status_label->GetFont();
-        if (has_connected_printer) {
-            connected_header_changed |= set_label_if_changed(m_connected_printer_status_label, from_u8(obj->get_dev_name()));
-            m_connected_printer_status_label->SetForegroundColour(wxColour(235, 235, 235));
-            st_font.SetWeight(wxFONTWEIGHT_BOLD);
-        } else {
-            connected_header_changed |= set_label_if_changed(m_connected_printer_status_label, wxString::FromUTF8("Ba\xC4\x9Fl\xC4\xB1 yaz\xC4\xB1""c\xC4\xB1 yok"));
-            m_connected_printer_status_label->SetForegroundColour(wxColour(150, 156, 166));
-            st_font.SetWeight(wxFONTWEIGHT_NORMAL);
-        }
-        m_connected_printer_status_label->SetFont(st_font);
-        connected_header_changed |= m_connected_printer_logout_label->IsShown() != has_connected_printer;
-        m_connected_printer_logout_label->Show(has_connected_printer);
-        if (connected_header_changed && m_connected_printer_panel->GetParent() != nullptr) {
-            m_connected_printer_panel->GetParent()->Layout();
-            m_connected_printer_panel->GetParent()->Refresh();
-        }
+    const bool has_connected = m_has_active_printer_connection && obj != nullptr && obj->is_online();
+    bool changed = false;
+    wxFont font = m_connected_printer_status_label->GetFont();
+    if (has_connected) {
+        changed |= set_text_if_changed(m_connected_printer_status_label, from_u8(obj->get_dev_name()));
+        m_connected_printer_status_label->SetForegroundColour(wxColour(235, 235, 235));
+        font.SetWeight(wxFONTWEIGHT_BOLD);
+    } else {
+        changed |= set_text_if_changed(m_connected_printer_status_label,
+            wxString::FromUTF8("Ba\xC4\x9Fl\xC4\xB1 yaz\xC4\xB1""c\xC4\xB1 yok"));
+        m_connected_printer_status_label->SetForegroundColour(wxColour(150, 156, 166));
+        font.SetWeight(wxFONTWEIGHT_NORMAL);
     }
-
-    if (m_bed_temp_value != nullptr) {
-        wxString bed_text = "__ / __";
-        if (m_has_moonraker_status)
-            bed_text = wxString::Format("%.1f / %.1f", m_moonraker_bed_current, m_moonraker_bed_target);
-        else if (obj != nullptr && obj->GetBed() != nullptr)
-            bed_text = wxString::Format("%.1f / %.1f", obj->GetBed()->GetBedTemp(), obj->GetBed()->GetBedTempTarget());
-        set_label_if_changed(m_bed_temp_value, bed_text);
+    m_connected_printer_status_label->SetFont(font);
+    changed |= m_connected_printer_logout_label->IsShown() != has_connected;
+    m_connected_printer_logout_label->Show(has_connected);
+    if (changed && m_connected_printer_panel->GetParent() != nullptr) {
+        m_connected_printer_panel->GetParent()->Layout();
+        m_connected_printer_panel->GetParent()->Refresh();
     }
+}
 
-    if (m_extruder_temp_value != nullptr) {
-        wxString nozzle_text = "__ / __";
-        if (m_has_moonraker_status)
-            nozzle_text = wxString::Format("%.1f / %.1f",
-                m_moonraker_nozzle_current[m_selected_extruder_index],
-                m_moonraker_nozzle_target[m_selected_extruder_index]);
-        else if (obj != nullptr && obj->GetExtderSystem() != nullptr)
-            nozzle_text = wxString::Format(
-                "%.1f / %.1f",
-                static_cast<double>(obj->GetExtderSystem()->GetNozzleTempCurrent(m_selected_extruder_index)),
-                static_cast<double>(obj->GetExtderSystem()->GetNozzleTempTarget(m_selected_extruder_index)));
-        set_label_if_changed(m_extruder_temp_value, nozzle_text);
-    }
+void PrinterWebView::refresh_printer_info_labels(MachineObject *obj)
+{
+    set_text_if_changed(m_printer_name_value,
+        obj != nullptr ? from_u8(obj->get_dev_name()) : "N/A");
+    set_text_if_changed(m_printer_model_value,
+        obj != nullptr ? obj->get_printer_type_display_str() : "N/A");
 
-    if (m_fan_value_label != nullptr && m_has_moonraker_status) {
-        m_selected_fan_value = wxString::Format("%d", m_moonraker_fan_percent);
-        set_label_if_changed(m_fan_value_label, m_selected_fan_value);
-    } else if (m_fan_value_label != nullptr && obj != nullptr && obj->GetFan() != nullptr) {
-        m_selected_fan_value = wxString::Format("%d", (int)std::round(obj->GetFan()->GetCoolingFanSpeed() / 25.5f));
-        set_label_if_changed(m_fan_value_label, m_selected_fan_value);
-    }
-
-    if (m_printer_name_value != nullptr)
-        set_label_if_changed(m_printer_name_value, obj != nullptr ? from_u8(obj->get_dev_name()) : "N/A");
-    if (m_printer_model_value != nullptr)
-        set_label_if_changed(m_printer_model_value, obj != nullptr ? obj->get_printer_type_display_str() : "N/A");
     if (m_printer_serial_value != nullptr) {
         wxString serial = obj != nullptr ? from_u8(obj->get_dev_id()) : "N/A";
-        set_label_if_changed(m_printer_serial_value, serial.MakeUpper());
+        set_text_if_changed(m_printer_serial_value, serial.MakeUpper());
     }
+
     if (m_printer_firmware_value != nullptr) {
         wxString version = "N/A";
         if (obj != nullptr) {
             auto ota_it = obj->module_vers.find("ota");
-            version = ota_it != obj->module_vers.end() ? ota_it->second.sw_ver : from_u8(obj->get_ota_version());
+            version = ota_it != obj->module_vers.end()
+                ? ota_it->second.sw_ver
+                : from_u8(obj->get_ota_version());
             if (version.empty())
                 version = "N/A";
         }
-        set_label_if_changed(m_printer_firmware_value, version);
+        set_text_if_changed(m_printer_firmware_value, version);
     }
+
     if (m_printer_photo_bitmap != nullptr && obj != nullptr) {
         const wxBitmap bmp = create_scaled_bitmap(obj->get_printer_thumbnail_img_str(), this, 82);
         if (bmp.IsOk())
             m_printer_photo_bitmap->SetBitmap(bmp);
     }
+}
 
-    const std::string camera_machine_id = obj != nullptr ? obj->get_dev_id() : "";
-    if (m_camera_webview != nullptr) {
-        const std::vector<wxString> camera_urls = configured_camera_stream_urls(obj);
-        const wxString next_camera_url = camera_urls.empty() ? wxString() : camera_urls.front();
-        const bool machine_changed = camera_machine_id != m_camera_machine_id;
-        const bool stream_changed = next_camera_url != m_camera_stream_url;
-        m_camera_machine_id = camera_machine_id;
-        m_camera_stream_url = next_camera_url;
+void PrinterWebView::refresh_camera_stream(MachineObject *obj)
+{
+    const std::string next_machine_id = obj != nullptr ? obj->get_dev_id() : "";
+    const std::vector<wxString> camera_urls = configured_camera_stream_urls(obj);
+    const wxString next_url = camera_urls.empty() ? wxString() : camera_urls.front();
 
-        if (machine_changed || stream_changed)
-            m_camera_webview->SetPage(camera_stream_page(camera_urls), m_camera_stream_url.BeforeLast('/'));
+    const bool machine_changed = next_machine_id != m_camera_machine_id;
+    const bool stream_changed  = next_url != m_camera_stream_url;
+    m_camera_machine_id = next_machine_id;
+    m_camera_stream_url = next_url;
+
+    if (m_camera_webview != nullptr && (machine_changed || stream_changed))
+        m_camera_webview->SetPage(camera_stream_page(camera_urls), m_camera_stream_url.BeforeLast('/'));
+
+    if (m_dashboard_camera_panel != nullptr) {
+        DeviceDashboard::CameraState camera_state;
+        camera_state.available   = obj != nullptr && obj->is_online() && !next_url.IsEmpty();
+        camera_state.stream_url  = next_url;
+        m_dashboard_camera_panel->apply_state(camera_state);
     }
+}
 
+void PrinterWebView::refresh_layer_info_from_selected_machine()
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+
+    refresh_moonraker_status_from_selected_machine();
+    refresh_dashboard_panels(obj);
+    update_preview_thumbnail(obj);
+    refresh_filament_preview_from_selected_machine();
+    refresh_connected_printer_header(obj);
+    refresh_printer_info_labels(obj);
+    refresh_camera_stream(obj);
     refresh_update_page_from_selected_machine();
 }
 

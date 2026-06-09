@@ -1,7 +1,6 @@
 #ifndef slic3r_GUI_PrinterWebView_hpp_
 #define slic3r_GUI_PrinterWebView_hpp_
 
-#include <map>
 #include <array>
 #include <vector>
 #include <string>
@@ -29,6 +28,7 @@ class MachineObject;
 namespace GUI {
 
 namespace DeviceDashboard {
+class CameraPanel;
 class MovementPanel;
 class PrintStatusPanel;
 class PrinterStatusPanel;
@@ -55,21 +55,13 @@ public:
     void update_mode();
     void toggle_printers_popup();
     void dismiss_printers_popup();
-    void toggle_extruder_popup();
-    void dismiss_extruder_popup();
-    void toggle_fan_popup();
-    void dismiss_fan_popup();
-    void prompt_fan_value();
     void prompt_ip_connect();
-    void refresh_fan_value_display();
     void reset_placeholder_selections();
     void rebuild_printers_popup();
     void rebuild_sidebar_printer_list();
     void show_sidebar_root_view();
     void show_sidebar_printers_view();
     void show_sidebar_add_printer_view();
-    void rebuild_extruder_popup();
-    void rebuild_fan_popup();
     void select_tab(PrinterWebViewTab tab);
     void update_sidebar_selection();
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
@@ -113,6 +105,10 @@ private:
     void save_filament_selection_to_moonraker(int ui_tool, const wxString &material, const wxString &color_hex);
     void clear_filament_selection_from_moonraker(int ui_tool);
     void refresh_moonraker_status_from_selected_machine();
+    void refresh_dashboard_panels(MachineObject *obj);
+    void refresh_connected_printer_header(MachineObject *obj);
+    void refresh_printer_info_labels(MachineObject *obj);
+    void refresh_camera_stream(MachineObject *obj);
     void apply_printer_status_tool_selection(int tool_index);
     void prompt_ps_target_temperature(bool is_bed, int extruder_index);
     void show_toolhead_temperature_dialog(int active_extruder_index);
@@ -136,22 +132,10 @@ private:
     bool m_apikey_sent{ false };
     wxPanel *m_assistant_page{ nullptr };
     wxWebView *m_browser{ nullptr };
-    wxStaticText *m_extruder_display_label{ nullptr };
-    wxPopupTransientWindow *m_extruder_popup{ nullptr };
-    wxWindow *m_extruder_popup_button{ nullptr };
-    wxPanel *m_extruder_popup_panel{ nullptr };
-    wxStaticText *m_fan_display_label{ nullptr };
-    wxPopupTransientWindow *m_fan_popup{ nullptr };
-    wxWindow *m_fan_popup_button{ nullptr };
-    wxPanel *m_fan_popup_panel{ nullptr };
-    wxStaticText *m_fan_value_label{ nullptr };
-    wxStaticText *m_bed_temp_value{ nullptr };
-    wxStaticText *m_extruder_temp_value{ nullptr };
     wxPanel *m_connected_printer_panel{ nullptr };
     wxStaticText *m_connected_printer_status_label{ nullptr };
     wxStaticText *m_connected_printer_logout_label{ nullptr };
     bool m_has_active_printer_connection{ false };
-    std::map<wxString, wxString> m_fan_values;
     wxTimer *m_layer_refresh_timer{ nullptr };
     wxWindow *m_preview_printers_button{ nullptr };
     wxPanel *m_sidebar_header_panel{ nullptr };
@@ -187,10 +171,7 @@ private:
     wxString m_preview_thumbnail_url;
     wxPopupTransientWindow *m_printers_popup{ nullptr };
     wxPanel *m_printers_popup_panel{ nullptr };
-    wxString m_selected_extruder{ "T1" };
     int m_selected_extruder_index{ 0 };
-    wxString m_selected_fan{ "T1" };
-    wxString m_selected_fan_value{ "__" };
     PrinterWebViewTab m_selected_tab{ PrinterWebViewTab::Status };
     std::vector<SidebarItem> m_sidebar_items;
     wxPanel *m_storage_placeholder{ nullptr };
@@ -228,6 +209,7 @@ private:
     wxStaticText *m_update_status_value{ nullptr };
     wxStaticText *m_update_version_value{ nullptr };
     DeviceDashboard::DeviceStateStore m_dashboard_state_store;
+    DeviceDashboard::CameraPanel*            m_dashboard_camera_panel{nullptr};
     DeviceDashboard::MovementPanel*          m_dashboard_movement_panel{nullptr};
     DeviceDashboard::PrintStatusPanel*        m_dashboard_print_status_panel{nullptr};
     DeviceDashboard::PrinterStatusPanel*      m_dashboard_printer_status_panel{nullptr};

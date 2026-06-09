@@ -415,8 +415,11 @@ namespace Slic3r
     {
         if (AppConfig* config = GUI::wxGetApp().app_config) {
             const std::string host = normalize_lan_host(!machine.dev_ip.empty() ? machine.dev_ip : machine.dev_id);
-            if (!host.empty())
-                config->erase("forgotten_lan_machines", host);
+            if (!host.empty() && config->has("forgotten_lan_machines", host)) {
+                BOOST_LOG_TRIVIAL(info) << __FUNCTION__
+                    << " refused to re-insert forgotten machine: " << host;
+                return nullptr;
+            }
         }
 
         MachineObject* obj;

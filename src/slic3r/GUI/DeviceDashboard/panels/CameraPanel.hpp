@@ -7,6 +7,7 @@
 
 #include <wx/panel.h>
 
+class wxStaticBitmap;
 class wxStaticText;
 
 namespace Slic3r {
@@ -25,10 +26,13 @@ public:
     void apply_state(const CameraState& state);
     void set_refresh_handler(RefreshHandler handler);
 
+    wxPanel* webview_host() const { return m_viewport; }
+
 private:
     DeviceCardFrame* m_frame{nullptr};
     wxPanel* m_viewport{nullptr};
     wxStaticText* m_empty_state{nullptr};
+    wxStaticBitmap* m_refresh_btn{nullptr};
     RefreshHandler m_refresh_handler;
 };
 
