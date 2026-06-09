@@ -3874,35 +3874,9 @@ void PrinterWebView::apply_filament_preview_rows(const std::array<wxColour, 4> &
 {
     update_dashboard_filament_state(model_colors, materials, weights, assigned_tools, assigned_colors);
 
-    bool layout_changed = false;
-    auto set_label_if_changed = [&layout_changed](wxStaticText *label, const wxString &text) {
-        if (label == nullptr || label->GetLabelText() == text)
-            return;
-        label->SetLabelText(text);
-        layout_changed = true;
-    };
-
     for (int i = 0; i < 4; ++i) {
         const int ui_tool = assigned_tools[i] >= 1 && assigned_tools[i] <= 4 ? assigned_tools[i] : i + 1;
         m_filament_assigned_tool_mapping[i] = ui_tool;
-        if (auto *p = dynamic_cast<LeftRoundedColourPanel *>(m_filament_model_color_panels[i])) {
-            p->SetFillColour(model_colors[i]);
-        }
-        set_label_if_changed(m_filament_material_labels[i], materials[i].empty() ? wxString("PLA") : materials[i]);
-        set_label_if_changed(m_filament_weight_labels[i], weights[i].empty() ? wxString("--") : weights[i]);
-
-        if (auto *p = dynamic_cast<LeftRoundedColourPanel *>(m_filament_assigned_color_panels[i])) {
-            p->SetFillColour(assigned_colors[i]);
-        }
-        set_label_if_changed(m_filament_assigned_tool_labels[i], wxString::Format("T%d", ui_tool));
-    }
-
-    if (layout_changed && m_status_page != nullptr) {
-        m_status_page->Layout();
-        m_status_page->Refresh();
-    } else if (layout_changed) {
-        Layout();
-        Refresh();
     }
 
     // Keep the closed Manage Filament selector in sync with the loaded tool colors.
@@ -3957,19 +3931,12 @@ void PrinterWebView::set_filament_assigned_tool(int model_slot_index, int ui_too
 
     m_filament_assigned_tool_mapping[model_slot_index] = ui_tool;
 
-    if (auto *p = dynamic_cast<LeftRoundedColourPanel *>(m_filament_assigned_color_panels[model_slot_index]))
-        p->SetFillColour(m_filament_loaded_tool_colors[ui_tool - 1]);
-    bool layout_changed = false;
-    if (m_filament_assigned_tool_labels[model_slot_index] != nullptr &&
-        m_filament_assigned_tool_labels[model_slot_index]->GetLabelText() != wxString::Format("T%d", ui_tool)) {
-        m_filament_assigned_tool_labels[model_slot_index]->SetLabelText(wxString::Format("T%d", ui_tool));
-        layout_changed = true;
-    }
-
-    if (layout_changed && m_status_page != nullptr) {
-        m_status_page->Layout();
-        m_status_page->Refresh();
-    }
+    m_dashboard_state_store.update([&](DeviceDashboard::DeviceDashboardState &state) {
+        state.filament.model_slot_to_tool[model_slot_index] = ui_tool - 1;
+        state.filament.assigned_colors[model_slot_index] = m_filament_loaded_tool_colors[ui_tool - 1];
+    });
+    if (m_dashboard_filament_panel != nullptr)
+        m_dashboard_filament_panel->apply_state(m_dashboard_state_store.state().filament);
 
     if (send_mapping_command)
         send_tool_map_command(model_slot_index, ui_tool);
@@ -4777,18 +4744,11 @@ void PrinterWebView::apply_filament_tool_selection(int tool_index)
         tool_index = 0;
     m_selected_filament_tool = tool_index;
 
-    const wxColour c = m_filament_loaded_tool_colors[tool_index];
-
-    if (m_filament_tool_color_dot != nullptr && m_filament_tool_color_dot->GetBackgroundColour() != c) {
-        m_filament_tool_color_dot->SetBackgroundColorNormal(c);
-        m_filament_tool_color_dot->SetBackgroundColour(c);
-        m_filament_tool_color_dot->Refresh();
-    }
-    if (m_filament_tool_name_lbl != nullptr) {
-        const wxString label = wxString::Format("Tool %d", tool_index + 1);
-        if (m_filament_tool_name_lbl->GetLabelText() != label)
-            m_filament_tool_name_lbl->SetLabelText(label);
-    }
+    m_dashboard_state_store.update([&](DeviceDashboard::DeviceDashboardState &state) {
+        state.filament.selected_tool = tool_index;
+    });
+    if (m_dashboard_filament_panel != nullptr)
+        m_dashboard_filament_panel->apply_state(m_dashboard_state_store.state().filament);
 }
 
 void PrinterWebView::apply_printer_status_tool_selection(int tool_index)
@@ -5654,16 +5614,6 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
         label->SetLabelText(text);
         return true;
     };
-
-    if (m_filament_load_btn != nullptr && m_filament_unload_btn != nullptr) {
-        const bool allow_filament_ops = obj != nullptr && obj->is_online() && !obj->is_in_printing();
-        m_filament_load_btn->Enable(allow_filament_ops);
-        m_filament_unload_btn->Enable(allow_filament_ops);
-        if (m_filament_tool_selector != nullptr)
-            m_filament_tool_selector->Enable(allow_filament_ops);
-        if (m_manage_filament_title != nullptr)
-            m_manage_filament_title->Enable(allow_filament_ops);
-    }
 
     update_preview_thumbnail(obj);
     refresh_filament_preview_from_selected_machine();
