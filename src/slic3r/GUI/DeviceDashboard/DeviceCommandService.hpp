@@ -15,6 +15,7 @@ enum class Axis {
 
 enum class DeviceCommandKind {
     SelectTool,
+    SelectFilamentTool,
     MoveAxis,
     Home,
     SetMotionDistance,

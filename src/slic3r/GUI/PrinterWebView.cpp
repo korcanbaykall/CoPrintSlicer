@@ -19,6 +19,7 @@
 #include "slic3r/GUI/DeviceDashboard/panels/MovementPanel.hpp"
 #include "slic3r/GUI/DeviceDashboard/panels/PrintStatusPanel.hpp"
 #include "slic3r/GUI/DeviceDashboard/panels/PrinterStatusPanel.hpp"
+#include "slic3r/GUI/DeviceDashboard/panels/FilamentPanel.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/Utils/NetworkAgentFactory.hpp"
 #include "slic3r/Utils/NetworkAgent.hpp"
@@ -1544,12 +1545,18 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_dashboard_printer_status_panel->set_bed_temp_handler([this]() {
         prompt_ps_target_temperature(true, 0);
     });
+    m_dashboard_filament_panel = new DeviceDashboard::FilamentPanel(left_container);
+    m_dashboard_filament_panel->set_command_handler([this](const DeviceDashboard::DeviceCommand& command) {
+        handle_dashboard_command(command);
+    });
+    upper_placeholder_box->Hide();
+
     auto *right_main_column = new wxBoxSizer(wxVERTICAL);
     right_main_column->Add(m_dashboard_movement_panel, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
     right_main_column->AddSpacer(FromDIP(3));
     right_main_column->Add(m_dashboard_printer_status_panel, 0, wxEXPAND);
     right_main_column->AddSpacer(FromDIP(3));
-    right_main_column->Add(upper_placeholder_box, 0, wxEXPAND);
+    right_main_column->Add(m_dashboard_filament_panel, 0, wxEXPAND);
 
     content_columns->Add(left_main_column, 46, wxEXPAND);
     content_columns->AddSpacer(FromDIP(20));
@@ -3936,6 +3943,9 @@ void PrinterWebView::update_dashboard_filament_state(const std::array<wxColour, 
         state.filament.selected_tool = std::clamp(m_selected_filament_tool, 0, 3);
         state.filament.can_load_unload = can_load_unload;
     });
+
+    if (m_dashboard_filament_panel != nullptr)
+        m_dashboard_filament_panel->apply_state(m_dashboard_state_store.state().filament);
 }
 
 void PrinterWebView::set_filament_assigned_tool(int model_slot_index, int ui_tool, bool send_mapping_command)
@@ -5520,6 +5530,23 @@ void PrinterWebView::handle_dashboard_command(const DeviceDashboard::DeviceComma
     case DeviceDashboard::DeviceCommandKind::SelectTool:
         apply_printer_status_tool_selection(command.tool_index);
         break;
+    case DeviceDashboard::DeviceCommandKind::SelectFilamentTool:
+        apply_filament_tool_selection(command.tool_index);
+        break;
+    case DeviceDashboard::DeviceCommandKind::AssignModelSlotToTool:
+        set_filament_assigned_tool(command.model_slot, command.tool_index + 1, true);
+        break;
+    case DeviceDashboard::DeviceCommandKind::LoadFilament:
+        apply_filament_tool_selection(command.tool_index);
+        prompt_and_save_filament_selection_then_load();
+        break;
+    case DeviceDashboard::DeviceCommandKind::UnloadFilament:
+        apply_filament_tool_selection(command.tool_index);
+        if (obj == nullptr || !obj->is_online() || obj->is_in_printing())
+            return;
+        obj->command_ams_change_filament(false, "0", std::to_string(m_selected_filament_tool));
+        clear_filament_selection_from_moonraker(m_selected_filament_tool + 1);
+        break;
     case DeviceDashboard::DeviceCommandKind::SetMotionDistance:
         m_axis_move_step = command.value > 0.0 ? command.value : 1.0;
         break;
@@ -5590,6 +5617,9 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
     auto *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
     refresh_moonraker_status_from_selected_machine();
     auto dashboard_state = DeviceDashboard::DashboardStateAdapter::from_machine(obj);
+    dashboard_state.filament = m_dashboard_state_store.state().filament;
+    dashboard_state.filament.selected_tool = std::clamp(m_selected_filament_tool, 0, 3);
+    dashboard_state.filament.can_load_unload = obj != nullptr && obj->is_online() && !obj->is_in_printing();
     dashboard_state.movement.selected_tool = m_selected_extruder_index;
     dashboard_state.movement.selected_distance_mm = m_axis_move_step;
 
@@ -5616,6 +5646,8 @@ void PrinterWebView::refresh_layer_info_from_selected_machine()
         m_dashboard_movement_panel->apply_state(m_dashboard_state_store.state().movement);
     if (m_dashboard_printer_status_panel != nullptr)
         m_dashboard_printer_status_panel->apply_state(m_dashboard_state_store.state().tools, m_dashboard_state_store.state().bed);
+    if (m_dashboard_filament_panel != nullptr)
+        m_dashboard_filament_panel->apply_state(m_dashboard_state_store.state().filament);
     auto set_label_if_changed = [](wxStaticText *label, const wxString &text) -> bool {
         if (label == nullptr || label->GetLabelText() == text)
             return false;

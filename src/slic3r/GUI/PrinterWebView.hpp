@@ -32,6 +32,7 @@ namespace DeviceDashboard {
 class MovementPanel;
 class PrintStatusPanel;
 class PrinterStatusPanel;
+class FilamentPanel;
 } // namespace DeviceDashboard
 
 class CloudTaskManagerPage;
@@ -255,6 +256,7 @@ private:
     DeviceDashboard::MovementPanel*          m_dashboard_movement_panel{nullptr};
     DeviceDashboard::PrintStatusPanel*        m_dashboard_print_status_panel{nullptr};
     DeviceDashboard::PrinterStatusPanel*      m_dashboard_printer_status_panel{nullptr};
+    DeviceDashboard::FilamentPanel*           m_dashboard_filament_panel{nullptr};
     double m_axis_move_step{ 1.0 };
     int m_zoomFactor{ 100 };
 };
