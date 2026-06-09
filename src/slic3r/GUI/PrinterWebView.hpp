@@ -63,8 +63,6 @@ public:
     void prompt_ip_connect();
     void refresh_fan_value_display();
     void reset_placeholder_selections();
-    void toggle_speed_popup();
-    void dismiss_speed_popup();
     void rebuild_printers_popup();
     void rebuild_sidebar_printer_list();
     void show_sidebar_root_view();
@@ -72,7 +70,6 @@ public:
     void show_sidebar_add_printer_view();
     void rebuild_extruder_popup();
     void rebuild_fan_popup();
-    void rebuild_speed_popup();
     void select_tab(PrinterWebViewTab tab);
     void update_sidebar_selection();
     wxPanel *create_placeholder_page(wxWindow *parent, const wxString &title, const wxString &description);
@@ -194,13 +191,8 @@ private:
     int m_selected_extruder_index{ 0 };
     wxString m_selected_fan{ "T1" };
     wxString m_selected_fan_value{ "__" };
-    wxString m_selected_speed{ "--" };
     PrinterWebViewTab m_selected_tab{ PrinterWebViewTab::Status };
     std::vector<SidebarItem> m_sidebar_items;
-    wxStaticText *m_speed_display_label{ nullptr };
-    wxPopupTransientWindow *m_speed_popup{ nullptr };
-    wxWindow *m_speed_popup_button{ nullptr };
-    wxPanel *m_speed_popup_panel{ nullptr };
     wxPanel *m_storage_placeholder{ nullptr };
     int m_selected_filament_tool{ 0 };
     std::array<int, 4> m_filament_assigned_tool_mapping{ 1, 2, 3, 4 };
