@@ -482,76 +482,6 @@ private:
     double   m_corner_radius;
 };
 
-class LeftRoundedColourPanel : public wxPanel
-{
-public:
-    LeftRoundedColourPanel(wxWindow *parent, const wxColour &fill, int radius, const wxColour &background)
-        : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE)
-        , m_fill(fill)
-        , m_background(background)
-        , m_radius(radius)
-    {
-        SetBackgroundStyle(wxBG_STYLE_PAINT);
-        SetBackgroundColour(m_background);
-        SetDoubleBuffered(true);
-        Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent &) {});
-        Bind(wxEVT_PAINT, &LeftRoundedColourPanel::on_paint, this);
-    }
-
-    void SetFillColour(const wxColour &fill)
-    {
-        if (m_fill == fill)
-            return;
-        m_fill = fill;
-        Refresh();
-    }
-
-private:
-    void on_paint(wxPaintEvent &)
-    {
-        wxPaintDC dc(this);
-        const wxRect rect = GetClientRect();
-        if (rect.width <= 0 || rect.height <= 0)
-            return;
-
-        dc.SetBackground(wxBrush(GetBackgroundColour()));
-        dc.Clear();
-
-        const double x = rect.x;
-        const double y = rect.y;
-        const double w = rect.width;
-        const double h = rect.height;
-        const double r = std::min<double>(m_radius, std::min(w * 0.5, h * 0.5));
-
-        std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
-        if (gc) {
-            gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
-            gc->SetBrush(wxBrush(m_fill));
-            gc->SetPen(*wxTRANSPARENT_PEN);
-            wxGraphicsPath path = gc->CreatePath();
-            path.MoveToPoint(x + w, y);
-            path.AddLineToPoint(x + r, y);
-            path.AddQuadCurveToPoint(x, y, x, y + r);
-            path.AddLineToPoint(x, y + h - r);
-            path.AddQuadCurveToPoint(x, y + h, x + r, y + h);
-            path.AddLineToPoint(x + w, y + h);
-            path.CloseSubpath();
-            gc->DrawPath(path);
-            return;
-        }
-
-        const int ri = std::max(1, static_cast<int>(r + 0.5));
-        dc.SetBrush(wxBrush(m_fill));
-        dc.SetPen(wxPen(m_fill, 1));
-        dc.DrawRoundedRectangle(rect.x, rect.y, rect.width, rect.height, ri);
-        dc.DrawRectangle(rect.x + ri, rect.y, rect.width - ri, rect.height);
-    }
-
-    wxColour m_fill;
-    wxColour m_background;
-    int      m_radius;
-};
-
 wxString layer_value_text(int layer)
 {
     return layer < 0 ? wxString("N/A") : wxString::Format("%d", layer);
@@ -897,11 +827,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_speed_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
     rebuild_speed_popup();
 
-    m_filament_tool_popup = new wxPopupTransientWindow(this, wxBORDER_NONE);
-    m_filament_tool_popup_panel = new wxPanel(m_filament_tool_popup, wxID_ANY);
-    m_filament_tool_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
-    rebuild_filament_tool_popup();
-
     auto *content_host = new wxPanel(this, wxID_ANY);
     content_host->SetBackgroundColour(wxColour(28, 30, 34));
     auto *content_host_sizer = new wxBoxSizer(wxVERTICAL);
@@ -982,355 +907,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     });
     CallAfter(update_camera_host_responsive_size);
     top_row->Add(preview_box, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
-
-    auto make_upper_placeholder_box = [this, left_container]() {
-        auto *box = new StaticBox(left_container, wxID_ANY);
-        box->SetMinSize(wxSize(FromDIP(620), FromDIP(340)));
-        box->SetCornerRadius(FromDIP(12));
-        box->SetBorderWidth(1);
-        box->SetBorderColorNormal(wxColour(55, 58, 64));
-        box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-        box->SetBackgroundColour(wxColour(28, 30, 34));
-        return box;
-    };
-
-    auto *upper_placeholder_box = make_upper_placeholder_box();
-
-    auto *upper_placeholder_sizer = new wxBoxSizer(wxVERTICAL);
-    auto *upper_header_row = new wxBoxSizer(wxHORIZONTAL);
-    const int left_shell_width = FromDIP(238);
-    const int right_shell_width = FromDIP(136);
-    const int tool_row_gap = FromDIP(16);
-    const int arrow_column_width = FromDIP(24);
-    const int color_strip_vertical_inset = FromDIP(1);
-    std::vector<StaticBox *> filament_model_shells;
-    std::vector<StaticBox *> filament_assigned_shells;
-    std::vector<LeftRoundedColourPanel *> filament_model_color_strips;
-    std::vector<LeftRoundedColourPanel *> filament_assigned_color_strips;
-
-    auto *model_colors_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Model Colors");
-    model_colors_label->SetForegroundColour(wxColour(151, 151, 151));
-    auto *model_colors_slot = new wxBoxSizer(wxHORIZONTAL);
-    model_colors_slot->Add(model_colors_label, 0, wxALIGN_CENTER_VERTICAL);
-
-    upper_header_row->AddStretchSpacer(1);
-    upper_header_row->Add(model_colors_slot, 0, wxALIGN_CENTER_VERTICAL | wxFIXED_MINSIZE);
-    upper_header_row->SetItemMinSize(model_colors_slot, left_shell_width, -1);
-    upper_header_row->AddSpacer(tool_row_gap);
-    upper_header_row->AddSpacer(arrow_column_width);
-    upper_header_row->AddSpacer(tool_row_gap);
-
-    auto *assigned_tools_label = new wxStaticText(upper_placeholder_box, wxID_ANY, "Assigned Tools");
-    assigned_tools_label->SetForegroundColour(wxColour(151, 151, 151));
-    auto *assigned_tools_slot = new wxBoxSizer(wxHORIZONTAL);
-    assigned_tools_slot->Add(assigned_tools_label, 0, wxALIGN_CENTER_VERTICAL);
-    upper_header_row->Add(assigned_tools_slot, 0, wxALIGN_CENTER_VERTICAL | wxFIXED_MINSIZE);
-    upper_header_row->SetItemMinSize(assigned_tools_slot, right_shell_width, -1);
-    upper_header_row->AddStretchSpacer(1);
-
-    upper_placeholder_sizer->Add(upper_header_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(20));
-    upper_placeholder_sizer->AddSpacer(FromDIP(10));
-
-    auto *upper_header_divider = new wxPanel(upper_placeholder_box, wxID_ANY);
-    upper_header_divider->SetMinSize(wxSize(-1, FromDIP(1)));
-    upper_header_divider->SetMaxSize(wxSize(-1, FromDIP(1)));
-    upper_header_divider->SetBackgroundColour(wxColour(44, 129, 255));
-    upper_placeholder_sizer->Add(upper_header_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(20));
-    upper_placeholder_sizer->AddSpacer(FromDIP(8));
-
-    const std::array<wxColour, 4> filament_colors = default_filament_preview_colors();
-
-    for (int i = 0; i < 4; ++i) {
-        auto *tool_row = new wxBoxSizer(wxHORIZONTAL);
-        tool_row->AddStretchSpacer(1);
-
-        auto *left_shell = new StaticBox(upper_placeholder_box, wxID_ANY);
-        left_shell->SetMinSize(wxSize(left_shell_width, FromDIP(44)));
-        left_shell->SetMaxSize(wxSize(left_shell_width, FromDIP(44)));
-        filament_model_shells.push_back(left_shell);
-        left_shell->SetCornerRadius(FromDIP(12));
-        left_shell->SetBorderWidth(0);
-        left_shell->SetBackgroundColorNormal(wxColour(43, 46, 52));
-        left_shell->SetBackgroundColour(wxColour(43, 46, 52));
-        auto *left_shell_sizer = new wxBoxSizer(wxHORIZONTAL);
-
-        auto *left_color = new LeftRoundedColourPanel(left_shell, filament_colors[i], FromDIP(10), wxColour(43, 46, 52));
-        left_color->SetMinSize(wxSize(FromDIP(83), FromDIP(44)));
-        left_color->SetMaxSize(wxSize(FromDIP(83), FromDIP(44)));
-        filament_model_color_strips.push_back(left_color);
-        m_filament_model_color_panels[i] = left_color;
-        left_shell_sizer->Add(left_color, 0, wxEXPAND | wxTOP | wxBOTTOM, color_strip_vertical_inset);
-        left_shell_sizer->AddSpacer(FromDIP(18));
-
-        auto *material_label = new wxStaticText(left_shell, wxID_ANY, "PLA");
-        material_label->SetForegroundColour(wxColour(235, 235, 235));
-        wxFont material_font = material_label->GetFont();
-        material_font.SetWeight(wxFONTWEIGHT_BOLD);
-        material_label->SetFont(material_font);
-        m_filament_material_labels[i] = material_label;
-        left_shell_sizer->Add(material_label, 0, wxALIGN_CENTER_VERTICAL);
-        left_shell_sizer->AddStretchSpacer(1);
-
-        auto *weight_label = new wxStaticText(left_shell, wxID_ANY, "14.3g");
-        weight_label->SetForegroundColour(wxColour(220, 220, 220));
-        m_filament_weight_labels[i] = weight_label;
-        left_shell_sizer->Add(weight_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(18));
-        left_shell->SetSizer(left_shell_sizer);
-        tool_row->Add(left_shell, 0, wxALIGN_CENTER_VERTICAL);
-
-        tool_row->AddSpacer(FromDIP(16));
-        auto *arrow_icon = new wxStaticBitmap(
-            upper_placeholder_box,
-            wxID_ANY,
-            create_scaled_bitmap("filament_forward", upper_placeholder_box, 24));
-        tool_row->Add(arrow_icon, 0, wxALIGN_CENTER_VERTICAL);
-        tool_row->AddSpacer(FromDIP(16));
-
-        auto *right_shell = new StaticBox(upper_placeholder_box, wxID_ANY);
-        right_shell->SetMinSize(wxSize(FromDIP(136), FromDIP(44)));
-        right_shell->SetMaxSize(wxSize(FromDIP(136), FromDIP(44)));
-        filament_assigned_shells.push_back(right_shell);
-        right_shell->SetCornerRadius(FromDIP(12));
-        right_shell->SetBorderWidth(0);
-        right_shell->SetBackgroundColorNormal(wxColour(43, 46, 52));
-        right_shell->SetBackgroundColour(wxColour(43, 46, 52));
-        right_shell->SetCursor(wxCursor(wxCURSOR_HAND));
-        auto *right_shell_sizer = new wxBoxSizer(wxHORIZONTAL);
-
-        auto *right_color = new LeftRoundedColourPanel(right_shell, filament_colors[i], FromDIP(10), wxColour(43, 46, 52));
-        right_color->SetMinSize(wxSize(FromDIP(39), FromDIP(44)));
-        right_color->SetMaxSize(wxSize(FromDIP(39), FromDIP(44)));
-        filament_assigned_color_strips.push_back(right_color);
-        right_color->SetCursor(wxCursor(wxCURSOR_HAND));
-        m_filament_assigned_color_panels[i] = right_color;
-        right_shell_sizer->Add(right_color, 0, wxEXPAND);
-        right_shell_sizer->AddSpacer(FromDIP(16));
-
-        auto *tool_label = new wxStaticText(right_shell, wxID_ANY, wxString::Format("T%d", i + 1));
-        tool_label->SetForegroundColour(wxColour(235, 235, 235));
-        wxFont tool_font = tool_label->GetFont();
-        tool_font.SetWeight(wxFONTWEIGHT_BOLD);
-        tool_label->SetFont(tool_font);
-        tool_label->SetCursor(wxCursor(wxCURSOR_HAND));
-        m_filament_assigned_tool_labels[i] = tool_label;
-        right_shell_sizer->Add(tool_label, 0, wxALIGN_CENTER_VERTICAL);
-        right_shell_sizer->AddStretchSpacer(1);
-
-        auto *refresh_label = new wxStaticBitmap(right_shell, wxID_ANY, create_scaled_bitmap("assigned_tools_update", right_shell, 14));
-        refresh_label->SetCursor(wxCursor(wxCURSOR_HAND));
-        right_shell_sizer->Add(refresh_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(14));
-        right_shell->SetSizer(right_shell_sizer);
-        const auto show_tool_menu = [this, i, right_shell](wxMouseEvent &) {
-            wxMenu menu;
-            for (int tool = 1; tool <= 4; ++tool)
-                menu.Append(1000 + tool, wxString::Format("T%d", tool));
-            menu.Bind(wxEVT_MENU, [this, i](wxCommandEvent &evt) {
-                const int selected_tool = evt.GetId() - 1000;
-                set_filament_assigned_tool(i, selected_tool, true);
-            });
-            right_shell->PopupMenu(&menu);
-        };
-        right_shell->Bind(wxEVT_LEFT_DOWN, show_tool_menu);
-        right_color->Bind(wxEVT_LEFT_DOWN, show_tool_menu);
-        tool_label->Bind(wxEVT_LEFT_DOWN, show_tool_menu);
-        refresh_label->Bind(wxEVT_LEFT_DOWN, show_tool_menu);
-        tool_row->Add(right_shell, 0, wxALIGN_CENTER_VERTICAL);
-        tool_row->AddStretchSpacer(1);
-
-        upper_placeholder_sizer->Add(tool_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(8));
-    }
-
-    upper_placeholder_sizer->AddStretchSpacer(1);
-
-    auto *filament_qt_sizer = new wxBoxSizer(wxHORIZONTAL);
-    filament_qt_sizer->Add(upper_placeholder_sizer, 550, wxEXPAND);
-
-    auto *mf_divider = new wxPanel(upper_placeholder_box, wxID_ANY);
-    mf_divider->SetMinSize(wxSize(FromDIP(1), -1));
-    mf_divider->SetMaxSize(wxSize(FromDIP(1), -1));
-    mf_divider->SetBackgroundColour(wxColour(55, 58, 64));
-    filament_qt_sizer->Add(mf_divider, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(12));
-
-    auto *mf_sizer = new wxBoxSizer(wxVERTICAL);
-
-    auto *mf_title = new wxStaticText(upper_placeholder_box, wxID_ANY, "Manage Filament");
-    mf_title->SetForegroundColour(wxColour(220, 220, 220));
-    {
-        wxFont f = mf_title->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        mf_title->SetFont(f);
-    }
-    mf_sizer->Add(mf_title, 0, wxLEFT | wxTOP, FromDIP(12));
-    m_manage_filament_title = mf_title;
-    mf_sizer->AddSpacer(FromDIP(6));
-
-    auto *mf_sep = new wxPanel(upper_placeholder_box, wxID_ANY);
-    mf_sep->SetMinSize(wxSize(-1, FromDIP(1)));
-    mf_sep->SetMaxSize(wxSize(-1, FromDIP(1)));
-    mf_sep->SetBackgroundColour(wxColour(55, 58, 64));
-    mf_sizer->Add(mf_sep, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
-    mf_sizer->AddSpacer(FromDIP(12));
-
-    // Tool selector
-    auto *tool_selector = new StaticBox(upper_placeholder_box, wxID_ANY);
-    tool_selector->SetMinSize(wxSize(-1, FromDIP(44)));
-    tool_selector->SetMaxSize(wxSize(-1, FromDIP(44)));
-    tool_selector->SetCornerRadius(FromDIP(8));
-    tool_selector->SetBorderWidth(1);
-    tool_selector->SetBorderColorNormal(wxColour(70, 73, 80));
-    tool_selector->SetBackgroundColorNormal(wxColour(43, 46, 52));
-    tool_selector->SetBackgroundColour(wxColour(43, 46, 52));
-    auto *tool_sel_sizer = new wxBoxSizer(wxHORIZONTAL);
-    auto *tool_color_dot = new StaticBox(tool_selector, wxID_ANY);
-    tool_color_dot->SetMinSize(wxSize(FromDIP(16), FromDIP(16)));
-    tool_color_dot->SetMaxSize(wxSize(FromDIP(16), FromDIP(16)));
-    tool_color_dot->SetCornerRadius(FromDIP(8));
-    tool_color_dot->SetBorderWidth(0);
-    tool_color_dot->SetBackgroundColorNormal(filament_colors[0]);
-    tool_color_dot->SetBackgroundColour(filament_colors[0]);
-    tool_color_dot->SetCursor(wxCursor(wxCURSOR_HAND));
-    tool_sel_sizer->Add(tool_color_dot, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(12));
-    tool_sel_sizer->AddSpacer(FromDIP(8));
-    auto *tool_name_lbl = new wxStaticText(tool_selector, wxID_ANY, "Tool 1");
-    tool_name_lbl->SetForegroundColour(wxColour(220, 220, 220));
-    tool_name_lbl->SetCursor(wxCursor(wxCURSOR_HAND));
-    {
-        wxFont f = tool_name_lbl->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        tool_name_lbl->SetFont(f);
-    }
-    tool_sel_sizer->Add(tool_name_lbl, 1, wxALIGN_CENTER_VERTICAL);
-    auto *dropdown_arrow = new wxStaticText(tool_selector, wxID_ANY, wxString::FromUTF8("\xE2\x8C\x84"));
-    dropdown_arrow->SetForegroundColour(wxColour(150, 155, 165));
-    dropdown_arrow->SetCursor(wxCursor(wxCURSOR_HAND));
-    tool_sel_sizer->Add(dropdown_arrow, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
-    tool_selector->SetSizer(tool_sel_sizer);
-    mf_sizer->Add(tool_selector, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
-    mf_sizer->AddSpacer(FromDIP(10));
-
-    m_filament_tool_color_dot = tool_color_dot;
-    m_filament_tool_name_lbl  = tool_name_lbl;
-    m_filament_tool_selector   = tool_selector;
-    m_filament_tool_popup_button = tool_selector;
-    m_selected_filament_tool  = 0;
-
-    const auto filament_tool_row_click = [this](wxMouseEvent &) { toggle_filament_tool_popup(); };
-    tool_selector->SetCursor(wxCursor(wxCURSOR_HAND));
-    tool_selector->Bind(wxEVT_LEFT_DOWN, filament_tool_row_click);
-    tool_color_dot->Bind(wxEVT_LEFT_DOWN, filament_tool_row_click);
-    tool_name_lbl->Bind(wxEVT_LEFT_DOWN, filament_tool_row_click);
-    dropdown_arrow->Bind(wxEVT_LEFT_DOWN, filament_tool_row_click);
-
-    // Load button
-    auto *load_btn = new Button(upper_placeholder_box, _L("Load"));
-    load_btn->SetMinSize(wxSize(-1, FromDIP(40)));
-    load_btn->SetCornerRadius(FromDIP(8));
-    load_btn->SetBorderWidth(0);
-    load_btn->SetBackgroundColorNormal(wxColour(65, 68, 75));
-    load_btn->SetTextColorNormal(wxColour(220, 220, 220));
-    load_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) { prompt_and_save_filament_selection_then_load(); });
-    mf_sizer->Add(load_btn, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
-    mf_sizer->AddSpacer(FromDIP(8));
-
-    // Unload button
-    auto *unload_btn = new Button(upper_placeholder_box, _L("Unload"));
-    unload_btn->SetMinSize(wxSize(-1, FromDIP(40)));
-    unload_btn->SetCornerRadius(FromDIP(8));
-    unload_btn->SetBorderWidth(0);
-    unload_btn->SetBackgroundColorNormal(wxColour(65, 68, 75));
-    unload_btn->SetTextColorNormal(wxColour(220, 220, 220));
-    unload_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
-        auto *dev_manager = wxGetApp().getDeviceManager();
-        MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
-        if (obj == nullptr || !obj->is_online() || obj->is_in_printing()) return;
-        const std::string slot = std::to_string(m_selected_filament_tool);
-        BOOST_LOG_TRIVIAL(info) << "PrinterWebView: unload filament slot=" << slot;
-        obj->command_ams_change_filament(false, "0", slot);
-        clear_filament_selection_from_moonraker(m_selected_filament_tool + 1);
-    });
-    mf_sizer->Add(unload_btn, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
-
-    m_filament_load_btn   = load_btn;
-    m_filament_unload_btn = unload_btn;
-
-    mf_sizer->AddStretchSpacer(1);
-    filament_qt_sizer->Add(mf_sizer, 224, wxEXPAND);
-    filament_qt_sizer->SetItemMinSize(mf_sizer, FromDIP(188), -1);
-    upper_placeholder_box->SetSizer(filament_qt_sizer);
-
-    auto update_filament_management_responsive_widths = [
-        this,
-        upper_placeholder_box,
-        upper_header_row,
-        model_colors_slot,
-        assigned_tools_slot,
-        filament_qt_sizer,
-        upper_placeholder_sizer,
-        mf_sizer,
-        filament_model_shells,
-        filament_assigned_shells,
-        filament_model_color_strips,
-        filament_assigned_color_strips
-    ]() {
-        if (upper_placeholder_box == nullptr)
-            return;
-
-        const int card_w = upper_placeholder_box->GetClientSize().GetWidth();
-        if (card_w <= 0)
-            return;
-
-        const int manage_w = std::clamp(static_cast<int>(card_w * 0.28), FromDIP(188), FromDIP(224));
-        const int table_w = std::max(FromDIP(360), card_w - manage_w - FromDIP(54));
-        const int fixed_between_cols = FromDIP(16 + 24 + 16);
-        const int right_w = std::clamp(static_cast<int>(table_w * 0.30), FromDIP(116), FromDIP(156));
-        const int left_w = std::clamp(table_w - fixed_between_cols - right_w, FromDIP(190), FromDIP(305));
-        const int left_color_w = std::clamp(static_cast<int>(left_w * 0.35), FromDIP(58), FromDIP(92));
-        const int right_color_w = std::clamp(static_cast<int>(right_w * 0.30), FromDIP(28), FromDIP(48));
-
-        upper_header_row->SetItemMinSize(model_colors_slot, left_w, -1);
-        upper_header_row->SetItemMinSize(assigned_tools_slot, right_w, -1);
-        filament_qt_sizer->SetItemMinSize(mf_sizer, manage_w, -1);
-        filament_qt_sizer->SetItemMinSize(upper_placeholder_sizer, left_w + fixed_between_cols + right_w + FromDIP(50), -1);
-
-        for (auto *shell : filament_model_shells) {
-            if (shell == nullptr)
-                continue;
-            shell->SetMinSize(wxSize(left_w, FromDIP(44)));
-            shell->SetMaxSize(wxSize(left_w, FromDIP(44)));
-        }
-        for (auto *strip : filament_model_color_strips) {
-            if (strip == nullptr)
-                continue;
-            strip->SetMinSize(wxSize(left_color_w, FromDIP(44)));
-            strip->SetMaxSize(wxSize(left_color_w, FromDIP(44)));
-        }
-        for (auto *shell : filament_assigned_shells) {
-            if (shell == nullptr)
-                continue;
-            shell->SetMinSize(wxSize(right_w, FromDIP(44)));
-            shell->SetMaxSize(wxSize(right_w, FromDIP(44)));
-        }
-        for (auto *strip : filament_assigned_color_strips) {
-            if (strip == nullptr)
-                continue;
-            strip->SetMinSize(wxSize(right_color_w, FromDIP(44)));
-            strip->SetMaxSize(wxSize(right_color_w, FromDIP(44)));
-        }
-
-        upper_placeholder_box->Layout();
-        upper_placeholder_box->Refresh();
-    };
-    upper_placeholder_box->Bind(wxEVT_SIZE, [update_filament_management_responsive_widths, last_w = -1](wxSizeEvent &event) mutable {
-        event.Skip();
-        const int w = event.GetSize().x;
-        if (w == last_w) return;
-        last_w = w;
-        auto *win = event.GetEventObject() ? dynamic_cast<wxWindow*>(event.GetEventObject()) : nullptr;
-        if (win) win->Freeze();
-        update_filament_management_responsive_widths();
-        if (win) win->Thaw();
-    });
-    CallAfter(update_filament_management_responsive_widths);
 
     auto *right_container = new StaticBox(left_container, wxID_ANY);
     right_container->SetCornerRadius(FromDIP(12));
@@ -1549,7 +1125,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_dashboard_filament_panel->set_command_handler([this](const DeviceDashboard::DeviceCommand& command) {
         handle_dashboard_command(command);
     });
-    upper_placeholder_box->Hide();
 
     auto *right_main_column = new wxBoxSizer(wxVERTICAL);
     right_main_column->Add(m_dashboard_movement_panel, 0, wxEXPAND | wxTOP | wxBOTTOM, FromDIP(5));
@@ -1624,7 +1199,6 @@ PrinterWebView::~PrinterWebView()
     dismiss_extruder_popup();
     dismiss_fan_popup();
     dismiss_speed_popup();
-    dismiss_filament_tool_popup();
     if (m_thumbnail_web_request.IsOk())
         m_thumbnail_web_request.Cancel();
     if (m_layer_refresh_timer != nullptr) {
@@ -1797,7 +1371,6 @@ void PrinterWebView::reset_placeholder_selections()
     dismiss_extruder_popup();
     dismiss_fan_popup();
     dismiss_speed_popup();
-    dismiss_filament_tool_popup();
     m_selected_filament_tool = 0;
     apply_filament_tool_selection(0);
 
@@ -3840,32 +3413,6 @@ void PrinterWebView::rebuild_speed_popup()
     m_speed_popup->Layout();
 }
 
-void PrinterWebView::toggle_filament_tool_popup()
-{
-    if (m_filament_tool_popup == nullptr || m_filament_tool_popup_button == nullptr)
-        return;
-    if (m_filament_tool_selector != nullptr && !m_filament_tool_selector->IsEnabled())
-        return;
-
-    rebuild_filament_tool_popup();
-
-    if (m_filament_tool_popup->IsShown()) {
-        m_filament_tool_popup->Dismiss();
-        return;
-    }
-
-    const wxPoint screen_pos =
-        m_filament_tool_popup_button->ClientToScreen(wxPoint(0, m_filament_tool_popup_button->GetSize().GetHeight() + FromDIP(6)));
-    m_filament_tool_popup->Position(screen_pos, wxSize(0, 0));
-    m_filament_tool_popup->Popup(m_filament_tool_popup_button);
-}
-
-void PrinterWebView::dismiss_filament_tool_popup()
-{
-    if (m_filament_tool_popup != nullptr && m_filament_tool_popup->IsShown())
-        m_filament_tool_popup->Dismiss();
-}
-
 void PrinterWebView::apply_filament_preview_rows(const std::array<wxColour, 4> &model_colors,
                                                  const std::array<wxString, 4> &materials,
                                                  const std::array<wxString, 4> &weights,
@@ -3879,9 +3426,7 @@ void PrinterWebView::apply_filament_preview_rows(const std::array<wxColour, 4> &
         m_filament_assigned_tool_mapping[i] = ui_tool;
     }
 
-    // Keep the closed Manage Filament selector in sync with the loaded tool colors.
-    // The popup rows are rebuilt from m_filament_loaded_tool_colors when opened, but
-    // the selected preview swatch needs an explicit refresh after Moonraker DB colors arrive.
+    // Keep the dashboard's selected tool state stable after Moonraker DB colors arrive.
     apply_filament_tool_selection(m_selected_filament_tool);
 }
 
@@ -4594,89 +4139,6 @@ void PrinterWebView::refresh_moonraker_status_from_selected_machine()
     }).detach();
 }
 
-void PrinterWebView::rebuild_filament_tool_popup()
-{
-    if (m_filament_tool_popup == nullptr || m_filament_tool_popup_panel == nullptr)
-        return;
-
-    if (auto *old_sizer = m_filament_tool_popup_panel->GetSizer()) {
-        m_filament_tool_popup_panel->SetSizer(nullptr, false);
-        delete old_sizer;
-    }
-    m_filament_tool_popup_panel->DestroyChildren();
-
-    m_filament_tool_popup_panel->SetBackgroundColour(wxColour(22, 24, 29));
-
-    const int popup_width = FromDIP(280);
-
-    auto *outer = new wxBoxSizer(wxVERTICAL);
-    auto *popup_box = new StaticBox(m_filament_tool_popup_panel, wxID_ANY);
-    popup_box->SetMinSize(wxSize(popup_width, -1));
-    popup_box->SetCornerRadius(FromDIP(12));
-    popup_box->SetBorderWidth(1);
-    popup_box->SetBorderColorNormal(wxColour(55, 58, 64));
-    popup_box->SetBackgroundColorNormal(wxColour(22, 24, 29));
-    popup_box->SetBackgroundColour(wxColour(22, 24, 29));
-
-    auto *box_sz = new wxBoxSizer(wxVERTICAL);
-
-    for (int i = 0; i < 4; ++i) {
-        auto *row = new wxPanel(popup_box, wxID_ANY);
-        row->SetBackgroundColour(wxColour(35, 38, 43));
-        row->SetMinSize(wxSize(-1, FromDIP(48)));
-        row->SetCursor(wxCursor(wxCURSOR_HAND));
-        auto *hs = new wxBoxSizer(wxHORIZONTAL);
-
-        auto *dot = new StaticBox(row, wxID_ANY);
-        dot->SetMinSize(wxSize(FromDIP(20), FromDIP(20)));
-        dot->SetMaxSize(wxSize(FromDIP(20), FromDIP(20)));
-        dot->SetCornerRadius(FromDIP(10));
-        dot->SetBorderWidth(0);
-        dot->SetBackgroundColorNormal(m_filament_loaded_tool_colors[i]);
-        dot->SetBackgroundColour(m_filament_loaded_tool_colors[i]);
-
-        auto *lbl = new wxStaticText(row, wxID_ANY, wxString::Format("Tool %d", i + 1));
-        lbl->SetForegroundColour(wxColour(220, 220, 220));
-        {
-            wxFont f = lbl->GetFont();
-            if (f.GetPointSize() > 1)
-                f.SetPointSize(f.GetPointSize() + 2);
-            f.SetWeight(wxFONTWEIGHT_BOLD);
-            lbl->SetFont(f);
-        }
-        lbl->SetCursor(wxCursor(wxCURSOR_HAND));
-
-        hs->Add(dot, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(16));
-        hs->Add(lbl, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(14));
-        hs->AddSpacer(FromDIP(16));
-        row->SetSizer(hs);
-
-        const auto on_pick = [this, i](wxMouseEvent &) {
-            apply_filament_tool_selection(i);
-            dismiss_filament_tool_popup();
-        };
-        row->Bind(wxEVT_LEFT_DOWN, on_pick);
-        lbl->Bind(wxEVT_LEFT_DOWN, on_pick);
-        dot->Bind(wxEVT_LEFT_DOWN, on_pick);
-
-        box_sz->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(i == 0 ? 14 : 8));
-    }
-
-    box_sz->AddSpacer(FromDIP(14));
-    popup_box->SetSizer(box_sz);
-
-    outer->Add(popup_box, 1, wxEXPAND | wxALL, FromDIP(8));
-    m_filament_tool_popup_panel->SetSizer(outer);
-    outer->Fit(m_filament_tool_popup_panel);
-    m_filament_tool_popup_panel->Layout();
-
-    const wxSize popup_size = m_filament_tool_popup_panel->GetBestSize();
-    m_filament_tool_popup_panel->SetSize(popup_size);
-    m_filament_tool_popup->SetClientSize(popup_size);
-    m_filament_tool_popup->SetSize(popup_size);
-    m_filament_tool_popup->Layout();
-}
-
 void PrinterWebView::ensure_camera_webview_created()
 {
     if (m_camera_webview_initialized || m_camera_webview_host == nullptr)
@@ -5177,7 +4639,6 @@ void PrinterWebView::ensure_storage_page_created()
 
 void PrinterWebView::select_tab(PrinterWebViewTab tab)
 {
-    dismiss_filament_tool_popup();
     m_selected_tab = tab;
 
     if (tab == PrinterWebViewTab::Storage)
