@@ -94,6 +94,10 @@ struct FilamentState {
     std::array<int, MaxDashboardTools> model_slot_to_tool{{0, 1, 2, 3}};
     std::array<wxColour, MaxDashboardTools> model_colors;
     std::array<wxString, MaxDashboardTools> model_materials;
+    std::array<wxString, MaxDashboardTools> model_weights;
+    std::array<wxColour, MaxDashboardTools> assigned_colors;
+    int selected_tool{0};
+    bool can_load_unload{false};
 };
 
 struct MovementState {

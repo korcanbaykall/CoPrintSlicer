@@ -3865,6 +3865,8 @@ void PrinterWebView::apply_filament_preview_rows(const std::array<wxColour, 4> &
                                                  const std::array<int, 4> &assigned_tools,
                                                  const std::array<wxColour, 4> &assigned_colors)
 {
+    update_dashboard_filament_state(model_colors, materials, weights, assigned_tools, assigned_colors);
+
     bool layout_changed = false;
     auto set_label_if_changed = [&layout_changed](wxStaticText *label, const wxString &text) {
         if (label == nullptr || label->GetLabelText() == text)
@@ -3900,6 +3902,40 @@ void PrinterWebView::apply_filament_preview_rows(const std::array<wxColour, 4> &
     // The popup rows are rebuilt from m_filament_loaded_tool_colors when opened, but
     // the selected preview swatch needs an explicit refresh after Moonraker DB colors arrive.
     apply_filament_tool_selection(m_selected_filament_tool);
+}
+
+void PrinterWebView::update_dashboard_filament_state(const std::array<wxColour, 4> &model_colors,
+                                                     const std::array<wxString, 4> &materials,
+                                                     const std::array<wxString, 4> &weights,
+                                                     const std::array<int, 4> &assigned_tools,
+                                                     const std::array<wxColour, 4> &assigned_colors)
+{
+    auto *dev_manager = wxGetApp().getDeviceManager();
+    MachineObject *obj = dev_manager ? dev_manager->get_selected_machine() : nullptr;
+    const bool can_load_unload = obj != nullptr && obj->is_online() && !obj->is_in_printing();
+
+    m_dashboard_state_store.update([&](DeviceDashboard::DeviceDashboardState &state) {
+        for (int i = 0; i < 4; ++i) {
+            const int ui_tool = assigned_tools[i] >= 1 && assigned_tools[i] <= 4 ? assigned_tools[i] : i + 1;
+            const int tool_index = ui_tool - 1;
+
+            state.filament.model_colors[i] = model_colors[i];
+            state.filament.model_materials[i] = materials[i].empty() ? wxString("PLA") : materials[i];
+            state.filament.model_weights[i] = weights[i].empty() ? wxString("--") : weights[i];
+            state.filament.model_slot_to_tool[i] = tool_index;
+            state.filament.assigned_colors[i] = assigned_colors[i];
+
+            state.filament.tools[i].index = i;
+            state.filament.tools[i].label = wxString::Format("T%d", i + 1);
+            state.filament.tools[i].color = m_filament_loaded_tool_colors[i];
+            state.filament.tools[i].material = m_filament_loaded_tool_materials[i].empty()
+                ? wxString("PLA")
+                : m_filament_loaded_tool_materials[i];
+            state.filament.tools[i].available = true;
+        }
+        state.filament.selected_tool = std::clamp(m_selected_filament_tool, 0, 3);
+        state.filament.can_load_unload = can_load_unload;
+    });
 }
 
 void PrinterWebView::set_filament_assigned_tool(int model_slot_index, int ui_tool, bool send_mapping_command)

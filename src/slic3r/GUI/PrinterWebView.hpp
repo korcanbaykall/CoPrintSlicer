@@ -107,6 +107,11 @@ private:
                                      const std::array<wxString, 4> &weights,
                                      const std::array<int, 4> &assigned_tools,
                                      const std::array<wxColour, 4> &assigned_colors);
+    void update_dashboard_filament_state(const std::array<wxColour, 4> &model_colors,
+                                         const std::array<wxString, 4> &materials,
+                                         const std::array<wxString, 4> &weights,
+                                         const std::array<int, 4> &assigned_tools,
+                                         const std::array<wxColour, 4> &assigned_colors);
     void set_filament_assigned_tool(int model_slot_index, int ui_tool, bool send_mapping_command);
     void send_tool_map_command(int model_slot_index, int ui_tool);
     void prompt_and_save_filament_selection_then_load();

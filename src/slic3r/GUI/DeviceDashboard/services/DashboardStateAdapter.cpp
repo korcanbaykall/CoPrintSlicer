@@ -104,6 +104,8 @@ void DashboardStateAdapter::apply_default_tools(DeviceDashboardState& state)
         state.filament.tools[i] = state.tools[i];
         state.filament.model_colors[i] = colors[i];
         state.filament.model_materials[i] = wxString::FromUTF8("N/A");
+        state.filament.model_weights[i] = wxString::FromUTF8("--");
+        state.filament.assigned_colors[i] = colors[i];
         state.filament.model_slot_to_tool[i] = i;
     }
 }

@@ -70,21 +70,34 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
 
 void FilamentPanel::apply_state(const FilamentState& state)
 {
+    bool layout_changed = false;
+    auto set_label_if_changed = [&layout_changed](wxStaticText* label, const wxString& text) {
+        if (label == nullptr || label->GetLabelText() == text)
+            return;
+        label->SetLabelText(text);
+        layout_changed = true;
+    };
+
     for (int i = 0; i < MaxDashboardTools; ++i) {
         if (m_rows[i].model_color != nullptr)
             m_rows[i].model_color->SetBackgroundColour(state.model_colors[i]);
-        if (m_rows[i].model_material != nullptr)
-            m_rows[i].model_material->SetLabelText(state.model_materials[i].IsEmpty() ? wxString::FromUTF8("N/A") : state.model_materials[i]);
+        set_label_if_changed(
+            m_rows[i].model_material,
+            state.model_materials[i].IsEmpty() ? wxString::FromUTF8("N/A") : state.model_materials[i]);
 
         const int tool_index = state.model_slot_to_tool[i];
         const bool valid_tool = tool_index >= 0 && tool_index < MaxDashboardTools;
         if (m_rows[i].tool_color != nullptr && valid_tool)
-            m_rows[i].tool_color->SetBackgroundColour(state.tools[tool_index].color);
-        if (m_rows[i].tool_label != nullptr)
-            m_rows[i].tool_label->SetLabelText(valid_tool ? wxString::Format("T%d", tool_index + 1) : wxString::FromUTF8("N/A"));
+            m_rows[i].tool_color->SetBackgroundColour(state.assigned_colors[i]);
+        set_label_if_changed(
+            m_rows[i].tool_label,
+            valid_tool ? wxString::Format("T%d", tool_index + 1) : wxString::FromUTF8("N/A"));
     }
 
-    Layout();
+    set_label_if_changed(m_selected_tool, wxString::Format("Tool %d", state.selected_tool + 1));
+
+    if (layout_changed)
+        Layout();
 }
 
 void FilamentPanel::set_command_handler(CommandHandler handler)
