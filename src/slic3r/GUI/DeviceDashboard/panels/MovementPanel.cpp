@@ -24,6 +24,10 @@ namespace DeviceDashboard {
 namespace {
 
 constexpr double DistanceOptions[] = {1.0, 5.0, 10.0, 20.0};
+constexpr int kToolColumnWidth = 92;
+constexpr int kXYColumnWidth = 300;
+constexpr int kZColumnWidth = 90;
+constexpr int kOptionColumnWidth = 93;
 
 enum class JoystickAction {
     None,
@@ -31,6 +35,67 @@ enum class JoystickAction {
     XPlus,
     YMinus,
     YPlus
+};
+
+class ZAxisShapeButton : public wxPanel
+{
+public:
+    using ClickHandler = std::function<void()>;
+
+    ZAxisShapeButton(wxWindow* parent, const wxString& bitmap_name, const wxString& label)
+        : wxPanel(parent, wxID_ANY)
+        , m_bitmap_name(bitmap_name)
+        , m_label(label)
+    {
+        SetMinSize(wxSize(FromDIP(90), FromDIP(75)));
+        SetMaxSize(wxSize(FromDIP(90), FromDIP(75)));
+        SetBackgroundStyle(wxBG_STYLE_PAINT);
+        SetBackgroundColour(DeviceUiStyle::card_background());
+        SetCursor(wxCursor(wxCURSOR_HAND));
+        Bind(wxEVT_PAINT, &ZAxisShapeButton::on_paint, this);
+        Bind(wxEVT_LEFT_UP, &ZAxisShapeButton::on_left_up, this);
+    }
+
+    void set_click_handler(ClickHandler handler) { m_click_handler = std::move(handler); }
+
+private:
+    void on_paint(wxPaintEvent&)
+    {
+        wxAutoBufferedPaintDC dc(this);
+        dc.SetBackground(wxBrush(GetBackgroundColour()));
+        dc.Clear();
+
+        const wxBitmap bmp = create_scaled_bitmap(m_bitmap_name.ToStdString(), this, 75);
+        if (bmp.IsOk()) {
+            const wxSize hs = GetClientSize();
+            const wxSize bs = bmp.GetSize();
+            dc.DrawBitmap(bmp, std::max(0, (hs.x - bs.x) / 2), std::max(0, (hs.y - bs.y) / 2), true);
+        }
+
+        wxFont font = GetFont();
+        font.SetWeight(wxFONTWEIGHT_BOLD);
+        font.SetPointSize(font.GetPointSize() + 2);
+        dc.SetFont(font);
+        dc.SetTextForeground(wxColour(45, 48, 55));
+
+        int tw = 0;
+        int th = 0;
+        dc.GetTextExtent(m_label, &tw, &th);
+        const wxSize hs = GetClientSize();
+        dc.DrawText(m_label, std::max(0, (hs.x - tw) / 2), std::max(0, (hs.y - th) / 2));
+    }
+
+    void on_left_up(wxMouseEvent& event)
+    {
+        if (m_click_handler)
+            m_click_handler();
+        else
+            event.Skip();
+    }
+
+    wxString m_bitmap_name;
+    wxString m_label;
+    ClickHandler m_click_handler;
 };
 
 class AxisJoystickPanel : public wxPanel
@@ -262,11 +327,33 @@ MovementPanel::MovementPanel(wxWindow* parent)
 
     auto* body = new wxBoxSizer(wxVERTICAL);
     auto* headers = new wxBoxSizer(wxHORIZONTAL);
-    headers->Add(make_header_label(content, wxString::FromUTF8("Tool\nSelection")), 0, wxALIGN_CENTER_VERTICAL);
+    auto* tool_header_slot = new wxBoxSizer(wxHORIZONTAL);
+    auto* xy_header_slot = new wxBoxSizer(wxHORIZONTAL);
+    auto* z_header_slot = new wxBoxSizer(wxHORIZONTAL);
+    auto* distance_header_slot = new wxBoxSizer(wxHORIZONTAL);
+    auto* speed_header_slot = new wxBoxSizer(wxHORIZONTAL);
+    tool_header_slot->AddSpacer(FromDIP(18));
+    tool_header_slot->Add(make_header_label(content, wxString::FromUTF8("Tool\nSelection")), 0, wxALIGN_CENTER);
+    xy_header_slot->AddSpacer(FromDIP(18));
+    xy_header_slot->Add(make_header_label(content, wxString::FromUTF8("Move\nX,Y axis")), 0, wxALIGN_CENTER);
+    z_header_slot->AddSpacer(FromDIP(18));
+    z_header_slot->Add(make_header_label(content, wxString::FromUTF8("Move\nZ axis")), 0, wxALIGN_CENTER);
+    distance_header_slot->AddSpacer(1);
+    speed_header_slot->AddSpacer(1);
+    headers->Add(tool_header_slot, 0, wxALIGN_CENTER_VERTICAL);
     headers->AddSpacer(FromDIP(20));
-    headers->Add(make_header_label(content, wxString::FromUTF8("Move\nX,Y axis")), 0, wxALIGN_CENTER_VERTICAL);
+    headers->Add(xy_header_slot, 0, wxALIGN_CENTER_VERTICAL);
     headers->AddSpacer(FromDIP(20));
-    headers->Add(make_header_label(content, wxString::FromUTF8("Move\nZ axis")), 0, wxALIGN_CENTER_VERTICAL);
+    headers->Add(z_header_slot, 0, wxALIGN_CENTER_VERTICAL);
+    headers->AddSpacer(FromDIP(20));
+    headers->Add(distance_header_slot, 0, wxALIGN_CENTER_VERTICAL);
+    headers->AddSpacer(FromDIP(40));
+    headers->Add(speed_header_slot, 0, wxALIGN_CENTER_VERTICAL);
+    headers->SetItemMinSize(tool_header_slot, FromDIP(kToolColumnWidth), -1);
+    headers->SetItemMinSize(xy_header_slot, FromDIP(kXYColumnWidth), -1);
+    headers->SetItemMinSize(z_header_slot, FromDIP(kZColumnWidth), -1);
+    headers->SetItemMinSize(distance_header_slot, FromDIP(kOptionColumnWidth), -1);
+    headers->SetItemMinSize(speed_header_slot, FromDIP(kOptionColumnWidth), -1);
     body->Add(headers, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, FromDIP(6));
 
     auto* controls = new wxBoxSizer(wxHORIZONTAL);
@@ -319,47 +406,17 @@ MovementPanel::MovementPanel(wxWindow* parent)
     auto* z_col = new wxBoxSizer(wxVERTICAL);
 
     // Z+ butonu — rectangle_10 SVG şekli üzerine +Z etiketi
-    auto* z_plus_host = new wxPanel(content, wxID_ANY);
-    z_plus_host->SetMinSize(wxSize(FromDIP(90), FromDIP(75)));
-    z_plus_host->SetMaxSize(wxSize(FromDIP(90), FromDIP(75)));
-    z_plus_host->SetBackgroundColour(DeviceUiStyle::card_background());
-    z_plus_host->SetCursor(wxCursor(wxCURSOR_HAND));
-    auto* z_plus_bmp = new wxStaticBitmap(z_plus_host, wxID_ANY,
-        create_scaled_bitmap("rectangle_10", z_plus_host, 75));
-    auto* z_plus_lbl = new wxStaticText(z_plus_host, wxID_ANY, wxString::FromUTF8("+Z"));
-    z_plus_lbl->SetForegroundColour(wxColour(45, 48, 55));
-    {
-        wxFont f = z_plus_lbl->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        f.SetPointSize(f.GetPointSize() + 2);
-        z_plus_lbl->SetFont(f);
-    }
-    auto center_in_parent = [](wxWindow* parent, wxWindow* child) {
-        if (!parent || !child) return;
-        const wxSize ps = parent->GetClientSize();
-        const wxSize cs = child->GetBestSize();
-        child->Move(std::max(0, (ps.x - cs.x) / 2), std::max(0, (ps.y - cs.y) / 2));
-    };
-    auto layout_z_plus = [z_plus_host, z_plus_bmp, z_plus_lbl, center_in_parent]() {
-        if (z_plus_bmp) {
-            const wxSize hs = z_plus_host->GetClientSize();
-            const wxSize bs = z_plus_bmp->GetBestSize();
-            z_plus_bmp->Move(std::max(0, (hs.x - bs.x) / 2), std::max(0, (hs.y - bs.y) / 2));
-        }
-        center_in_parent(z_plus_host, z_plus_lbl);
-    };
-    z_plus_host->Bind(wxEVT_SIZE, [layout_z_plus](wxSizeEvent& e) { e.Skip(); layout_z_plus(); });
-    CallAfter(layout_z_plus);
-    z_plus_host->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent&) { dispatch_axis(Axis::Z, -1.0); });
-    z_plus_lbl->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent&) { dispatch_axis(Axis::Z, -1.0); });
+    auto* z_plus_host = new ZAxisShapeButton(content, wxString::FromUTF8("rectangle_10"), wxString::FromUTF8("+Z"));
+    z_plus_host->set_click_handler([this]() { dispatch_axis(Axis::Z, -1.0); });
 
     // Z home butonu
     auto* z_home = new Button(content, wxString(), "home", 0, 40);
-    z_home->SetMinSize(wxSize(FromDIP(80), FromDIP(75)));
-    z_home->SetMaxSize(wxSize(FromDIP(80), FromDIP(75)));
+    z_home->SetMinSize(wxSize(FromDIP(90), FromDIP(75)));
+    z_home->SetMaxSize(wxSize(FromDIP(90), FromDIP(75)));
     z_home->SetCornerRadius(FromDIP(15));
     z_home->SetBorderWidth(0);
     z_home->SetBackgroundColorNormal(*wxWHITE);
+    z_home->SetBackgroundColour(DeviceUiStyle::card_background());
     z_home->SetCursor(wxCursor(wxCURSOR_HAND));
     z_home->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
         DeviceCommand command;
@@ -368,38 +425,12 @@ MovementPanel::MovementPanel(wxWindow* parent)
     });
 
     // Z- butonu — rectangle_12 SVG şekli üzerine -Z etiketi
-    auto* z_minus_host = new wxPanel(content, wxID_ANY);
-    z_minus_host->SetMinSize(wxSize(FromDIP(90), FromDIP(75)));
-    z_minus_host->SetMaxSize(wxSize(FromDIP(90), FromDIP(75)));
-    z_minus_host->SetBackgroundColour(DeviceUiStyle::card_background());
-    z_minus_host->SetCursor(wxCursor(wxCURSOR_HAND));
-    auto* z_minus_bmp = new wxStaticBitmap(z_minus_host, wxID_ANY,
-        create_scaled_bitmap("rectangle_12", z_minus_host, 75));
-    auto* z_minus_lbl = new wxStaticText(z_minus_host, wxID_ANY, wxString::FromUTF8("-Z"));
-    z_minus_lbl->SetForegroundColour(wxColour(45, 48, 55));
-    {
-        wxFont f = z_minus_lbl->GetFont();
-        f.SetWeight(wxFONTWEIGHT_BOLD);
-        f.SetPointSize(f.GetPointSize() + 2);
-        z_minus_lbl->SetFont(f);
-    }
-    auto layout_z_minus = [z_minus_host, z_minus_bmp, z_minus_lbl, center_in_parent]() {
-        if (z_minus_bmp) {
-            const wxSize hs = z_minus_host->GetClientSize();
-            const wxSize bs = z_minus_bmp->GetBestSize();
-            z_minus_bmp->Move(std::max(0, (hs.x - bs.x) / 2), std::max(0, (hs.y - bs.y) / 2));
-        }
-        center_in_parent(z_minus_host, z_minus_lbl);
-    };
-    z_minus_host->Bind(wxEVT_SIZE, [layout_z_minus](wxSizeEvent& e) { e.Skip(); layout_z_minus(); });
-    CallAfter(layout_z_minus);
-    z_minus_host->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent&) { dispatch_axis(Axis::Z, 1.0); });
-    z_minus_lbl->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent&) { dispatch_axis(Axis::Z, 1.0); });
+    auto* z_minus_host = new ZAxisShapeButton(content, wxString::FromUTF8("rectangle_12"), wxString::FromUTF8("-Z"));
+    z_minus_host->set_click_handler([this]() { dispatch_axis(Axis::Z, 1.0); });
 
-    z_col->Add(z_plus_host, 0, wxLEFT, FromDIP(2));
-    z_col->AddSpacer(FromDIP(5));
-    z_col->Add(z_home, 0, wxLEFT | wxBOTTOM, FromDIP(2));
-    z_col->Add(z_minus_host, 0, wxLEFT, FromDIP(2));
+    z_col->Add(z_plus_host, 0, wxALIGN_CENTER_HORIZONTAL | wxBOTTOM, FromDIP(3));
+    z_col->Add(z_home, 0, wxALIGN_CENTER_HORIZONTAL | wxBOTTOM, FromDIP(3));
+    z_col->Add(z_minus_host, 0, wxALIGN_CENTER_HORIZONTAL);
     controls->AddSpacer(FromDIP(20));
     controls->Add(z_col, 0, wxALIGN_TOP | wxTOP, FromDIP(22));
 

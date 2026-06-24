@@ -179,8 +179,8 @@ void ProgressBar::doRender(wxDC &dc)
     const double max_outer_r = std::max(0.0, std::min(static_cast<double>(size.x), static_cast<double>(size.y)) / 2.0);
     const double corner_r     = std::min(static_cast<double>(m_radius), max_outer_r);
 
-    // Outer track
-    dc.SetPen(wxPen(m_progress_background_colour, 1));
+    // Outer border
+    dc.SetPen(wxPen(m_progress_background_colour, FromDIP(1)));
     dc.SetBrush(wxBrush(m_progress_background_colour));
     if (corner_r == 0) {
         dc.DrawRectangle(0, 0, size.x, size.y);
@@ -188,8 +188,8 @@ void ProgressBar::doRender(wxDC &dc)
         dc.DrawRoundedRectangle(0, 0, size.x, size.y, corner_r);
     }
 
-    // Inner bar: inset by pad pixels on all sides
-    int pad = FromDIP(3);
+    // Inner track: inset by pad pixels on all sides
+    int pad = FromDIP(1);
     int inner_x = pad;
     int inner_y = pad;
     int inner_w = size.x - 2 * pad;
@@ -201,6 +201,16 @@ void ProgressBar::doRender(wxDC &dc)
     }
 
     if (inner_w > 0 && inner_h > 0) {
+        // Draw the empty track with the window background color.
+        const wxColour track_colour = GetBackgroundColour();
+        dc.SetPen(wxPen(track_colour, 1));
+        dc.SetBrush(wxBrush(track_colour));
+        if (inner_r == 0) {
+            dc.DrawRectangle(inner_x, inner_y, inner_w, inner_h);
+        } else {
+            dc.DrawRoundedRectangle(inner_x, inner_y, inner_w, inner_h, inner_r);
+        }
+
         wxColour fill_colour = m_disable ? m_progress_colour_disable : m_progress_colour;
         m_proportion = float(inner_w * float(m_step) / float(m_max));
         if (m_proportion < inner_r * 2 && m_proportion != 0) { m_proportion = (float)(inner_r * 2); }

@@ -7,10 +7,10 @@
 
 #include <wx/panel.h>
 
-class wxGauge;
 class wxStaticBitmap;
 class wxStaticText;
 class Button;
+class ProgressBar;
 
 namespace Slic3r {
 namespace GUI {
@@ -41,8 +41,7 @@ private:
     wxStaticText* m_elapsed_time{nullptr};
     wxStaticText* m_layer_info{nullptr};
     wxStaticText* m_remaining_time{nullptr};
-    wxStaticText* m_progress_percent{nullptr};
-    wxGauge* m_progress{nullptr};
+    ProgressBar* m_progress{nullptr};
     Button* m_pause_button{nullptr};
     Button* m_stop_button{nullptr};
     ActionHandler m_pause_handler;

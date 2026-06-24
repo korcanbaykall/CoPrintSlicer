@@ -2,13 +2,22 @@
 
 #include "../DeviceCardFrame.hpp"
 #include "../DeviceUiStyle.hpp"
+#include "libslic3r/Utils.hpp"
+#include "slic3r/GUI/GUI.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
+#include "slic3r/GUI/Widgets/PopupWindow.hpp"
 #include "slic3r/GUI/Widgets/StaticBox.hpp"
+#include "slic3r/GUI/wxExtensions.hpp"
 
 #include <utility>
 
+#include <wx/graphics.h>
+#include <wx/dcbuffer.h>
 #include <wx/menu.h>
+#include <wx/image.h>
+#include <wx/popupwin.h>
 #include <wx/sizer.h>
+#include <wx/statbmp.h>
 #include <wx/stattext.h>
 
 namespace Slic3r {
@@ -17,10 +26,88 @@ namespace DeviceDashboard {
 
 namespace {
 
-void set_panel_colour(wxPanel* panel, const wxColour& colour)
+constexpr int k_model_box_min_width = 280;
+constexpr int k_tool_box_width = 180;
+constexpr int k_arrow_slot_width = 72;
+constexpr int k_row_height = 44;
+
+class LeftRoundedColorBlock : public wxWindow
+{
+public:
+    LeftRoundedColorBlock(wxWindow* parent, const wxColour& fill, int radius)
+        : wxWindow(parent, wxID_ANY)
+        , m_fill(fill)
+        , m_radius(radius)
+    {
+        SetBackgroundStyle(wxBG_STYLE_PAINT);
+        SetBackgroundColour(parent ? parent->GetBackgroundColour() : *wxBLACK);
+        Bind(wxEVT_PAINT, &LeftRoundedColorBlock::on_paint, this);
+    }
+
+    void set_fill(const wxColour& fill)
+    {
+        if (m_fill == fill)
+            return;
+        m_fill = fill;
+        Refresh();
+    }
+
+private:
+    void on_paint(wxPaintEvent&)
+    {
+        wxAutoBufferedPaintDC dc(this);
+        dc.SetBackground(wxBrush(GetBackgroundColour()));
+        dc.Clear();
+
+        const wxRect rect = GetClientRect();
+        if (rect.width <= 0 || rect.height <= 0)
+            return;
+
+        std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
+        if (!gc)
+            return;
+
+        static constexpr double kPi = 3.14159265358979323846;
+        const double x = rect.x;
+        const double y = rect.y;
+        const double w = rect.width;
+        const double h = rect.height;
+        const double r = std::min<double>(m_radius, std::min(w * 0.5, h * 0.5));
+
+        gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+        gc->SetBrush(wxBrush(m_fill));
+        gc->SetPen(*wxTRANSPARENT_PEN);
+
+        wxGraphicsPath path = gc->CreatePath();
+        path.MoveToPoint(x + r, y);
+        path.AddLineToPoint(x + w, y);
+        path.AddLineToPoint(x + w, y + h);
+        path.AddLineToPoint(x + r, y + h);
+        path.AddArc(x + r, y + h - r, r, kPi / 2.0, kPi, false);
+        path.AddLineToPoint(x, y + r);
+        path.AddArc(x + r, y + r, r, kPi, 1.5 * kPi, false);
+        path.CloseSubpath();
+        gc->FillPath(path);
+    }
+
+    wxColour m_fill;
+    int      m_radius;
+};
+
+void set_panel_colour(wxWindow* panel, const wxColour& colour)
 {
     if (panel == nullptr || panel->GetBackgroundColour() == colour)
         return;
+
+    if (auto* block = dynamic_cast<LeftRoundedColorBlock*>(panel)) {
+        block->set_fill(colour);
+        panel->SetBackgroundColour(colour);
+        return;
+    }
+
+    if (auto* box = dynamic_cast<StaticBox*>(panel))
+        box->SetBackgroundColorNormal(colour);
+
     panel->SetBackgroundColour(colour);
     panel->Refresh();
 }
@@ -35,6 +122,147 @@ void style_action_button(Button* button)
     button->SetBackgroundColorNormal(wxColour(65, 68, 75));
     button->SetTextColorNormal(wxColour(220, 220, 220));
 }
+
+wxBitmap make_white_bitmap_from_png(wxWindow* parent, const char* relative_path, const char* fallback_name, int px)
+{
+    const wxString path = Slic3r::GUI::from_u8(Slic3r::var(relative_path));
+    wxImage image;
+    if (!image.LoadFile(path, wxBITMAP_TYPE_PNG) || !image.IsOk())
+        return create_scaled_bitmap(fallback_name, parent, px);
+
+    const int size = parent->FromDIP(px);
+    image.Rescale(size, size, wxIMAGE_QUALITY_BILINEAR);
+
+    if (image.HasAlpha()) {
+        unsigned char* alpha = image.GetAlpha();
+        unsigned char* data = image.GetData();
+        const int pixels = image.GetWidth() * image.GetHeight();
+        for (int i = 0; i < pixels; ++i) {
+            if (alpha[i] == 0)
+                continue;
+            data[i * 3 + 0] = 255;
+            data[i * 3 + 1] = 255;
+            data[i * 3 + 2] = 255;
+        }
+    } else {
+        image.InitAlpha();
+        unsigned char* alpha = image.GetAlpha();
+        unsigned char* data = image.GetData();
+        const int pixels = image.GetWidth() * image.GetHeight();
+        for (int i = 0; i < pixels; ++i) {
+            alpha[i] = 255;
+            data[i * 3 + 0] = 255;
+            data[i * 3 + 1] = 255;
+            data[i * 3 + 2] = 255;
+        }
+    }
+
+    return wxBitmap(image);
+}
+
+wxBitmap make_white_forward_icon(wxWindow* parent, int px)
+{
+    return make_white_bitmap_from_png(parent, "images/forwardicon.png", "filament_forward", px);
+}
+
+wxBitmap make_expand_arrow_icon(wxWindow* parent, int px)
+{
+    return make_white_bitmap_from_png(parent, "images/expandarrow.png", "replace_arrow_down", px);
+}
+
+class ToolSelectPopup final : public PopupWindow
+{
+public:
+    using SelectHandler = std::function<void(int)>;
+
+    ToolSelectPopup(wxWindow* parent, SelectHandler on_select)
+        : PopupWindow(parent, wxBORDER_NONE | wxPU_CONTAINS_CONTROLS)
+        , m_on_select(std::move(on_select))
+    {
+#ifdef __WXMSW__
+        BindUnfocusEvent();
+#endif
+        SetBackgroundColour(DeviceUiStyle::page_background());
+
+        auto* root = new wxBoxSizer(wxVERTICAL);
+        auto* panel = new wxPanel(this, wxID_ANY);
+        panel->SetBackgroundColour(DeviceUiStyle::page_background());
+        auto* panel_sizer = new wxBoxSizer(wxVERTICAL);
+
+        for (int i = 0; i < MaxDashboardTools; ++i) {
+            auto* row = new StaticBox(panel, wxID_ANY);
+            row->SetMinSize(wxSize(FromDIP(188), FromDIP(44)));
+            row->SetCornerRadius(FromDIP(8));
+            row->SetBorderWidth(1);
+            row->SetBorderColorNormal(wxColour(70, 73, 80));
+            row->SetBackgroundColorNormal(DeviceUiStyle::control_background());
+            row->SetBackgroundColour(DeviceUiStyle::control_background());
+            row->SetCursor(wxCursor(wxCURSOR_HAND));
+
+            auto* row_sizer = new wxBoxSizer(wxHORIZONTAL);
+            auto* color = new LeftRoundedColorBlock(row, DeviceUiStyle::accent(), FromDIP(8));
+            color->SetMinSize(wxSize(FromDIP(32), FromDIP(44)));
+            color->SetBackgroundColour(DeviceUiStyle::accent());
+            auto* label = new wxStaticText(row, wxID_ANY, wxString::Format("Tool %d", i + 1));
+            label->SetForegroundColour(DeviceUiStyle::text_primary());
+            {
+                wxFont f = label->GetFont();
+                f.SetWeight(wxFONTWEIGHT_BOLD);
+                label->SetFont(f);
+            }
+
+            row_sizer->Add(color, 0, wxEXPAND);
+            row_sizer->AddSpacer(FromDIP(14));
+            row_sizer->Add(label, 0, wxALIGN_CENTER_VERTICAL);
+            row_sizer->AddStretchSpacer(1);
+            row->SetSizer(row_sizer);
+
+            const auto on_pick = [this, i](wxMouseEvent&) {
+                if (m_on_select)
+                    m_on_select(i);
+                Dismiss();
+            };
+            row->Bind(wxEVT_LEFT_DOWN, on_pick);
+            color->Bind(wxEVT_LEFT_DOWN, on_pick);
+            label->Bind(wxEVT_LEFT_DOWN, on_pick);
+
+            m_rows[i].row = row;
+            m_rows[i].color = color;
+            m_rows[i].label = label;
+
+            panel_sizer->Add(row, 0, wxEXPAND | wxBOTTOM, i + 1 < MaxDashboardTools ? FromDIP(6) : 0);
+        }
+
+        panel->SetSizer(panel_sizer);
+        root->Add(panel, 1, wxALL, FromDIP(6));
+        SetSizerAndFit(root);
+    }
+
+    void sync(const std::array<wxColour, MaxDashboardTools>& colors, int selected_index)
+    {
+        for (int i = 0; i < MaxDashboardTools; ++i) {
+            if (m_rows[i].color != nullptr)
+                set_panel_colour(m_rows[i].color, colors[i]);
+            if (m_rows[i].row != nullptr) {
+                const wxColour border = i == selected_index ? DeviceUiStyle::accent() : wxColour(70, 73, 80);
+                m_rows[i].row->SetBorderColorNormal(border);
+                m_rows[i].row->Refresh();
+            }
+        }
+        Layout();
+        Fit();
+    }
+
+private:
+    struct PopupRow {
+        StaticBox* row{nullptr};
+        wxWindow* color{nullptr};
+        wxStaticText* label{nullptr};
+    };
+
+    std::array<PopupRow, MaxDashboardTools> m_rows;
+    SelectHandler m_on_select;
+};
 
 } // namespace
 
@@ -59,8 +287,17 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
     model_header->SetForegroundColour(DeviceUiStyle::text_muted());
     auto* tools_header = new wxStaticText(rows, wxID_ANY, wxString::FromUTF8("Assigned Tools"));
     tools_header->SetForegroundColour(DeviceUiStyle::text_muted());
-    header->Add(model_header, 1, wxLEFT, FromDIP(8));
-    header->Add(tools_header, 1, wxLEFT, FromDIP(26));
+    auto* model_header_slot = new wxBoxSizer(wxHORIZONTAL);
+    model_header_slot->Add(model_header, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(8));
+    auto* arrow_header_slot = new wxBoxSizer(wxHORIZONTAL);
+    auto* tools_header_slot = new wxBoxSizer(wxHORIZONTAL);
+    tools_header_slot->Add(tools_header, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(2));
+    header->Add(model_header_slot, 1, wxEXPAND);
+    header->Add(arrow_header_slot, 0, wxEXPAND);
+    header->Add(tools_header_slot, 0, wxEXPAND);
+    header->SetItemMinSize(model_header_slot, FromDIP(k_model_box_min_width), -1);
+    header->SetItemMinSize(arrow_header_slot, FromDIP(k_arrow_slot_width), -1);
+    header->SetItemMinSize(tools_header_slot, FromDIP(k_tool_box_width), -1);
     row_sizer->Add(header, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
 
     auto* divider = new wxPanel(rows, wxID_ANY);
@@ -73,16 +310,18 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
         auto* row = new wxBoxSizer(wxHORIZONTAL);
 
         auto* model_box = new StaticBox(rows, wxID_ANY);
-        model_box->SetMinSize(wxSize(FromDIP(240), FromDIP(44)));
-        model_box->SetCornerRadius(FromDIP(8));
+        model_box->SetMinSize(wxSize(FromDIP(k_model_box_min_width), FromDIP(k_row_height)));
+        model_box->SetBackgroundColour(DeviceUiStyle::control_background());
+        model_box->SetCornerRadius(FromDIP(10));
         model_box->SetBorderWidth(0);
         model_box->SetBackgroundColorNormal(DeviceUiStyle::control_background());
-        model_box->SetBackgroundColour(DeviceUiStyle::control_background());
         auto* model_sizer = new wxBoxSizer(wxHORIZONTAL);
-        m_rows[i].model_color = new wxPanel(model_box, wxID_ANY);
-        m_rows[i].model_color->SetMinSize(wxSize(FromDIP(58), FromDIP(36)));
-        m_rows[i].model_color->SetBackgroundColour(*wxWHITE);
-        model_sizer->Add(m_rows[i].model_color, 0, wxEXPAND | wxALL, FromDIP(4));
+        auto* model_color_box = new LeftRoundedColorBlock(model_box, *wxWHITE, FromDIP(8));
+        model_color_box->SetMinSize(wxSize(FromDIP(56), FromDIP(k_row_height)));
+        model_color_box->SetBackgroundColour(*wxWHITE);
+        m_rows[i].model_color = model_color_box;
+        model_sizer->Add(model_color_box, 0, wxEXPAND);
+        model_sizer->AddSpacer(FromDIP(14));
         m_rows[i].model_material = new wxStaticText(model_box, wxID_ANY, wxString::FromUTF8("PLA"));
         m_rows[i].model_material->SetForegroundColour(DeviceUiStyle::text_primary());
         {
@@ -90,32 +329,38 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
             f.SetWeight(wxFONTWEIGHT_BOLD);
             m_rows[i].model_material->SetFont(f);
         }
-        model_sizer->AddSpacer(FromDIP(12));
         model_sizer->Add(m_rows[i].model_material, 0, wxALIGN_CENTER_VERTICAL);
         model_sizer->AddStretchSpacer(1);
         m_rows[i].model_weight = new wxStaticText(model_box, wxID_ANY, wxString::FromUTF8("--"));
-        m_rows[i].model_weight->SetForegroundColour(DeviceUiStyle::text_primary());
-        model_sizer->Add(m_rows[i].model_weight, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
+        m_rows[i].model_weight->SetForegroundColour(DeviceUiStyle::text_muted());
+        model_sizer->Add(m_rows[i].model_weight, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(34));
         model_box->SetSizer(model_sizer);
-        row->Add(model_box, 1, wxEXPAND);
+        row->Add(model_box, 1, wxEXPAND | wxRIGHT, FromDIP(0));
 
-        auto* arrow = new wxStaticText(rows, wxID_ANY, wxString::FromUTF8(">"));
-        arrow->SetForegroundColour(DeviceUiStyle::text_primary());
-        row->Add(arrow, 0, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, FromDIP(14));
+        auto* arrow_slot = new wxBoxSizer(wxHORIZONTAL);
+        arrow_slot->AddStretchSpacer(1);
+        auto* arrow = new wxStaticBitmap(rows, wxID_ANY,
+            make_white_forward_icon(rows, 36));
+        arrow_slot->Add(arrow, 0, wxALIGN_CENTER_VERTICAL);
+        arrow_slot->AddStretchSpacer(1);
+        row->Add(arrow_slot, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(2));
+        row->SetItemMinSize(arrow_slot, FromDIP(k_arrow_slot_width), FromDIP(k_row_height));
 
         auto* tool_box = new StaticBox(rows, wxID_ANY);
         m_rows[i].tool_button = tool_box;
-        tool_box->SetMinSize(wxSize(FromDIP(136), FromDIP(44)));
-        tool_box->SetCornerRadius(FromDIP(8));
+        tool_box->SetMinSize(wxSize(FromDIP(k_tool_box_width), FromDIP(k_row_height)));
+        tool_box->SetBackgroundColour(DeviceUiStyle::control_background());
+        tool_box->SetCornerRadius(FromDIP(10));
         tool_box->SetBorderWidth(0);
         tool_box->SetBackgroundColorNormal(DeviceUiStyle::control_background());
-        tool_box->SetBackgroundColour(DeviceUiStyle::control_background());
         tool_box->SetCursor(wxCursor(wxCURSOR_HAND));
         auto* tool_sizer = new wxBoxSizer(wxHORIZONTAL);
-        m_rows[i].tool_color = new wxPanel(tool_box, wxID_ANY);
-        m_rows[i].tool_color->SetMinSize(wxSize(FromDIP(38), FromDIP(36)));
-        m_rows[i].tool_color->SetBackgroundColour(DeviceUiStyle::accent());
-        tool_sizer->Add(m_rows[i].tool_color, 0, wxEXPAND | wxALL, FromDIP(4));
+        auto* tool_color_box = new LeftRoundedColorBlock(tool_box, DeviceUiStyle::accent(), FromDIP(8));
+        tool_color_box->SetMinSize(wxSize(FromDIP(32), FromDIP(k_row_height)));
+        tool_color_box->SetBackgroundColour(DeviceUiStyle::accent());
+        m_rows[i].tool_color = tool_color_box;
+        tool_sizer->Add(tool_color_box, 0, wxEXPAND);
+        tool_sizer->AddSpacer(FromDIP(14));
         m_rows[i].tool_label = new wxStaticText(tool_box, wxID_ANY, wxString::Format("T%d", i + 1));
         m_rows[i].tool_label->SetForegroundColour(DeviceUiStyle::text_primary());
         {
@@ -123,12 +368,12 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
             f.SetWeight(wxFONTWEIGHT_BOLD);
             m_rows[i].tool_label->SetFont(f);
         }
-        tool_sizer->AddSpacer(FromDIP(12));
         tool_sizer->Add(m_rows[i].tool_label, 0, wxALIGN_CENTER_VERTICAL);
         tool_sizer->AddStretchSpacer(1);
-        auto* swap = new wxStaticText(tool_box, wxID_ANY, wxString::FromUTF8("<>"));
-        swap->SetForegroundColour(DeviceUiStyle::text_primary());
-        tool_sizer->Add(swap, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
+        auto* swap = new wxStaticBitmap(tool_box, wxID_ANY,
+            create_scaled_bitmap("assigned_tools_update", tool_box, 24));
+        swap->SetCursor(wxCursor(wxCURSOR_HAND));
+        tool_sizer->Add(swap, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
         tool_box->SetSizer(tool_sizer);
 
         const auto open_tool_menu = [this, i, tool_box](wxMouseEvent&) {
@@ -150,7 +395,7 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
         swap->Bind(wxEVT_LEFT_DOWN, open_tool_menu);
 
         row->Add(tool_box, 0, wxEXPAND);
-        row_sizer->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
+        row_sizer->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(6));
     }
     rows->SetSizer(row_sizer);
     columns->Add(rows, 1, wxEXPAND | wxRIGHT, FromDIP(18));
@@ -172,22 +417,22 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
     sep->SetMaxSize(wxSize(-1, FromDIP(1)));
     sep->SetBackgroundColour(DeviceUiStyle::card_border());
 
-    auto* selected_box = new StaticBox(manage, wxID_ANY);
-    selected_box->SetMinSize(wxSize(FromDIP(188), FromDIP(44)));
-    selected_box->SetCornerRadius(FromDIP(8));
-    selected_box->SetBorderWidth(1);
-    selected_box->SetBorderColorNormal(wxColour(70, 73, 80));
-    selected_box->SetBackgroundColorNormal(DeviceUiStyle::control_background());
-    selected_box->SetBackgroundColour(DeviceUiStyle::control_background());
-    selected_box->SetCursor(wxCursor(wxCURSOR_HAND));
+    m_selected_tool_box = new StaticBox(manage, wxID_ANY);
+    m_selected_tool_box->SetMinSize(wxSize(FromDIP(188), FromDIP(44)));
+    m_selected_tool_box->SetCornerRadius(FromDIP(8));
+    m_selected_tool_box->SetBorderWidth(1);
+    m_selected_tool_box->SetBorderColorNormal(wxColour(70, 73, 80));
+    m_selected_tool_box->SetBackgroundColorNormal(DeviceUiStyle::control_background());
+    m_selected_tool_box->SetBackgroundColour(DeviceUiStyle::control_background());
+    m_selected_tool_box->SetCursor(wxCursor(wxCURSOR_HAND));
     auto* selected_sizer = new wxBoxSizer(wxHORIZONTAL);
-    m_selected_tool_dot = new wxPanel(selected_box, wxID_ANY);
+    m_selected_tool_dot = new wxPanel(m_selected_tool_box, wxID_ANY);
     m_selected_tool_dot->SetMinSize(wxSize(FromDIP(16), FromDIP(16)));
     m_selected_tool_dot->SetMaxSize(wxSize(FromDIP(16), FromDIP(16)));
     m_selected_tool_dot->SetBackgroundColour(DeviceUiStyle::accent());
     selected_sizer->Add(m_selected_tool_dot, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(12));
     selected_sizer->AddSpacer(FromDIP(8));
-    m_selected_tool = new wxStaticText(selected_box, wxID_ANY, wxString::FromUTF8("Tool 1"));
+    m_selected_tool = new wxStaticText(m_selected_tool_box, wxID_ANY, wxString::FromUTF8("Tool 1"));
     m_selected_tool->SetForegroundColour(DeviceUiStyle::text_primary());
     {
         wxFont f = m_selected_tool->GetFont();
@@ -195,29 +440,40 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
         m_selected_tool->SetFont(f);
     }
     selected_sizer->Add(m_selected_tool, 1, wxALIGN_CENTER_VERTICAL);
-    auto* arrow_down = new wxStaticText(selected_box, wxID_ANY, wxString::FromUTF8("v"));
-    arrow_down->SetForegroundColour(DeviceUiStyle::text_muted());
+    auto* arrow_down = new wxStaticBitmap(m_selected_tool_box, wxID_ANY, make_expand_arrow_icon(m_selected_tool_box, 18));
+    arrow_down->SetCursor(wxCursor(wxCURSOR_HAND));
     selected_sizer->Add(arrow_down, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
-    selected_box->SetSizer(selected_sizer);
+    m_selected_tool_box->SetSizer(selected_sizer);
 
-    const auto open_selected_menu = [this, selected_box](wxMouseEvent&) {
-        wxMenu menu;
-        for (int tool = 0; tool < MaxDashboardTools; ++tool)
-            menu.Append(2000 + tool, wxString::Format("Tool %d", tool + 1));
-        menu.Bind(wxEVT_MENU, [this](wxCommandEvent& evt) {
-            const int tool_index = evt.GetId() - 2000;
-            DeviceCommand command;
-            command.kind = DeviceCommandKind::SelectFilamentTool;
-            command.tool_index = tool_index;
-            dispatch(command);
-            set_selected_tool(tool_index);
-        });
-        selected_box->PopupMenu(&menu);
+    m_tool_select_popup = new ToolSelectPopup(this, [this](int tool_index) {
+        DeviceCommand command;
+        command.kind = DeviceCommandKind::SelectFilamentTool;
+        command.tool_index = tool_index;
+        dispatch(command);
+        set_selected_tool(tool_index);
+    });
+
+    const auto open_selected_menu = [this](wxMouseEvent& event) {
+        event.Skip(false);
+        if (m_tool_select_popup == nullptr || m_selected_tool_box == nullptr)
+            return;
+
+        std::array<wxColour, MaxDashboardTools> colors{};
+        for (int tool = 0; tool < MaxDashboardTools; ++tool) {
+            colors[tool] = m_rows[tool].tool_color != nullptr
+                ? m_rows[tool].tool_color->GetBackgroundColour()
+                : DeviceUiStyle::accent();
+        }
+        static_cast<ToolSelectPopup*>(m_tool_select_popup)->sync(colors, m_selected_tool_index);
+
+        const wxPoint screen_pos = m_selected_tool_box->ClientToScreen(wxPoint(0, 0));
+        m_tool_select_popup->Position(screen_pos, wxSize(0, m_selected_tool_box->GetSize().y + FromDIP(4)));
+        m_tool_select_popup->Popup(m_selected_tool_box);
     };
-    selected_box->Bind(wxEVT_LEFT_DOWN, open_selected_menu);
-    m_selected_tool_dot->Bind(wxEVT_LEFT_DOWN, open_selected_menu);
-    m_selected_tool->Bind(wxEVT_LEFT_DOWN, open_selected_menu);
-    arrow_down->Bind(wxEVT_LEFT_DOWN, open_selected_menu);
+    m_selected_tool_box->Bind(wxEVT_LEFT_UP, open_selected_menu);
+    m_selected_tool_dot->Bind(wxEVT_LEFT_UP, open_selected_menu);
+    m_selected_tool->Bind(wxEVT_LEFT_UP, open_selected_menu);
+    arrow_down->Bind(wxEVT_LEFT_UP, open_selected_menu);
 
     m_load_button = new Button(manage, wxString::FromUTF8("Load"));
     style_action_button(m_load_button);
@@ -241,7 +497,7 @@ FilamentPanel::FilamentPanel(wxWindow* parent)
     manage_sizer->AddSpacer(FromDIP(8));
     manage_sizer->Add(sep, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
     manage_sizer->AddSpacer(FromDIP(12));
-    manage_sizer->Add(selected_box, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
+    manage_sizer->Add(m_selected_tool_box, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
     manage_sizer->AddSpacer(FromDIP(10));
     manage_sizer->Add(m_load_button, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(12));
     manage_sizer->AddSpacer(FromDIP(8));

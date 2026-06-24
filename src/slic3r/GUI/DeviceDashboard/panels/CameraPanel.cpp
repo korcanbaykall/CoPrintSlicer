@@ -18,28 +18,26 @@ CameraPanel::CameraPanel(wxWindow* parent)
     : wxPanel(parent, wxID_ANY)
 {
     SetBackgroundColour(DeviceUiStyle::page_background());
+    SetMinSize(wxSize(FromDIP(460), FromDIP(555)));
 
     auto* root = new wxBoxSizer(wxVERTICAL);
-    m_frame = new DeviceCardFrame(this, wxString::FromUTF8("Camera"));
+    m_frame = new DeviceCardFrame(this, wxString::FromUTF8("Live Camera"));
 
     auto* content = new wxPanel(m_frame->content_parent(), wxID_ANY);
-    content->SetBackgroundColour(*wxBLACK);
+    content->SetBackgroundColour(DeviceUiStyle::card_background());
     auto* content_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto* toolbar = new wxBoxSizer(wxHORIZONTAL);
-    toolbar->AddStretchSpacer();
-    m_refresh_btn = new wxStaticBitmap(content, wxID_ANY,
-        create_scaled_bitmap("camera_refresh_white", content, 16));
+    m_refresh_btn = new wxStaticBitmap(m_frame, wxID_ANY,
+        create_scaled_bitmap("camera_refresh_white", m_frame, 16));
     m_refresh_btn->SetCursor(wxCursor(wxCURSOR_HAND));
     m_refresh_btn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
         if (m_refresh_handler) m_refresh_handler();
     });
-    toolbar->Add(m_refresh_btn, 0, wxALL, FromDIP(4));
-    content_sizer->Add(toolbar, 0, wxEXPAND);
+    m_frame->set_header_action(m_refresh_btn);
 
     m_viewport = new wxPanel(content, wxID_ANY);
     m_viewport->SetBackgroundColour(*wxBLACK);
-    m_viewport->SetMinSize(wxSize(-1, FromDIP(240)));
+    m_viewport->SetMinSize(wxSize(FromDIP(420), FromDIP(410)));
     auto* viewport_sizer = new wxBoxSizer(wxVERTICAL);
     m_empty_state = new wxStaticText(m_viewport, wxID_ANY,
         wxString::FromUTF8("Camera unavailable"),
@@ -50,7 +48,7 @@ CameraPanel::CameraPanel(wxWindow* parent)
     viewport_sizer->AddStretchSpacer(1);
     m_viewport->SetSizer(viewport_sizer);
 
-    content_sizer->Add(m_viewport, 1, wxEXPAND);
+    content_sizer->Add(m_viewport, 1, wxEXPAND | wxTOP | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(15));
     content->SetSizer(content_sizer);
 
     m_frame->set_content(content);

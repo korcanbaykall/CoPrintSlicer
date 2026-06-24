@@ -34,18 +34,28 @@ DeviceDashboardState DashboardStateAdapter::from_machine(MachineObject* machine)
     state.connection.can_send_commands = machine->is_online();
 
     if (auto* extruders = machine->GetExtderSystem()) {
+        const int extruder_count = std::max(0, extruders->GetTotalExtderCount());
         for (int i = 0; i < MaxDashboardTools; ++i) {
+            if (i >= extruder_count)
+                continue;
+
             ToolState& tool = state.tools[i];
             const double cur = static_cast<double>(extruders->GetNozzleTempCurrent(i));
             const double tgt = static_cast<double>(extruders->GetNozzleTempTarget(i));
-            // Yalnızca gerçek veri varsa available=true; sıfır "henüz veri yok" demek
             if (cur > 0.0 || tgt > 0.0) {
                 tool.available = true;
                 tool.nozzle.available = true;
                 tool.nozzle.current = cur;
-                tool.nozzle.target  = tgt;
-                state.filament.tools[i].nozzle    = tool.nozzle;
+                tool.nozzle.target = tgt;
+                state.filament.tools[i].nozzle = tool.nozzle;
                 state.filament.tools[i].available = true;
+            }
+
+            const double nozzle_fan = static_cast<double>(extruders->GetNozzleFanSpeed(i));
+            if (nozzle_fan >= 0.0) {
+                tool.fan.available = true;
+                tool.fan.percent = std::clamp(static_cast<int>(std::round(nozzle_fan * 100.0)), 0, 100);
+                state.filament.tools[i].fan = tool.fan;
             }
         }
     }
@@ -55,17 +65,42 @@ DeviceDashboardState DashboardStateAdapter::from_machine(MachineObject* machine)
         const double tgt = static_cast<double>(bed->GetBedTempTarget());
         if (cur > 0.0 || tgt > 0.0) {
             state.bed.temperature.available = true;
-            state.bed.temperature.current   = cur;
-            state.bed.temperature.target    = tgt;
+            state.bed.temperature.current = cur;
+            state.bed.temperature.target = tgt;
         }
     }
 
     if (auto* fan = machine->GetFan()) {
-        const int fan_percent = static_cast<int>(std::round(fan->GetCoolingFanSpeed() / 25.5f));
-        for (int i = 0; i < MaxDashboardTools; ++i) {
-            state.tools[i].fan.available = true;
-            state.tools[i].fan.percent = fan_percent;
-            state.filament.tools[i].fan = state.tools[i].fan;
+        bool any_per_tool_fan = false;
+        for (int i = 0; i < MaxDashboardTools; ++i)
+            any_per_tool_fan = any_per_tool_fan || state.tools[i].fan.available;
+
+        if (!any_per_tool_fan) {
+            bool fan_available = false;
+            int fan_percent = 0;
+
+            const auto air_duct = fan->GetAirDuctData();
+            for (const auto& part : air_duct.parts) {
+                if (part.id == static_cast<int>(AIR_FUN::FAN_COOLING_0_AIRDOOR)) {
+                    fan_available = true;
+                    fan_percent = std::clamp(static_cast<int>(std::round(part.state / 10.0)), 0, 100);
+                    break;
+                }
+            }
+
+            if (!fan_available) {
+                const int raw_speed = static_cast<int>(std::round(fan->GetCoolingFanSpeed() / 25.5f));
+                if (raw_speed > 0) {
+                    fan_available = true;
+                    fan_percent = std::clamp(raw_speed, 0, 100);
+                }
+            }
+
+            if (fan_available) {
+                state.tools[0].fan.available = true;
+                state.tools[0].fan.percent = fan_percent;
+                state.filament.tools[0].fan = state.tools[0].fan;
+            }
         }
     }
 
@@ -97,7 +132,7 @@ void DashboardStateAdapter::apply_default_tools(DeviceDashboardState& state)
 
     for (int i = 0; i < MaxDashboardTools; ++i) {
         state.tools[i].index = i;
-        state.tools[i].label = wxString::Format("T%d", i + 1);
+        state.tools[i].label = wxString::Format("Tool %d", i + 1);
         state.tools[i].material = wxString::FromUTF8("N/A");
         state.tools[i].color = colors[i];
 

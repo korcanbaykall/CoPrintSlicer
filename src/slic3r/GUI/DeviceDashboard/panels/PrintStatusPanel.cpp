@@ -3,12 +3,12 @@
 #include "../DeviceCardFrame.hpp"
 #include "../DeviceUiStyle.hpp"
 #include "../../Widgets/Button.hpp"
+#include "../../Widgets/ProgressBar.hpp"
 #include "../../I18N.hpp"
 
 #include <algorithm>
 #include <utility>
 
-#include <wx/gauge.h>
 #include <wx/sizer.h>
 #include <wx/statbmp.h>
 #include <wx/stattext.h>
@@ -70,14 +70,13 @@ PrintStatusPanel::PrintStatusPanel(wxWindow* parent)
     m_elapsed_time->SetForegroundColour(DeviceUiStyle::text_primary());
     details_sizer->Add(m_elapsed_time, 0, wxBOTTOM, FromDIP(10));
 
-    auto* progress_row = new wxBoxSizer(wxHORIZONTAL);
-    m_progress = new wxGauge(details, wxID_ANY, 100);
-    m_progress->SetValue(0);
-    progress_row->Add(m_progress, 1, wxALIGN_CENTER_VERTICAL);
-    m_progress_percent = new wxStaticText(details, wxID_ANY, wxString::FromUTF8("0%"));
-    m_progress_percent->SetForegroundColour(DeviceUiStyle::text_primary());
-    progress_row->Add(m_progress_percent, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(8));
-    details_sizer->Add(progress_row, 0, wxEXPAND | wxBOTTOM, FromDIP(10));
+    m_progress = new ProgressBar(details, wxID_ANY, 100, wxDefaultPosition, wxSize(FromDIP(360), FromDIP(28)), true);
+    m_progress->SetMinSize(wxSize(FromDIP(360), FromDIP(28)));
+    m_progress->SetRadius(FromDIP(14));
+    m_progress->SetProgressForedColour(wxColour(225, 231, 237));
+    m_progress->SetProgressBackgroundColour(wxColour(126, 158, 184));
+    m_progress->SetBackgroundColour(DeviceUiStyle::card_background());
+    details_sizer->Add(m_progress, 0, wxEXPAND | wxBOTTOM, FromDIP(10));
 
     auto* lower_row = new wxBoxSizer(wxHORIZONTAL);
     m_layer_info = new wxStaticText(details, wxID_ANY, wxString::FromUTF8("Layer: N/A/N/A"));
@@ -132,9 +131,8 @@ void PrintStatusPanel::apply_state(const PrintJobState& state)
     layout_needed |= set_label_if_changed(m_file_name, state.file_name.IsEmpty() ? wxString::FromUTF8("N/A") : state.file_name);
 
     const int progress = std::clamp(state.progress_percent, 0, 100);
-    if (m_progress != nullptr && m_progress->GetValue() != progress)
+    if (m_progress != nullptr)
         m_progress->SetValue(progress);
-    layout_needed |= set_label_if_changed(m_progress_percent, wxString::Format("%d%%", progress));
 
     layout_needed |= set_label_if_changed(m_elapsed_time, wxString::FromUTF8("Total: ") + time_text(state.elapsed_seconds));
     layout_needed |= set_label_if_changed(m_layer_info, wxString::Format("Layer: %d/%d", state.current_layer, state.total_layers));

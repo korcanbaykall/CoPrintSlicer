@@ -45,7 +45,7 @@ PrinterStatusPanel::PrinterStatusPanel(wxWindow* parent)
             grid->AddSpacer(FromDIP(10));
 
         auto* card = new StaticBox(content, wxID_ANY);
-        card->SetMinSize(wxSize(-1, FromDIP(90)));
+        card->SetMinSize(wxSize(-1, FromDIP(110)));
         card->SetCornerRadius(FromDIP(10));
         card->SetBorderWidth(1);
         card->SetBorderColorNormal(i == 0 ? wxColour(44, 182, 125) : wxColour(55, 58, 64));
@@ -56,6 +56,7 @@ PrinterStatusPanel::PrinterStatusPanel(wxWindow* parent)
 
         auto* card_sizer = new wxBoxSizer(wxVERTICAL);
 
+        // Başlık satırı
         m_tools[i].title = new wxStaticText(card, wxID_ANY, wxString::Format("Tool %d", i + 1),
             wxDefaultPosition, wxDefaultSize, wxALIGN_CENTER_HORIZONTAL | wxST_NO_AUTORESIZE);
         m_tools[i].title->SetForegroundColour(i == 0 ? DeviceUiStyle::text_primary() : DeviceUiStyle::text_muted());
@@ -63,31 +64,37 @@ PrinterStatusPanel::PrinterStatusPanel(wxWindow* parent)
         title_font.SetWeight(wxFONTWEIGHT_BOLD);
         m_tools[i].title->SetFont(title_font);
 
+        // Başlık altı ince divider
+        auto* title_divider = new wxPanel(card, wxID_ANY, wxDefaultPosition, wxSize(-1, FromDIP(1)));
+        title_divider->SetBackgroundColour(wxColour(55, 58, 64));
+
         // Termometre ikonu + sıcaklık
         auto* temp_row = new wxBoxSizer(wxHORIZONTAL);
         auto* temp_icon = new wxStaticBitmap(card, wxID_ANY,
-            create_scaled_bitmap("tool_temperature_white", card, 14));
+            create_scaled_bitmap("cp_tool_temperature", card, 24));
         m_tools[i].temperature = new wxStaticText(card, wxID_ANY, wxString::FromUTF8("-- / --"));
         m_tools[i].temperature->SetForegroundColour(i == 0 ? DeviceUiStyle::text_primary() : DeviceUiStyle::text_muted());
         m_tools[i].temperature->SetCursor(wxCursor(wxCURSOR_HAND));
         temp_row->AddStretchSpacer(1);
-        temp_row->Add(temp_icon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(4));
+        temp_row->Add(temp_icon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(6));
         temp_row->Add(m_tools[i].temperature, 0, wxALIGN_CENTER_VERTICAL);
         temp_row->AddStretchSpacer(1);
 
         // Fan ikonu + fan yüzdesi
         auto* fan_row = new wxBoxSizer(wxHORIZONTAL);
         auto* fan_icon = new wxStaticBitmap(card, wxID_ANY,
-            create_scaled_bitmap("tool_fan_white", card, 14));
+            create_scaled_bitmap("cp_tool_fan", card, 24));
         m_tools[i].fan = new wxStaticText(card, wxID_ANY, wxString::FromUTF8("--%"));
         m_tools[i].fan->SetForegroundColour(DeviceUiStyle::text_muted());
         fan_row->AddStretchSpacer(1);
-        fan_row->Add(fan_icon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(4));
+        fan_row->Add(fan_icon, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(6));
         fan_row->Add(m_tools[i].fan, 0, wxALIGN_CENTER_VERTICAL);
         fan_row->AddStretchSpacer(1);
 
         card_sizer->AddSpacer(FromDIP(8));
         card_sizer->Add(m_tools[i].title, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(6));
+        card_sizer->AddSpacer(FromDIP(5));
+        card_sizer->Add(title_divider, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(6));
         card_sizer->AddSpacer(FromDIP(6));
         card_sizer->Add(temp_row, 0, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(4));
         card_sizer->AddSpacer(FromDIP(4));
@@ -225,9 +232,10 @@ wxString PrinterStatusPanel::temperature_text(const TemperatureReading& reading)
 {
     if (!reading.available)
         return wxString::FromUTF8("-- / --");
-    return wxString::Format("%d / %d \xC2\xB0""C",
+    return wxString::Format("%d / %d %s",
         static_cast<int>(reading.current),
-        static_cast<int>(reading.target));
+        static_cast<int>(reading.target),
+        wxString::FromUTF8("\xC2\xB0""C"));
 }
 
 } // namespace DeviceDashboard

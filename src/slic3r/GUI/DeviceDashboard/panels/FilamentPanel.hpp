@@ -12,6 +12,7 @@
 class wxStaticText;
 class Button;
 class StaticBox;
+class PopupWindow;
 
 namespace Slic3r {
 namespace GUI {
@@ -31,12 +32,12 @@ public:
 
 private:
     struct RowView {
-        wxPanel* model_color{nullptr};
+        wxWindow* model_color{nullptr};
         wxStaticText* model_material{nullptr};
         wxStaticText* model_weight{nullptr};
-        wxPanel* tool_color{nullptr};
+        wxWindow* tool_color{nullptr};
         wxStaticText* tool_label{nullptr};
-        StaticBox* tool_button{nullptr};
+        wxWindow* tool_button{nullptr};
     };
 
     void dispatch(DeviceCommand command) const;
@@ -46,6 +47,8 @@ private:
     std::array<RowView, MaxDashboardTools> m_rows;
     wxPanel* m_selected_tool_dot{nullptr};
     wxStaticText* m_selected_tool{nullptr};
+    StaticBox* m_selected_tool_box{nullptr};
+    PopupWindow* m_tool_select_popup{nullptr};
     Button* m_load_button{nullptr};
     Button* m_unload_button{nullptr};
     int m_selected_tool_index{0};

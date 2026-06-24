@@ -22,11 +22,14 @@ public:
     wxWindow* content_parent() const;
     void set_title(const wxString& title);
     void set_content(wxWindow* content);
+    void set_header_action(wxWindow* action);
 
 private:
     wxStaticText* m_title{nullptr};
     wxPanel* m_content_parent{nullptr};
     wxBoxSizer* m_content_sizer{nullptr};
+    wxBoxSizer* m_header_row{nullptr};
+    wxWindow* m_header_action{nullptr};
 };
 
 } // namespace DeviceDashboard

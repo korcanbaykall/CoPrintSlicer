@@ -22,6 +22,7 @@ DeviceCardFrame::DeviceCardFrame(wxWindow* parent, const wxString& title)
 
     auto* root = new wxBoxSizer(wxVERTICAL);
     auto* header = new wxBoxSizer(wxVERTICAL);
+    m_header_row = new wxBoxSizer(wxHORIZONTAL);
 
     m_title = new wxStaticText(this, wxID_ANY, title);
     m_title->SetForegroundColour(DeviceUiStyle::text_primary());
@@ -30,7 +31,9 @@ DeviceCardFrame::DeviceCardFrame(wxWindow* parent, const wxString& title)
         font.SetWeight(wxFONTWEIGHT_BOLD);
         m_title->SetFont(font);
     }
-    header->Add(m_title, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
+    m_header_row->Add(m_title, 0, wxALIGN_CENTER_VERTICAL);
+    m_header_row->AddStretchSpacer(1);
+    header->Add(m_header_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
 
     auto* divider = new wxPanel(this, wxID_ANY);
     divider->SetMinSize(wxSize(-1, FromDIP(1)));
@@ -66,6 +69,25 @@ void DeviceCardFrame::set_content(wxWindow* content)
     m_content_sizer->Clear(false);
     m_content_sizer->Add(content, 1, wxEXPAND);
     m_content_parent->Layout();
+}
+
+void DeviceCardFrame::set_header_action(wxWindow* action)
+{
+    if (m_header_row == nullptr)
+        return;
+
+    if (m_header_action != nullptr) {
+        m_header_row->Detach(m_header_action);
+        m_header_action->Hide();
+    }
+
+    m_header_action = action;
+    if (m_header_action != nullptr) {
+        m_header_row->Add(m_header_action, 0, wxALIGN_CENTER_VERTICAL);
+        m_header_action->Show();
+    }
+
+    Layout();
 }
 
 } // namespace DeviceDashboard

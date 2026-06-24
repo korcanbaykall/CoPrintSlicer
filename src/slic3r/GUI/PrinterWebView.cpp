@@ -992,8 +992,9 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     // Host only until the panel is actually shown. Creating WebView2 while MainFrame / tabs are still
     // constructing has been observed to crash (ACCESS_VIOLATION in ntdll); defer to wxEVT_SHOW.
     m_camera_webview_host = new wxPanel(m_dashboard_camera_panel->webview_host(), wxID_ANY);
-    m_camera_webview_host->SetMinSize(wxSize(FromDIP(420), FromDIP(300)));
+    m_camera_webview_host->SetMinSize(wxSize(FromDIP(420), FromDIP(360)));
     m_camera_webview_host->SetBackgroundColour(wxColour(0, 0, 0));
+    // Host her zaman görünür (siyah arka plan); WebView sadece stream URL gelince oluşturulur
     {
         auto *vs = new wxBoxSizer(wxVERTICAL);
         vs->Add(m_camera_webview_host, 1, wxEXPAND);
@@ -1005,8 +1006,8 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
         const int box_w = m_dashboard_camera_panel->webview_host()->GetClientSize().GetWidth();
         if (box_w <= 0)
             return;
-        const int host_w = std::max(FromDIP(320), box_w);
-        const int host_h = std::clamp(static_cast<int>(host_w * 0.78), FromDIP(260), FromDIP(454));
+        const int host_w = std::max(FromDIP(320), box_w - FromDIP(30));
+        const int host_h = std::clamp(static_cast<int>(host_w * 0.72), FromDIP(320), FromDIP(520));
         m_camera_webview_host->SetMinSize(wxSize(host_w, host_h));
         m_dashboard_camera_panel->webview_host()->Layout();
     };
@@ -1129,8 +1130,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
     m_layer_refresh_timer->Start(1000);
     Bind(wxEVT_CLOSE_WINDOW, &PrinterWebView::OnClose, this);
     Bind(wxEVT_SHOW, [this](wxShowEvent &ev) {
-        if (ev.IsShown())
-            this->ensure_camera_webview_created();
         ev.Skip();
     });
  }
@@ -1161,8 +1160,6 @@ void PrinterWebView::load_url(wxString& url, wxString apikey)
 
 bool PrinterWebView::Show(bool show)
 {
-    if (show)
-        ensure_camera_webview_created();
     if (show)
         refresh_layer_info_from_selected_machine();
     return wxPanel::Show(show);
@@ -4602,13 +4599,19 @@ void PrinterWebView::refresh_camera_stream(MachineObject *obj)
     m_camera_machine_id = next_machine_id;
     m_camera_stream_url = next_url;
 
+    const bool has_stream = !next_url.IsEmpty();
+
+    // WebView2'yi yalnızca stream URL varken oluştur — önceden oluşturulunca beyaz sayfa gösterir
+    if (m_camera_webview_host != nullptr && has_stream)
+        ensure_camera_webview_created();
+
     if (m_camera_webview != nullptr && (machine_changed || stream_changed))
         m_camera_webview->SetPage(camera_stream_page(camera_urls), m_camera_stream_url.BeforeLast('/'));
 
     if (m_dashboard_camera_panel != nullptr) {
         DeviceDashboard::CameraState camera_state;
-        camera_state.available   = obj != nullptr && obj->is_online() && !next_url.IsEmpty();
-        camera_state.stream_url  = next_url;
+        camera_state.available  = obj != nullptr && obj->is_online() && has_stream;
+        camera_state.stream_url = next_url;
         m_dashboard_camera_panel->apply_state(camera_state);
     }
 }
